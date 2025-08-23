@@ -2,4 +2,4 @@ nothing to see here...
 
 
 
-this is just am authentication redirect page :)
+this is just an authentication redirect page :)
