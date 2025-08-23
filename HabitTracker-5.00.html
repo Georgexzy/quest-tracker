@@ -1,0 +1,3880 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quest Tracker Pro - AI-Powered Personal Optimization</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.4.4/lz-string.min.js"></script>
+    <script src="https://sdk.scdn.co/spotify-player.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#5D5CDE',
+                        'primary-dark': '#4B4BC7',
+                        'fitness': '#ef4444',
+                        'nutrition': '#22c55e',
+                        'focus': '#3b82f6',
+                        'wellness': '#8b5cf6'
+                    }
+                }
+            },
+            darkMode: 'class'
+        }
+    </script>
+    <style>
+        .progress-bar {
+            transition: width 0.3s ease-in-out;
+        }
+        .level-up-animation {
+            animation: levelUp 1s ease-in-out;
+        }
+        @keyframes levelUp {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.2); color: #f59e0b; }
+            100% { transform: scale(1); }
+        }
+        .xp-gain {
+            animation: xpGain 0.8s ease-out;
+        }
+        @keyframes xpGain {
+            0% { transform: translateY(0); opacity: 1; }
+            100% { transform: translateY(-20px); opacity: 0; }
+        }
+        .pomodoro-pulse {
+            animation: pomodoroPulse 1s ease-in-out infinite;
+        }
+        @keyframes pomodoroPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        .nav-item {
+            transition: all 0.3s ease;
+        }
+        .nav-item:hover {
+            transform: translateY(-1px);
+        }
+        .nav-item.active {
+            background: linear-gradient(135deg, #5D5CDE, #7C7CE8);
+            color: white;
+        }
+        .card {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+        }
+        .dark .card {
+            background: #1f2937;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+        }
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(93, 92, 222, 0.15);
+        }
+        .floating-notification {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
+            animation: slideInUp 0.5s ease-out;
+        }
+        @keyframes slideInUp {
+            from { transform: translateY(100px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        .side-nav {
+            transition: transform 0.3s ease;
+        }
+        @media (max-width: 768px) {
+            .side-nav {
+                position: fixed;
+                top: 0;
+                left: 0;
+                height: 100vh;
+                z-index: 50;
+                background: white;
+                width: 320px;
+                transform: translateX(-100%);
+            }
+            .side-nav.open {
+                transform: translateX(0);
+            }
+            .dark .side-nav {
+                background: #111827;
+            }
+        }
+        .timer-circle {
+            stroke-dasharray: 628;
+            stroke-dashoffset: 628;
+            transition: stroke-dashoffset 1s linear;
+        }
+        .wellness-score-ring {
+            transform: rotate(-90deg);
+            transition: stroke-dashoffset 0.5s ease-in-out;
+        }
+        .recommendation-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            animation: glow 2s ease-in-out infinite alternate;
+        }
+        @keyframes glow {
+            from { box-shadow: 0 4px 20px rgba(102, 126, 234, 0.3); }
+            to { box-shadow: 0 4px 20px rgba(118, 75, 162, 0.5); }
+        }
+        .correlation-indicator {
+            transition: all 0.3s ease;
+        }
+        .trend-line {
+            stroke-width: 3;
+            fill: none;
+            stroke-linecap: round;
+            animation: drawLine 1s ease-in-out;
+        }
+        @keyframes drawLine {
+            from { stroke-dasharray: 1000; stroke-dashoffset: 1000; }
+            to { stroke-dasharray: 1000; stroke-dashoffset: 0; }
+        }
+        .profile-complete {
+            background: linear-gradient(135deg, #10b981, #059669);
+        }
+        .profile-incomplete {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+        }
+        .personalized-goal {
+            background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+            color: white;
+        }
+        .adaptive-indicator {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        .task-item {
+            transition: all 0.3s ease;
+        }
+        .task-item:hover {
+            transform: translateX(4px);
+        }
+        .task-completed {
+            opacity: 0.6;
+            text-decoration: line-through;
+        }
+        .spotify-widget {
+            background: linear-gradient(135deg, #1DB954, #1ed760);
+            color: white;
+        }
+        .integration-card {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white min-h-screen">
+    <!-- Mobile Menu Overlay -->
+    <div id="menuOverlay" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden md:hidden"></div>
+    
+    <!-- Profile Setup Banner -->
+    <div id="profileSetupBanner" class="fixed top-0 left-0 right-0 z-60 bg-gradient-to-r from-orange-500 to-red-500 text-white p-3 text-center hidden">
+        <div class="flex items-center justify-center space-x-3">
+            <span class="text-lg">👤</span>
+            <span class="font-medium">Complete your profile for personalized recommendations</span>
+            <button onclick="showProfileSetup()" class="bg-white/20 hover:bg-white/30 px-4 py-1 rounded-full text-sm">
+                Setup Profile
+            </button>
+            <button onclick="dismissProfileSetup()" class="text-white/80 hover:text-white ml-2">✕</button>
+        </div>
+    </div>
+
+    <!-- Integration Hub Modal -->
+    <div id="integrationModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-xl max-w-md w-full mx-4">
+            <h3 class="text-lg font-bold mb-4">🔗 Data Integrations</h3>
+            
+            <!-- iOS Shortcuts -->
+            <div class="space-y-4">
+                <div class="integration-card p-4 rounded-lg">
+                    <div class="flex items-center justify-between mb-2">
+                        <div class="flex items-center space-x-2">
+                            <span class="text-lg">📱</span>
+                            <span class="font-medium">iOS Shortcuts</span>
+                        </div>
+                        <button onclick="setupiOSShortcuts()" class="bg-white/20 hover:bg-white/30 px-3 py-1 rounded text-sm">
+                            Setup
+                        </button>
+                    </div>
+                    <div class="text-sm opacity-90">Auto-sync steps from Health app</div>
+                </div>
+
+                <!-- Spotify -->
+                <div class="spotify-widget p-4 rounded-lg">
+                    <div class="flex items-center justify-between mb-2">
+                        <div class="flex items-center space-x-2">
+                            <span class="text-lg">🎵</span>
+                            <span class="font-medium">Spotify</span>
+                        </div>
+                        <button onclick="connectSpotify()" class="bg-white/20 hover:bg-white/30 px-3 py-1 rounded text-sm">
+                            Connect
+                        </button>
+                    </div>
+                    <div class="text-sm opacity-90">Control music during workouts</div>
+                </div>
+
+                <!-- Manual Import -->
+                <div class="bg-gray-100 dark:bg-gray-700 p-4 rounded-lg">
+                    <div class="flex items-center justify-between mb-2">
+                        <div class="flex items-center space-x-2">
+                            <span class="text-lg">📊</span>
+                            <span class="font-medium">Manual Import</span>
+                        </div>
+                        <button onclick="showImportOptions()" class="bg-primary text-white px-3 py-1 rounded text-sm">
+                            Import
+                        </button>
+                    </div>
+                    <div class="text-sm text-gray-600 dark:text-gray-400">Import data from any app</div>
+                </div>
+            </div>
+
+            <div class="flex justify-end mt-6">
+                <button onclick="closeIntegrationModal()" class="px-4 py-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Smart Recommendation Floating Card -->
+    <div id="smartRecommendation" class="fixed top-4 left-4 z-40 hidden">
+        <div class="recommendation-card p-4 rounded-xl shadow-lg max-w-sm">
+            <div class="flex items-center justify-between mb-2">
+                <div class="flex items-center space-x-2">
+                    <span class="text-lg">🧠</span>
+                    <span class="font-bold text-sm">AI Coach</span>
+                </div>
+                <button onclick="dismissRecommendation()" class="text-white/80 hover:text-white">✕</button>
+            </div>
+            <div id="recommendationText" class="text-sm mb-3"></div>
+            <div class="flex space-x-2">
+                <button onclick="acceptRecommendation()" class="bg-white/20 hover:bg-white/30 px-3 py-1 rounded text-xs">
+                    ✨ Apply
+                </button>
+                <button onclick="snoozeRecommendation()" class="bg-white/10 hover:bg-white/20 px-3 py-1 rounded text-xs">
+                    ⏰ Later
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Pomodoro Timer Floating Widget -->
+    <div id="pomodoroWidget" class="fixed top-4 right-4 z-40 hidden">
+        <div class="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-lg border-2 border-focus">
+            <div class="text-center">
+                <div class="relative w-16 h-16 mx-auto mb-2">
+                    <svg class="w-16 h-16 transform -rotate-90">
+                        <circle cx="32" cy="32" r="28" stroke="currentColor" stroke-width="4" fill="none" class="text-gray-200 dark:text-gray-600"></circle>
+                        <circle id="timerProgress" cx="32" cy="32" r="28" stroke="currentColor" stroke-width="4" fill="none" class="text-focus timer-circle"></circle>
+                    </svg>
+                    <div class="absolute inset-0 flex items-center justify-center">
+                        <span id="timerDisplay" class="text-sm font-bold">25:00</span>
+                    </div>
+                </div>
+                <div id="timerStatus" class="text-xs font-medium mb-2">Focus Session</div>
+                <div class="flex space-x-2">
+                    <button id="timerStart" onclick="startPomodoro()" class="px-2 py-1 bg-focus text-white rounded text-xs">▶</button>
+                    <button id="timerPause" onclick="pausePomodoro()" class="px-2 py-1 bg-yellow-500 text-white rounded text-xs hidden">⏸</button>
+                    <button onclick="stopPomodoro()" class="px-2 py-1 bg-red-500 text-white rounded text-xs">⏹</button>
+                    <button onclick="hidePomodoro()" class="px-2 py-1 bg-gray-500 text-white rounded text-xs">×</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Sidebar Navigation -->
+    <nav id="sideNav" class="side-nav fixed left-0 top-0 h-full w-80 bg-white dark:bg-gray-800 shadow-xl z-50 overflow-y-auto md:block md:translate-x-0">
+        <div class="p-6">
+            <!-- Header -->
+            <div class="flex items-center justify-between mb-8">
+                <div class="flex items-center space-x-3">
+                    <div class="w-12 h-12 bg-primary rounded-full flex items-center justify-center text-white text-xl relative" id="playerAvatar">
+                        🧙‍♂️
+                        <div id="profileCompleteBadge" class="absolute -top-1 -right-1 w-4 h-4 rounded-full profile-incomplete flex items-center justify-center text-xs">!</div>
+                    </div>
+                    <div>
+                        <h1 class="text-xl font-bold" id="playerName">Quest Tracker Pro</h1>
+                        <p class="text-sm text-gray-600 dark:text-gray-400">Level <span id="playerLevel">1</span> • <span id="playerXP">0</span> XP</p>
+                        <p class="text-xs text-purple-600 dark:text-purple-400" id="personalizedIndicator">Personalized Mode</p>
+                    </div>
+                </div>
+                <button id="closeSideNav" class="md:hidden text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">✕</button>
+            </div>
+
+            <!-- Profile Quick Stats -->
+            <div class="mb-6 p-3 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/30 dark:to-pink-900/30 rounded-lg">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-sm font-medium">👤 Profile Power</span>
+                    <button onclick="showProfileSetup()" class="text-xs bg-purple-100 dark:bg-purple-800 text-purple-600 dark:text-purple-300 px-2 py-1 rounded-full hover:bg-purple-200 dark:hover:bg-purple-700">
+                        Edit
+                    </button>
+                </div>
+                <div class="grid grid-cols-2 gap-2 text-xs">
+                    <div class="text-center">
+                        <div class="font-bold" id="profileAgeDisplay">--</div>
+                        <div class="text-gray-500">Age</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="font-bold" id="profileBMI">--</div>
+                        <div class="text-gray-500">BMI</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Integration Status -->
+            <div class="mb-6 p-3 bg-gradient-to-r from-blue-50 to-green-50 dark:from-blue-900/30 dark:to-green-900/30 rounded-lg">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-sm font-medium">🔗 Connected Apps</span>
+                    <button onclick="showIntegrationModal()" class="text-xs bg-blue-100 dark:bg-blue-800 text-blue-600 dark:text-blue-300 px-2 py-1 rounded-full hover:bg-blue-200 dark:hover:bg-blue-700">
+                        Setup
+                    </button>
+                </div>
+                <div class="flex space-x-2">
+                    <div class="text-center">
+                        <div class="text-lg" id="healthStatus">⚪</div>
+                        <div class="text-xs">Health</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-lg" id="spotifyStatus">⚪</div>
+                        <div class="text-xs">Spotify</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- XP Progress -->
+            <div class="mb-6">
+                <div class="bg-gray-200 dark:bg-gray-700 rounded-full h-3 overflow-hidden">
+                    <div id="xpProgressBar" class="bg-primary h-full progress-bar" style="width: 0%"></div>
+                </div>
+                <div class="text-xs text-center mt-1 text-gray-600 dark:text-gray-400" id="xpProgressText">0 / 100 XP to Level 2</div>
+            </div>
+
+            <!-- Wellness Score -->
+            <div class="mb-6">
+                <div class="text-center">
+                    <div class="relative w-20 h-20 mx-auto mb-2">
+                        <svg class="w-20 h-20">
+                            <circle cx="40" cy="40" r="35" stroke="currentColor" stroke-width="6" fill="none" class="text-gray-200 dark:text-gray-600"></circle>
+                            <circle id="wellnessScoreRing" cx="40" cy="40" r="35" stroke="currentColor" stroke-width="6" fill="none" class="wellness-score-ring text-wellness" style="stroke-dasharray: 220; stroke-dashoffset: 110;"></circle>
+                        </svg>
+                        <div class="absolute inset-0 flex flex-col items-center justify-center">
+                            <span id="wellnessScore" class="text-lg font-bold text-wellness">75</span>
+                            <span class="text-xs text-gray-500">Wellness</span>
+                        </div>
+                    </div>
+                    <div class="text-xs text-gray-600 dark:text-gray-400" id="wellnessMessage">Personalized for you!</div>
+                </div>
+            </div>
+
+            <!-- Personalized Daily Dashboard -->
+            <div class="grid grid-cols-2 gap-3 mb-6">
+                <div class="bg-fitness/10 p-3 rounded-lg text-center">
+                    <div class="text-lg font-bold text-fitness" id="dailySteps">0</div>
+                    <div class="text-xs text-fitness">Steps</div>
+                    <div class="text-xs text-gray-500" id="stepsGoalStatus">📈</div>
+                </div>
+                <div class="bg-nutrition/10 p-3 rounded-lg text-center">
+                    <div class="text-lg font-bold text-nutrition" id="dailyCalories">0</div>
+                    <div class="text-xs text-nutrition">Calories</div>
+                    <div class="text-xs text-gray-500" id="caloriesGoalStatus">📈</div>
+                </div>
+                <div class="bg-focus/10 p-3 rounded-lg text-center">
+                    <div class="text-lg font-bold text-focus" id="focusMinutes">0</div>
+                    <div class="text-xs text-focus">Focus Min</div>
+                    <div class="text-xs text-gray-500" id="focusGoalStatus">📈</div>
+                </div>
+                <div class="bg-cyan-50 dark:bg-cyan-900/30 p-3 rounded-lg text-center cursor-pointer" onclick="addWater()">
+                    <div class="text-lg font-bold text-cyan-600 dark:text-cyan-400" id="waterCount">0</div>
+                    <div class="text-xs text-cyan-600 dark:text-cyan-400">Water</div>
+                    <div class="text-xs text-gray-500" id="waterGoalStatus">📈</div>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="grid grid-cols-3 gap-2 mb-6">
+                <button onclick="quickLogMeal()" class="bg-nutrition/10 p-2 rounded-lg text-center hover:bg-nutrition/20">
+                    <div class="text-lg">🍎</div>
+                    <div class="text-xs">Log Meal</div>
+                </button>
+                <button onclick="startPersonalizedWorkout()" class="bg-fitness/10 p-2 rounded-lg text-center hover:bg-fitness/20">
+                    <div class="text-lg">💪</div>
+                    <div class="text-xs">Workout</div>
+                </button>
+                <button onclick="showPomodoro()" class="bg-focus/10 p-2 rounded-lg text-center hover:bg-focus/20">
+                    <div class="text-lg">🍅</div>
+                    <div class="text-xs">Focus</div>
+                </button>
+            </div>
+
+            <!-- Adaptive Energy & Recovery Status -->
+            <div class="mb-6">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-sm font-medium">Energy & Recovery</span>
+                    <div class="flex items-center space-x-1">
+                        <span class="adaptive-indicator w-2 h-2 bg-purple-500 rounded-full"></span>
+                        <button onclick="updateEnergyMood()" class="text-xs bg-primary/10 text-primary px-2 py-1 rounded-full hover:bg-primary/20">Update</button>
+                    </div>
+                </div>
+                <div class="space-y-2">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs">Energy</span>
+                        <div class="flex space-x-1" id="energyMeter"></div>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs">Mood</span>
+                        <div class="text-lg" id="moodIndicator">😐</div>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs">Recovery</span>
+                        <div class="w-16 bg-gray-200 dark:bg-gray-600 rounded-full h-2">
+                            <div id="recoveryBar" class="bg-green-500 h-full rounded-full" style="width: 100%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Navigation Items -->
+            <div class="space-y-2">
+                <button class="nav-item active w-full text-left p-3 rounded-lg font-medium transition-all" data-view="dashboard">
+                    📊 Dashboard
+                </button>
+                <button class="nav-item w-full text-left p-3 rounded-lg font-medium transition-all" data-view="profile">
+                    👤 Profile & Goals
+                </button>
+                <button class="nav-item w-full text-left p-3 rounded-lg font-medium transition-all" data-view="fitness">
+                    💪 Fitness
+                </button>
+                <button class="nav-item w-full text-left p-3 rounded-lg font-medium transition-all" data-view="nutrition">
+                    🥗 Nutrition
+                </button>
+                <button class="nav-item w-full text-left p-3 rounded-lg font-medium transition-all" data-view="focus">
+                    🧠 Focus & Productivity
+                </button>
+                <button class="nav-item w-full text-left p-3 rounded-lg font-medium transition-all" data-view="wellness">
+                    🌱 Wellness
+                </button>
+                <button class="nav-item w-full text-left p-3 rounded-lg font-medium transition-all" data-view="insights">
+                    📈 Insights
+                </button>
+                <button class="nav-item w-full text-left p-3 rounded-lg font-medium transition-all" data-view="achievements">
+                    🏆 Achievements
+                </button>
+                <button class="nav-item w-full text-left p-3 rounded-lg font-medium transition-all" data-view="settings">
+                    ⚙️ Settings
+                </button>
+            </div>
+
+            <!-- Adaptive Weekly Challenge -->
+            <div id="weeklyChallenge" class="mt-6 p-4 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/30 dark:to-pink-900/30 rounded-lg">
+                <div class="flex items-center space-x-2 mb-2">
+                    <span class="text-lg">🎯</span>
+                    <span class="font-medium text-sm">Personal Challenge</span>
+                    <span class="text-xs bg-purple-100 dark:bg-purple-800 text-purple-600 dark:text-purple-300 px-2 py-1 rounded-full" id="challengeDifficulty">Adaptive</span>
+                </div>
+                <div class="text-sm text-gray-600 dark:text-gray-400" id="challengeText">Complete 5 tasks this week to unlock bonus XP!</div>
+                <div class="mt-2 bg-gray-200 dark:bg-gray-600 rounded-full h-2">
+                    <div id="challengeProgress" class="bg-purple-500 h-full rounded-full" style="width: 0%"></div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content Area -->
+    <div class="md:ml-80 min-h-screen">
+        <!-- Top Bar (Mobile) -->
+        <div class="md:hidden bg-white dark:bg-gray-800 shadow-sm p-4 flex items-center justify-between">
+            <button id="openSideNav" class="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                </svg>
+            </button>
+            <h1 class="font-bold text-lg">Quest Tracker Pro</h1>
+            <button onclick="showIntegrationModal()" class="text-blue-600 hover:text-blue-800">🔗</button>
+        </div>
+
+        <!-- Content Views -->
+        <div class="p-4 md:p-8">
+            <!-- Enhanced Dashboard View -->
+            <div id="dashboard-view" class="view active">
+                <div class="flex items-center justify-between mb-6">
+                    <div>
+                        <h2 class="text-2xl font-bold">Good <span id="timeGreeting">morning</span>, <span id="personalizedGreeting">Champion</span>! 👋</h2>
+                        <p class="text-gray-600 dark:text-gray-400" id="streakText">Day 1 of your personalized journey</p>
+                        <div class="mt-1">
+                            <span class="text-sm text-wellness font-medium" id="todayWellnessText">Wellness Score: Optimizing for you</span>
+                            <span class="text-xs text-gray-500 ml-2" id="personalizedMessage">AI Coach Active</span>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <button onclick="showIntegrationModal()" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700 mb-2 block">
+                            🔗 Connect Apps
+                        </button>
+                        <button onclick="showProfileSetup()" class="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-purple-700 mb-2 block">
+                            👤 Profile
+                        </button>
+                        <button onclick="showSmartRecommendation()" class="bg-primary text-white px-4 py-2 rounded-lg text-sm hover:bg-primary-dark block">
+                            🧠 AI Coach
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Personalization Status -->
+                <div id="personalizationStatus" class="mb-6 p-4 bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/30 dark:to-blue-900/30 rounded-lg border border-purple-200 dark:border-purple-700">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-3">
+                            <div class="text-2xl">🎯</div>
+                            <div>
+                                <div class="font-medium text-purple-800 dark:text-purple-200" id="personalizationTitle">Personalization Active</div>
+                                <div class="text-sm text-purple-600 dark:text-purple-300" id="personalizationMessage">All systems optimized for your profile</div>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-xs text-purple-600 dark:text-purple-400" id="profileCompleteness">100% Complete</div>
+                            <div class="text-xs text-gray-500" id="lastOptimization">Updated today</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Personalized Today's Overview -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                    <div class="card p-6 bg-gradient-to-br from-fitness/10 to-fitness/20">
+                        <div class="flex items-center justify-between mb-3">
+                            <h3 class="font-semibold text-fitness">🏃‍♂️ Movement</h3>
+                            <div class="correlation-indicator" id="movementCorrelation">📈</div>
+                        </div>
+                        <div class="space-y-2">
+                            <div class="flex justify-between">
+                                <span class="text-sm">Steps</span>
+                                <span class="font-bold" id="dashSteps">0 / 10,000</span>
+                            </div>
+                            <div class="bg-white dark:bg-gray-700 rounded-full h-2">
+                                <div id="dashStepsBar" class="bg-fitness h-full rounded-full" style="width: 0%"></div>
+                            </div>
+                            <div class="flex justify-between text-sm">
+                                <span>Workouts</span>
+                                <span id="dashWorkouts">0</span>
+                            </div>
+                            <div class="text-xs text-gray-600 dark:text-gray-400" id="fitnessInsight">Personalized for your goals!</div>
+                        </div>
+                    </div>
+
+                    <div class="card p-6 bg-gradient-to-br from-nutrition/10 to-nutrition/20">
+                        <div class="flex items-center justify-between mb-3">
+                            <h3 class="font-semibold text-nutrition">🥗 Nutrition</h3>
+                            <div class="correlation-indicator" id="nutritionCorrelation">💧</div>
+                        </div>
+                        <div class="space-y-2">
+                            <div class="flex justify-between">
+                                <span class="text-sm">Calories</span>
+                                <span class="font-bold" id="dashCals">0 / 2000</span>
+                            </div>
+                            <div class="bg-white dark:bg-gray-700 rounded-full h-2">
+                                <div id="dashCalsBar" class="bg-nutrition h-full rounded-full" style="width: 0%"></div>
+                            </div>
+                            <div class="flex justify-between text-sm">
+                                <span>Meals</span>
+                                <span id="dashMeals">0 / 3</span>
+                            </div>
+                            <div class="text-xs text-gray-600 dark:text-gray-400" id="nutritionInsight">Based on your BMR!</div>
+                        </div>
+                    </div>
+
+                    <div class="card p-6 bg-gradient-to-br from-focus/10 to-focus/20">
+                        <div class="flex items-center justify-between mb-3">
+                            <h3 class="font-semibold text-focus">🧠 Focus</h3>
+                            <div class="correlation-indicator" id="focusCorrelation">⚡</div>
+                        </div>
+                        <div class="space-y-2">
+                            <div class="flex justify-between">
+                                <span class="text-sm">Focus Time</span>
+                                <span class="font-bold" id="dashFocus">0 / 120 min</span>
+                            </div>
+                            <div class="bg-white dark:bg-gray-700 rounded-full h-2">
+                                <div id="dashFocusBar" class="bg-focus h-full rounded-full" style="width: 0%"></div>
+                            </div>
+                            <div class="flex justify-between text-sm">
+                                <span>Sessions</span>
+                                <span id="dashSessions">0</span>
+                            </div>
+                            <div class="text-xs text-gray-600 dark:text-gray-400" id="focusInsight">Optimized for your chronotype!</div>
+                        </div>
+                    </div>
+
+                    <div class="card p-6 bg-gradient-to-br from-wellness/10 to-wellness/20">
+                        <div class="flex items-center justify-between mb-3">
+                            <h3 class="font-semibold text-wellness">🌱 Wellness</h3>
+                            <div class="correlation-indicator" id="wellnessCorrelation">🌙</div>
+                        </div>
+                        <div class="space-y-2">
+                            <div class="flex justify-between">
+                                <span class="text-sm">Sleep</span>
+                                <span class="font-bold" id="dashSleep">0 / 8 hrs</span>
+                            </div>
+                            <div class="bg-white dark:bg-gray-700 rounded-full h-2">
+                                <div id="dashSleepBar" class="bg-wellness h-full rounded-full" style="width: 0%"></div>
+                            </div>
+                            <div class="flex justify-between text-sm">
+                                <span>Water</span>
+                                <span id="dashWater">0 / 8</span>
+                            </div>
+                            <div class="text-xs text-gray-600 dark:text-gray-400" id="wellnessInsight">Matched to your lifestyle!</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Today's Personalized Tasks -->
+                <div class="card p-6 mb-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-bold">🎯 Your Personal Quests</h3>
+                        <div class="flex space-x-2">
+                            <button onclick="generatePersonalizedTasks()" class="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-purple-700">
+                                🧠 AI Quests
+                            </button>
+                            <button onclick="showAddTaskModal()" class="bg-green-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-700">
+                                ➕ Add Quest
+                            </button>
+                        </div>
+                    </div>
+                    <div id="tasksList" class="space-y-3">
+                        <!-- Tasks will be populated here -->
+                    </div>
+                </div>
+
+                <!-- Enhanced Personalized Mood Boost -->
+                <div class="card p-6">
+                    <h3 class="text-lg font-bold mb-4 flex items-center">
+                        <span class="mr-2">✨</span>
+                        Personalized Boosts
+                        <span class="ml-2 text-xs bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400 px-2 py-1 rounded-full" id="boostContext">Based on Your Profile</span>
+                        <button onclick="refreshPersonalizedBoosts()" class="ml-auto text-sm bg-pink-100 dark:bg-pink-900/30 text-pink-600 dark:text-pink-400 px-3 py-1 rounded-full hover:bg-pink-200 dark:hover:bg-pink-900/50">
+                            🎲 Refresh
+                        </button>
+                    </h3>
+                    <div id="moodBoosts" class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        <!-- Personalized mood boost activities -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Profile & Goals View -->
+            <div id="profile-view" class="view hidden">
+                <h2 class="text-2xl font-bold mb-6 text-purple-600">👤 Profile & Personalization</h2>
+                
+                <!-- Profile Completion Status -->
+                <div class="card p-6 mb-6 bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/30 dark:to-blue-900/30">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-bold">Profile Completion</h3>
+                        <div class="text-lg font-bold" id="profileCompletionPercentage">0%</div>
+                    </div>
+                    <div class="bg-gray-200 dark:bg-gray-600 rounded-full h-3 mb-4">
+                        <div id="profileCompletionBar" class="bg-purple-500 h-full rounded-full" style="width: 0%"></div>
+                    </div>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4" id="profileCompletionItems">
+                        <div class="text-center p-3 bg-white dark:bg-gray-700 rounded-lg">
+                            <div class="text-2xl mb-1">👤</div>
+                            <div class="text-xs font-medium">Basic Info</div>
+                            <div class="text-xs text-gray-500" id="basicInfoStatus">Incomplete</div>
+                        </div>
+                        <div class="text-center p-3 bg-white dark:bg-gray-700 rounded-lg">
+                            <div class="text-2xl mb-1">🎯</div>
+                            <div class="text-xs font-medium">Goals</div>
+                            <div class="text-xs text-gray-500" id="goalsStatus">Incomplete</div>
+                        </div>
+                        <div class="text-center p-3 bg-white dark:bg-gray-700 rounded-lg">
+                            <div class="text-2xl mb-1">🏃‍♂️</div>
+                            <div class="text-xs font-medium">Activity</div>
+                            <div class="text-xs text-gray-500" id="activityStatus">Incomplete</div>
+                        </div>
+                        <div class="text-center p-3 bg-white dark:bg-gray-700 rounded-lg">
+                            <div class="text-2xl mb-1">🍽️</div>
+                            <div class="text-xs font-medium">Nutrition</div>
+                            <div class="text-xs text-gray-500" id="nutritionStatus">Incomplete</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Personal Information -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                    <div class="card p-6">
+                        <h3 class="text-lg font-bold mb-4">Basic Information</h3>
+                        <div class="space-y-4" id="basicProfileInfo">
+                            <div class="flex justify-between items-center">
+                                <span class="text-sm text-gray-600 dark:text-gray-400">Name:</span>
+                                <span class="font-medium" id="displayName">Not set</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-sm text-gray-600 dark:text-gray-400">Age:</span>
+                                <span class="font-medium" id="displayAge">Not set</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-sm text-gray-600 dark:text-gray-400">Gender:</span>
+                                <span class="font-medium" id="displayGender">Not set</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-sm text-gray-600 dark:text-gray-400">Height:</span>
+                                <span class="font-medium" id="displayHeight">Not set</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-sm text-gray-600 dark:text-gray-400">Weight:</span>
+                                <span class="font-medium" id="displayWeight">Not set</span>
+                            </div>
+                        </div>
+                        <button onclick="showProfileSetup()" class="mt-4 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 w-full">
+                            ✏️ Edit Profile
+                        </button>
+                    </div>
+
+                    <div class="card p-6">
+                        <h3 class="text-lg font-bold mb-4">Health Metrics</h3>
+                        <div class="space-y-4" id="healthMetrics">
+                            <div class="flex justify-between items-center">
+                                <span class="text-sm text-gray-600 dark:text-gray-400">BMI:</span>
+                                <span class="font-medium" id="displayBMI">Not calculated</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-sm text-gray-600 dark:text-gray-400">BMR:</span>
+                                <span class="font-medium" id="displayBMR">Not calculated</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-sm text-gray-600 dark:text-gray-400">TDEE:</span>
+                                <span class="font-medium" id="displayTDEE">Not calculated</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-sm text-gray-600 dark:text-gray-400">Activity Level:</span>
+                                <span class="font-medium" id="displayActivityLevel">Not set</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-sm text-gray-600 dark:text-gray-400">Fitness Goal:</span>
+                                <span class="font-medium" id="displayFitnessGoal">Not set</span>
+                            </div>
+                        </div>
+                        <button onclick="showProfileSetup()" class="mt-4 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 w-full">
+                            📊 Update Metrics
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Personalized Goals -->
+                <div class="card p-6 mb-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-bold">Personalized Goals</h3>
+                        <button onclick="recalculateGoals()" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700">
+                            🔄 Recalculate
+                        </button>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4" id="personalizedGoals">
+                        <div class="personalized-goal p-4 rounded-lg text-center">
+                            <div class="text-2xl mb-2">🚶‍♂️</div>
+                            <div class="text-sm opacity-90">Daily Steps</div>
+                            <div class="text-lg font-bold" id="goalSteps">10,000</div>
+                        </div>
+                        <div class="personalized-goal p-4 rounded-lg text-center">
+                            <div class="text-2xl mb-2">🔥</div>
+                            <div class="text-sm opacity-90">Daily Calories</div>
+                            <div class="text-lg font-bold" id="goalCalories">2000</div>
+                        </div>
+                        <div class="personalized-goal p-4 rounded-lg text-center">
+                            <div class="text-2xl mb-2">🧠</div>
+                            <div class="text-sm opacity-90">Focus Minutes</div>
+                            <div class="text-lg font-bold" id="goalFocus">120</div>
+                        </div>
+                        <div class="personalized-goal p-4 rounded-lg text-center">
+                            <div class="text-2xl mb-2">💧</div>
+                            <div class="text-sm opacity-90">Water Glasses</div>
+                            <div class="text-lg font-bold" id="goalWater">8</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Fitness View -->
+            <div id="fitness-view" class="view hidden">
+                <h2 class="text-2xl font-bold mb-6 text-fitness">💪 Personalized Fitness</h2>
+                
+                <!-- Workout Tracking -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
+                    <div class="card p-6">
+                        <h3 class="text-lg font-bold mb-4">Quick Workouts</h3>
+                        <div class="space-y-3">
+                            <button onclick="startWorkout('cardio')" class="w-full bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 p-3 rounded-lg hover:bg-red-200 dark:hover:bg-red-900/50">
+                                🏃‍♂️ Cardio (20 min)
+                            </button>
+                            <button onclick="startWorkout('strength')" class="w-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 p-3 rounded-lg hover:bg-blue-200 dark:hover:bg-blue-900/50">
+                                💪 Strength (30 min)
+                            </button>
+                            <button onclick="startWorkout('yoga')" class="w-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 p-3 rounded-lg hover:bg-green-200 dark:hover:bg-green-900/50">
+                                🧘‍♀️ Yoga (15 min)
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="card p-6">
+                        <h3 class="text-lg font-bold mb-4">Today's Activity</h3>
+                        <div class="space-y-3">
+                            <div class="flex justify-between items-center">
+                                <span>Steps:</span>
+                                <span class="font-bold" id="fitnessSteps">0</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span>Workouts:</span>
+                                <span class="font-bold" id="fitnessWorkouts">0</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span>Calories Burned:</span>
+                                <span class="font-bold" id="fitnessCaloriesBurned">0</span>
+                            </div>
+                        </div>
+                        <button onclick="addCustomActivity()" class="mt-4 bg-fitness text-white px-4 py-2 rounded-lg w-full hover:bg-red-600">
+                            ➕ Log Activity
+                        </button>
+                    </div>
+
+                    <div class="card p-6">
+                        <h3 class="text-lg font-bold mb-4">Workout History</h3>
+                        <div id="workoutHistory" class="space-y-2">
+                            <div class="text-sm text-gray-500">No workouts logged yet</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Nutrition View -->
+            <div id="nutrition-view" class="view hidden">
+                <h2 class="text-2xl font-bold mb-6 text-nutrition">🥗 Personalized Nutrition</h2>
+                
+                <!-- Meal Tracking -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
+                    <div class="card p-6">
+                        <h3 class="text-lg font-bold mb-4">Quick Meals</h3>
+                        <div class="space-y-3">
+                            <button onclick="logMeal('breakfast')" class="w-full bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 p-3 rounded-lg hover:bg-yellow-200 dark:hover:bg-yellow-900/50">
+                                🌅 Breakfast
+                            </button>
+                            <button onclick="logMeal('lunch')" class="w-full bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 p-3 rounded-lg hover:bg-orange-200 dark:hover:bg-orange-900/50">
+                                ☀️ Lunch
+                            </button>
+                            <button onclick="logMeal('dinner')" class="w-full bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 p-3 rounded-lg hover:bg-purple-200 dark:hover:bg-purple-900/50">
+                                🌙 Dinner
+                            </button>
+                            <button onclick="logMeal('snack')" class="w-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 p-3 rounded-lg hover:bg-green-200 dark:hover:bg-green-900/50">
+                                🍎 Snack
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="card p-6">
+                        <h3 class="text-lg font-bold mb-4">Today's Nutrition</h3>
+                        <div class="space-y-3">
+                            <div class="flex justify-between items-center">
+                                <span>Calories:</span>
+                                <span class="font-bold" id="nutritionCalories">0 / 2000</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span>Protein:</span>
+                                <span class="font-bold" id="nutritionProtein">0g</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span>Carbs:</span>
+                                <span class="font-bold" id="nutritionCarbs">0g</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span>Fat:</span>
+                                <span class="font-bold" id="nutritionFat">0g</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span>Water:</span>
+                                <span class="font-bold" id="nutritionWater">0 / 8</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card p-6">
+                        <h3 class="text-lg font-bold mb-4">Meal History</h3>
+                        <div id="mealHistory" class="space-y-2">
+                            <div class="text-sm text-gray-500">No meals logged yet</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Focus & Productivity View -->
+            <div id="focus-view" class="view hidden">
+                <h2 class="text-2xl font-bold mb-6 text-focus">🧠 Focus & Productivity</h2>
+                
+                <!-- Pomodoro Timer Section -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
+                    <div class="card p-6">
+                        <h3 class="text-lg font-bold mb-4">Pomodoro Timer</h3>
+                        <div class="text-center">
+                            <div class="relative w-32 h-32 mx-auto mb-4">
+                                <svg class="w-32 h-32 transform -rotate-90">
+                                    <circle cx="64" cy="64" r="56" stroke="currentColor" stroke-width="8" fill="none" class="text-gray-200 dark:text-gray-600"></circle>
+                                    <circle id="focusTimerProgress" cx="64" cy="64" r="56" stroke="currentColor" stroke-width="8" fill="none" class="text-focus timer-circle"></circle>
+                                </svg>
+                                <div class="absolute inset-0 flex flex-col items-center justify-center">
+                                    <span id="focusTimerDisplay" class="text-2xl font-bold">25:00</span>
+                                    <span id="focusTimerStatus" class="text-xs">Focus Session</span>
+                                </div>
+                            </div>
+                            <div class="flex space-x-2 justify-center">
+                                <button id="focusStart" onclick="startFocusTimer()" class="px-4 py-2 bg-focus text-white rounded-lg">▶ Start</button>
+                                <button id="focusPause" onclick="pauseFocusTimer()" class="px-4 py-2 bg-yellow-500 text-white rounded-lg hidden">⏸ Pause</button>
+                                <button onclick="stopFocusTimer()" class="px-4 py-2 bg-red-500 text-white rounded-lg">⏹ Stop</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card p-6">
+                        <h3 class="text-lg font-bold mb-4">Today's Focus</h3>
+                        <div class="space-y-3">
+                            <div class="flex justify-between items-center">
+                                <span>Focus Time:</span>
+                                <span class="font-bold" id="todayFocusTime">0 min</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span>Sessions:</span>
+                                <span class="font-bold" id="todayFocusSessions">0</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span>Goal Progress:</span>
+                                <span class="font-bold" id="focusGoalProgress">0%</span>
+                            </div>
+                        </div>
+                        <div class="mt-4 bg-gray-200 dark:bg-gray-600 rounded-full h-2">
+                            <div id="focusProgressBar" class="bg-focus h-full rounded-full" style="width: 0%"></div>
+                        </div>
+                    </div>
+
+                    <div class="card p-6">
+                        <h3 class="text-lg font-bold mb-4">Focus History</h3>
+                        <div id="focusHistory" class="space-y-2">
+                            <div class="text-sm text-gray-500">No focus sessions yet</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Task Management -->
+                <div class="card p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-bold">Tasks & Goals</h3>
+                        <button onclick="showAddTaskModal()" class="bg-focus text-white px-4 py-2 rounded-lg hover:bg-blue-600">
+                            ➕ Add Task
+                        </button>
+                    </div>
+                    <div id="focusTasksList" class="space-y-3">
+                        <!-- Tasks will be populated here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Wellness View -->
+            <div id="wellness-view" class="view hidden">
+                <h2 class="text-2xl font-bold mb-6 text-wellness">🌱 Wellness & Recovery</h2>
+                
+                <!-- Wellness Dashboard -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
+                    <div class="card p-6">
+                        <h3 class="text-lg font-bold mb-4">Sleep Tracking</h3>
+                        <div class="space-y-3">
+                            <div class="flex justify-between items-center">
+                                <span>Last Night:</span>
+                                <span class="font-bold" id="lastNightSleep">0 hrs</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span>Sleep Goal:</span>
+                                <span class="font-bold" id="sleepGoal">8 hrs</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span>Sleep Debt:</span>
+                                <span class="font-bold" id="sleepDebt">0 hrs</span>
+                            </div>
+                        </div>
+                        <button onclick="logSleep()" class="mt-4 bg-wellness text-white px-4 py-2 rounded-lg w-full hover:bg-purple-600">
+                            💤 Log Sleep
+                        </button>
+                    </div>
+
+                    <div class="card p-6">
+                        <h3 class="text-lg font-bold mb-4">Stress Management</h3>
+                        <div class="space-y-3">
+                            <button onclick="startMeditation()" class="w-full bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 p-3 rounded-lg hover:bg-purple-200 dark:hover:bg-purple-900/50">
+                                🧘‍♀️ Meditation
+                            </button>
+                            <button onclick="startBreathing()" class="w-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 p-3 rounded-lg hover:bg-blue-200 dark:hover:bg-blue-900/50">
+                                🌬️ Breathing Exercise
+                            </button>
+                            <button onclick="startJournaling()" class="w-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 p-3 rounded-lg hover:bg-green-200 dark:hover:bg-green-900/50">
+                                📝 Journaling
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="card p-6">
+                        <h3 class="text-lg font-bold mb-4">Mood Tracking</h3>
+                        <div class="text-center mb-4">
+                            <div class="text-4xl mb-2" id="currentMood">😐</div>
+                            <div class="text-sm text-gray-600 dark:text-gray-400">Current Mood</div>
+                        </div>
+                        <div class="flex justify-center space-x-2">
+                            <button onclick="setMood(1)" class="text-2xl hover:scale-110 transition-transform">😴</button>
+                            <button onclick="setMood(2)" class="text-2xl hover:scale-110 transition-transform">😔</button>
+                            <button onclick="setMood(3)" class="text-2xl hover:scale-110 transition-transform">😐</button>
+                            <button onclick="setMood(4)" class="text-2xl hover:scale-110 transition-transform">😊</button>
+                            <button onclick="setMood(5)" class="text-2xl hover:scale-110 transition-transform">😁</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Wellness Activities -->
+                <div class="card p-6">
+                    <h3 class="text-lg font-bold mb-4">Wellness Activities</h3>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <button onclick="wellnessActivity('walk')" class="p-4 bg-green-50 dark:bg-green-900/30 rounded-lg hover:bg-green-100 dark:hover:bg-green-900/50">
+                            <div class="text-2xl mb-2">🚶‍♀️</div>
+                            <div class="text-sm font-medium">Nature Walk</div>
+                        </button>
+                        <button onclick="wellnessActivity('stretch')" class="p-4 bg-blue-50 dark:bg-blue-900/30 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/50">
+                            <div class="text-2xl mb-2">🤸‍♀️</div>
+                            <div class="text-sm font-medium">Stretching</div>
+                        </button>
+                        <button onclick="wellnessActivity('bath')" class="p-4 bg-purple-50 dark:bg-purple-900/30 rounded-lg hover:bg-purple-100 dark:hover:bg-purple-900/50">
+                            <div class="text-2xl mb-2">🛁</div>
+                            <div class="text-sm font-medium">Relaxing Bath</div>
+                        </button>
+                        <button onclick="wellnessActivity('music')" class="p-4 bg-pink-50 dark:bg-pink-900/30 rounded-lg hover:bg-pink-100 dark:hover:bg-pink-900/50">
+                            <div class="text-2xl mb-2">🎵</div>
+                            <div class="text-sm font-medium">Music Therapy</div>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Insights View -->
+            <div id="insights-view" class="view hidden">
+                <h2 class="text-2xl font-bold mb-6">📈 Insights & Analytics</h2>
+                
+                <!-- Weekly Summary -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+                    <div class="card p-6 text-center">
+                        <div class="text-2xl mb-2">🚶‍♂️</div>
+                        <div class="text-sm text-gray-600 dark:text-gray-400">Weekly Steps</div>
+                        <div class="text-2xl font-bold" id="weeklySteps">0</div>
+                        <div class="text-xs text-green-600" id="stepsChange">+0%</div>
+                    </div>
+                    <div class="card p-6 text-center">
+                        <div class="text-2xl mb-2">🧠</div>
+                        <div class="text-sm text-gray-600 dark:text-gray-400">Focus Time</div>
+                        <div class="text-2xl font-bold" id="weeklyFocus">0 min</div>
+                        <div class="text-xs text-green-600" id="focusChange">+0%</div>
+                    </div>
+                    <div class="card p-6 text-center">
+                        <div class="text-2xl mb-2">💪</div>
+                        <div class="text-sm text-gray-600 dark:text-gray-400">Workouts</div>
+                        <div class="text-2xl font-bold" id="weeklyWorkouts">0</div>
+                        <div class="text-xs text-green-600" id="workoutsChange">+0%</div>
+                    </div>
+                    <div class="card p-6 text-center">
+                        <div class="text-2xl mb-2">🌱</div>
+                        <div class="text-sm text-gray-600 dark:text-gray-400">Avg Wellness</div>
+                        <div class="text-2xl font-bold" id="avgWellness">0</div>
+                        <div class="text-xs text-green-600" id="wellnessChange">+0%</div>
+                    </div>
+                </div>
+
+                <!-- Progress Charts -->
+                <div class="card p-6 mb-6">
+                    <h3 class="text-lg font-bold mb-4">Progress Trends</h3>
+                    <div class="h-64 bg-gray-50 dark:bg-gray-700 rounded-lg flex items-center justify-center">
+                        <div class="text-center text-gray-500">
+                            <div class="text-4xl mb-2">📊</div>
+                            <div>Progress charts coming soon!</div>
+                            <div class="text-sm">Keep logging activities to see your trends</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- AI Insights -->
+                <div class="card p-6">
+                    <h3 class="text-lg font-bold mb-4">🧠 AI Insights</h3>
+                    <div id="aiInsights" class="space-y-4">
+                        <div class="p-4 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
+                            <div class="font-medium text-blue-800 dark:text-blue-200">💡 Productivity Insight</div>
+                            <div class="text-sm text-blue-600 dark:text-blue-300 mt-1">Your focus sessions are 23% longer in the morning. Consider scheduling important tasks earlier!</div>
+                        </div>
+                        <div class="p-4 bg-green-50 dark:bg-green-900/30 rounded-lg">
+                            <div class="font-medium text-green-800 dark:text-green-200">🏃‍♂️ Fitness Insight</div>
+                            <div class="text-sm text-green-600 dark:text-green-300 mt-1">You're most active on weekdays. Try maintaining momentum with lighter weekend activities!</div>
+                        </div>
+                        <div class="p-4 bg-purple-50 dark:bg-purple-900/30 rounded-lg">
+                            <div class="font-medium text-purple-800 dark:text-purple-200">🌱 Wellness Insight</div>
+                            <div class="text-sm text-purple-600 dark:text-purple-300 mt-1">Your mood improves after exercise. Regular movement could boost your overall happiness!</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Achievements View -->
+            <div id="achievements-view" class="view hidden">
+                <h2 class="text-2xl font-bold mb-6">🏆 Achievements & Rewards</h2>
+                
+                <!-- Current Streak -->
+                <div class="card p-6 mb-6 bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-900/30 dark:to-orange-900/30">
+                    <div class="text-center">
+                        <div class="text-4xl mb-2">🔥</div>
+                        <div class="text-2xl font-bold" id="currentStreak">0</div>
+                        <div class="text-sm text-gray-600 dark:text-gray-400">Day Streak</div>
+                        <div class="text-xs text-gray-500 mt-1">Keep it up!</div>
+                    </div>
+                </div>
+
+                <!-- Achievement Categories -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    <div class="card p-6">
+                        <h3 class="text-lg font-bold mb-4">🏃‍♂️ Fitness Achievements</h3>
+                        <div class="space-y-3" id="fitnessAchievements">
+                            <div class="flex items-center space-x-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                                <div class="text-2xl">🥉</div>
+                                <div>
+                                    <div class="font-medium">First Workout</div>
+                                    <div class="text-xs text-gray-500">Complete your first workout</div>
+                                </div>
+                            </div>
+                            <div class="flex items-center space-x-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg opacity-50">
+                                <div class="text-2xl">🥈</div>
+                                <div>
+                                    <div class="font-medium">Workout Warrior</div>
+                                    <div class="text-xs text-gray-500">Complete 10 workouts</div>
+                                </div>
+                            </div>
+                            <div class="flex items-center space-x-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg opacity-50">
+                                <div class="text-2xl">🥇</div>
+                                <div>
+                                    <div class="font-medium">Fitness Master</div>
+                                    <div class="text-xs text-gray-500">Complete 50 workouts</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card p-6">
+                        <h3 class="text-lg font-bold mb-4">🧠 Focus Achievements</h3>
+                        <div class="space-y-3" id="focusAchievements">
+                            <div class="flex items-center space-x-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                                <div class="text-2xl">🥉</div>
+                                <div>
+                                    <div class="font-medium">Focus Beginner</div>
+                                    <div class="text-xs text-gray-500">Complete first focus session</div>
+                                </div>
+                            </div>
+                            <div class="flex items-center space-x-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg opacity-50">
+                                <div class="text-2xl">🥈</div>
+                                <div>
+                                    <div class="font-medium">Concentration Pro</div>
+                                    <div class="text-xs text-gray-500">Complete 25 focus sessions</div>
+                                </div>
+                            </div>
+                            <div class="flex items-center space-x-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg opacity-50">
+                                <div class="text-2xl">🥇</div>
+                                <div>
+                                    <div class="font-medium">Focus Master</div>
+                                    <div class="text-xs text-gray-500">Complete 100 focus sessions</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Achievements -->
+                <div class="card p-6">
+                    <h3 class="text-lg font-bold mb-4">🆕 Recent Achievements</h3>
+                    <div id="recentAchievements" class="space-y-3">
+                        <div class="text-center text-gray-500 py-8">
+                            <div class="text-4xl mb-2">🏆</div>
+                            <div>No achievements yet</div>
+                            <div class="text-sm">Start completing tasks to earn your first achievement!</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Settings View -->
+            <div id="settings-view" class="view hidden">
+                <h2 class="text-2xl font-bold mb-6">⚙️ Settings & Preferences</h2>
+                
+                <!-- Notification Settings -->
+                <div class="card p-6 mb-6">
+                    <h3 class="text-lg font-bold mb-4">🔔 Notifications</h3>
+                    <div class="space-y-4">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <div class="font-medium">Daily Reminders</div>
+                                <div class="text-sm text-gray-600 dark:text-gray-400">Get reminded to log your activities</div>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" class="sr-only peer" id="dailyReminders">
+                                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 dark:peer-focus:ring-primary/40 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary"></div>
+                            </label>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <div class="font-medium">Pomodoro Notifications</div>
+                                <div class="text-sm text-gray-600 dark:text-gray-400">Get notified when timer completes</div>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" class="sr-only peer" id="pomodoroNotifications">
+                                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 dark:peer-focus:ring-primary/40 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary"></div>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Data Management -->
+                <div class="card p-6 mb-6">
+                    <h3 class="text-lg font-bold mb-4">💾 Data Management</h3>
+                    <div class="space-y-4">
+                        <button onclick="exportData()" class="w-full bg-blue-600 text-white p-3 rounded-lg hover:bg-blue-700">
+                            📤 Export Data
+                        </button>
+                        <button onclick="importData()" class="w-full bg-green-600 text-white p-3 rounded-lg hover:bg-green-700">
+                            📥 Import Data
+                        </button>
+                        <button onclick="resetData()" class="w-full bg-red-600 text-white p-3 rounded-lg hover:bg-red-700">
+                            🗑️ Reset All Data
+                        </button>
+                    </div>
+                </div>
+
+                <!-- App Information -->
+                <div class="card p-6">
+                    <h3 class="text-lg font-bold mb-4">ℹ️ App Information</h3>
+                    <div class="space-y-3">
+                        <div class="flex justify-between">
+                            <span>Version:</span>
+                            <span class="font-medium">5.0.0</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>Total XP:</span>
+                            <span class="font-medium" id="totalXP">0</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>Days Active:</span>
+                            <span class="font-medium" id="daysActive">0</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>Profile Complete:</span>
+                            <span class="font-medium" id="profileCompleteStatus">No</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Profile Setup Modal -->
+    <div id="profileModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <h3 class="text-xl font-bold mb-6 text-center">👤 Complete Your Profile</h3>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Basic Information -->
+                <div class="space-y-4">
+                    <h4 class="font-semibold text-lg border-b pb-2">Basic Information</h4>
+                    
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Name</label>
+                        <input type="text" id="profileName" class="w-full p-3 border rounded-lg text-base dark:bg-gray-700 dark:border-gray-600" placeholder="Your name">
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Age</label>
+                            <input type="number" id="profileAge" class="w-full p-3 border rounded-lg text-base dark:bg-gray-700 dark:border-gray-600" placeholder="25" min="13" max="120">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Gender</label>
+                            <select id="profileGender" class="w-full p-3 border rounded-lg text-base dark:bg-gray-700 dark:border-gray-600">
+                                <option value="">Select</option>
+                                <option value="male">Male</option>
+                                <option value="female">Female</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Height (cm)</label>
+                            <input type="number" id="profileHeight" class="w-full p-3 border rounded-lg text-base dark:bg-gray-700 dark:border-gray-600" placeholder="170" min="100" max="250">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Weight (kg)</label>
+                            <input type="number" id="profileWeight" class="w-full p-3 border rounded-lg text-base dark:bg-gray-700 dark:border-gray-600" placeholder="70" min="30" max="300" step="0.1">
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Activity Level</label>
+                        <select id="profileActivityLevel" class="w-full p-3 border rounded-lg text-base dark:bg-gray-700 dark:border-gray-600">
+                            <option value="">Select activity level</option>
+                            <option value="sedentary">Sedentary (little/no exercise)</option>
+                            <option value="lightly">Lightly active (1-3 days/week)</option>
+                            <option value="moderately">Moderately active (3-5 days/week)</option>
+                            <option value="very">Very active (6-7 days/week)</option>
+                            <option value="extremely">Extremely active (2x/day, intense)</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- Goals & Preferences -->
+                <div class="space-y-4">
+                    <h4 class="font-semibold text-lg border-b pb-2">Goals & Preferences</h4>
+                    
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Primary Fitness Goal</label>
+                        <select id="profileFitnessGoal" class="w-full p-3 border rounded-lg text-base dark:bg-gray-700 dark:border-gray-600">
+                            <option value="">Select primary goal</option>
+                            <option value="weight_loss">Weight Loss</option>
+                            <option value="muscle_gain">Muscle Gain</option>
+                            <option value="maintenance">Maintenance</option>
+                            <option value="endurance">Endurance</option>
+                            <option value="strength">Strength</option>
+                            <option value="general_health">General Health</option>
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Target Weight (kg)</label>
+                        <input type="number" id="profileTargetWeight" class="w-full p-3 border rounded-lg text-base dark:bg-gray-700 dark:border-gray-600" placeholder="65" min="30" max="300" step="0.1">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Dietary Preferences</label>
+                        <select id="profileDietType" class="w-full p-3 border rounded-lg text-base dark:bg-gray-700 dark:border-gray-600">
+                            <option value="balanced">Balanced Diet</option>
+                            <option value="vegetarian">Vegetarian</option>
+                            <option value="vegan">Vegan</option>
+                            <option value="keto">Keto</option>
+                            <option value="paleo">Paleo</option>
+                            <option value="mediterranean">Mediterranean</option>
+                            <option value="low_carb">Low Carb</option>
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Sleep Schedule</label>
+                        <div class="grid grid-cols-2 gap-2">
+                            <input type="time" id="profileBedtime" class="w-full p-3 border rounded-lg text-base dark:bg-gray-700 dark:border-gray-600" value="23:00">
+                            <input type="time" id="profileWakeup" class="w-full p-3 border rounded-lg text-base dark:bg-gray-700 dark:border-gray-600" value="07:00">
+                        </div>
+                        <div class="text-xs text-gray-500 mt-1">Bedtime | Wake up time</div>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Health Conditions</label>
+                        <textarea id="profileHealthConditions" class="w-full p-3 border rounded-lg text-base dark:bg-gray-700 dark:border-gray-600 h-20" placeholder="Any health conditions, allergies, or limitations..."></textarea>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Stress Level (1-10)</label>
+                        <input type="range" id="profileStressLevel" class="w-full" min="1" max="10" value="5">
+                        <div class="flex justify-between text-xs text-gray-500">
+                            <span>Low (1)</span>
+                            <span id="stressLevelDisplay">5</span>
+                            <span>High (10)</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="flex justify-end space-x-3 mt-8">
+                <button onclick="closeProfileModal()" class="px-6 py-3 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
+                    Cancel
+                </button>
+                <button onclick="saveProfile()" class="px-6 py-3 bg-purple-600 text-white hover:bg-purple-700 rounded-lg">
+                    Save Profile
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Task Modal -->
+    <div id="addTaskModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-xl max-w-md w-full mx-4">
+            <h3 class="text-lg font-bold mb-4">➕ Add New Task</h3>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium mb-1">Task Title</label>
+                    <input type="text" id="taskTitle" class="w-full p-3 border rounded-lg text-base dark:bg-gray-700 dark:border-gray-600" placeholder="What do you want to accomplish?">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1">Description</label>
+                    <textarea id="taskDescription" class="w-full p-3 border rounded-lg text-base dark:bg-gray-700 dark:border-gray-600 h-20" placeholder="Optional description..."></textarea>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1">Category</label>
+                    <select id="taskCategory" class="w-full p-3 border rounded-lg text-base dark:bg-gray-700 dark:border-gray-600">
+                        <option value="fitness">💪 Fitness</option>
+                        <option value="nutrition">🥗 Nutrition</option>
+                        <option value="focus">🧠 Focus</option>
+                        <option value="wellness">🌱 Wellness</option>
+                        <option value="personal">👤 Personal</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1">XP Reward</label>
+                    <input type="number" id="taskXP" class="w-full p-3 border rounded-lg text-base dark:bg-gray-700 dark:border-gray-600" value="25" min="5" max="100">
+                </div>
+            </div>
+            <div class="flex justify-end space-x-3 mt-6">
+                <button onclick="closeAddTaskModal()" class="px-4 py-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
+                    Cancel
+                </button>
+                <button onclick="addTask()" class="px-4 py-2 bg-green-600 text-white hover:bg-green-700 rounded-lg">
+                    Add Task
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Floating Notifications -->
+    <div id="floatingNotification" class="floating-notification hidden">
+        <div class="bg-gradient-to-r from-purple-500 to-pink-500 text-white p-4 rounded-lg shadow-lg max-w-sm">
+            <div class="flex items-center justify-between">
+                <div>
+                    <div class="font-bold text-sm" id="notificationTitle">Notification</div>
+                    <div class="text-xs opacity-90" id="notificationMessage">Message</div>
+                </div>
+                <button onclick="hideNotification()" class="text-white/80 hover:text-white ml-3">✕</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- XP Animation Container -->
+    <div id="xpAnimationContainer" class="fixed top-20 right-4 pointer-events-none z-50"></div>
+
+    <script>
+        // Enhanced JavaScript with Integration Features
+        const APP_VERSION = "5.0.0";
+        
+        // Debug: Log that script is loading
+        console.log('Quest Tracker Pro script loading...');
+        
+        // Mobile debug helper
+        function showMobileDebug(message) {
+            const debugDiv = document.getElementById('mobileDebug') || createMobileDebugDiv();
+            debugDiv.innerHTML += '<div>' + new Date().toLocaleTimeString() + ': ' + message + '</div>';
+            debugDiv.scrollTop = debugDiv.scrollHeight;
+        }
+        
+        function createMobileDebugDiv() {
+            const debugDiv = document.createElement('div');
+            debugDiv.id = 'mobileDebug';
+            debugDiv.style.cssText = `
+                position: fixed; 
+                bottom: 10px; 
+                left: 10px; 
+                right: 10px; 
+                height: 100px; 
+                background: rgba(0,0,0,0.8); 
+                color: white; 
+                padding: 10px; 
+                font-size: 12px; 
+                overflow-y: auto; 
+                z-index: 9999;
+                border-radius: 8px;
+                font-family: monospace;
+            `;
+            document.body.appendChild(debugDiv);
+            
+            // Add close button
+            const closeBtn = document.createElement('button');
+            closeBtn.textContent = '×';
+            closeBtn.style.cssText = 'position: absolute; top: 5px; right: 10px; background: none; border: none; color: white; font-size: 16px;';
+            closeBtn.onclick = () => debugDiv.style.display = 'none';
+            debugDiv.appendChild(closeBtn);
+            
+            return debugDiv;
+        }
+        
+        // Log script loading
+        showMobileDebug('Script loading...');
+        
+        // Add debug button for mobile testing
+        setTimeout(() => {
+            const debugBtn = document.createElement('button');
+            debugBtn.textContent = 'Test JS';
+            debugBtn.style.cssText = 'position: fixed; top: 10px; right: 10px; z-index: 9999; padding: 10px; background: red; color: white; border: none; border-radius: 5px;';
+            debugBtn.addEventListener('click', () => {
+                showMobileDebug('Debug button clicked! connectSpotify exists: ' + (typeof connectSpotify !== 'undefined'));
+                // Try to call connectSpotify
+                if (typeof connectSpotify === 'function') {
+                    showMobileDebug('Calling connectSpotify...');
+                    connectSpotify();
+                } else {
+                    showMobileDebug('connectSpotify function not found!');
+                }
+            });
+            document.body.appendChild(debugBtn);
+            showMobileDebug('Debug button added');
+            
+            // Fix Spotify button click
+            setTimeout(() => {
+                const spotifyBtn = document.querySelector('button[onclick="connectSpotify()"]');
+                if (spotifyBtn) {
+                    showMobileDebug('Found Spotify button, adding event listener');
+                    spotifyBtn.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        showMobileDebug('Spotify button clicked!');
+                        if (typeof connectSpotify === 'function') {
+                            connectSpotify();
+                        } else {
+                            showMobileDebug('connectSpotify function not available');
+                        }
+                    });
+                } else {
+                    showMobileDebug('Spotify button not found');
+                }
+            }, 2000);
+        }, 1000);
+        const DATA_KEY = "questTrackerPro_gameState";
+        const BACKUP_PREFIX = "questTrackerPro_backup_";
+        const MAX_BACKUPS = 7;
+
+        // Spotify Configuration
+        let spotifyPlayer = null;
+        let spotifyToken = null;
+        let isSpotifyReady = false;
+
+        // Integration State
+        let integrationState = {
+            healthConnected: false,
+            spotifyConnected: false,
+            lastStepsUpdate: null,
+            autoSyncEnabled: false
+        };
+
+        // Enhanced Game State with Complete Profile System
+        let gameState = {
+            version: APP_VERSION,
+            profile: {
+                // Basic Information
+                name: '',
+                age: null,
+                gender: '',
+                height: null, // cm
+                weight: null, // kg
+                targetWeight: null, // kg
+                activityLevel: '', // sedentary, lightly, moderately, very, extremely
+                fitnessGoal: '', // weight_loss, muscle_gain, maintenance, endurance, strength, general_health
+                dietType: 'balanced',
+                bedtime: '23:00',
+                wakeup: '07:00',
+                healthConditions: '',
+                stressLevel: 5,
+                profileComplete: false,
+                setupDate: null,
+                lastUpdated: null,
+                
+                // Calculated Metrics
+                bmi: null,
+                bmr: null, // Basal Metabolic Rate
+                tdee: null, // Total Daily Energy Expenditure
+                chronotype: 'moderate', // early, moderate, late
+                optimalWorkoutTime: '10:00',
+                personalityType: 'balanced' // active, focused, balanced, wellness-focused
+            },
+            player: {
+                level: 1,
+                xp: 0,
+                coins: 0,
+                avatar: '🧙‍♂️',
+                streak: 0,
+                lastActiveDate: null,
+                energy: 3,
+                mood: 3,
+                lastEnergyUpdate: null,
+                lastMoodUpdate: null,
+                wellnessScore: 50,
+                recoveryLevel: 100,
+                stressLevel: 1
+            },
+            goals: {
+                // Personalized Goals (calculated from profile)
+                dailySteps: 10000,
+                dailyCalories: 2000,
+                dailyProtein: 150,
+                dailyCarbs: 200,
+                dailyFat: 67,
+                dailyFocus: 120,
+                dailyWater: 8,
+                dailySleep: 8,
+                weeklyWorkouts: 3,
+                
+                // Adaptive settings
+                adaptiveGoals: true,
+                goalAdjustmentRate: 0.1,
+                lastGoalUpdate: null,
+                baseGoals: {}, // Original calculated goals
+                progressBasedAdjustments: {}
+            },
+            dailyStats: {
+                date: null,
+                steps: 0,
+                calories: 0,
+                caloriesBurned: 0,
+                focusMinutes: 0,
+                waterGlasses: 0,
+                sleepHours: 0,
+                workouts: 0,
+                meals: 0,
+                protein: 0,
+                carbs: 0,
+                fat: 0,
+                pomodoroSessions: 0,
+                wellnessActivities: 0,
+                stressManagement: 0
+            },
+            tasks: [],
+            achievements: [],
+            history: [],
+            workouts: [],
+            meals: [],
+            measurements: [],
+            focusSessions: [],
+            sleepLogs: [],
+            moodLogs: [],
+            habitStrength: {},
+            weeklyChallenge: null,
+            pomodoroStats: {
+                totalSessions: 0,
+                totalFocusTime: 0,
+                streak: 0,
+                lastSessionDate: null
+            },
+            correlations: {
+                sleepVsEnergy: [],
+                exerciseVsMood: [],
+                focusVsProductivity: [],
+                waterVsEnergy: [],
+                stressVsSleep: [],
+                personalizedInsights: []
+            },
+            smartRecommendations: [],
+            weeklyTrends: {
+                wellness: [],
+                energy: [],
+                mood: [],
+                productivity: [],
+                weight: [],
+                performance: []
+            },
+            personalizedTips: {
+                lastUpdate: null,
+                tips: [],
+                dismissedTips: [],
+                aiCoachingLevel: 'beginner'
+            },
+            settings: {
+                notifications: false,
+                pomodoroNotifications: false,
+                soundEnabled: true,
+                autoStartBreaks: false,
+                smartCoaching: true,
+                adaptiveGoals: true,
+                wellnessReminders: true,
+                recoveryAlerts: true,
+                personalizedRecommendations: true,
+                goalAutoAdjustment: true
+            },
+            integrations: {
+                spotify: {
+                    clientId: '',
+                    connected: false,
+                    lastUsed: null
+                }
+            }
+        };
+
+        // Timer states
+        let pomodoroTimer = null;
+        let focusTimer = null;
+        let isTimerRunning = false;
+        let timerSeconds = 1500; // 25 minutes in seconds
+        let currentTimerType = 'focus'; // focus, shortBreak, longBreak
+
+        // Integration Functions
+        function showIntegrationModal() {
+            document.getElementById('integrationModal').classList.remove('hidden');
+            updateIntegrationStatus();
+        }
+
+        function closeIntegrationModal() {
+            document.getElementById('integrationModal').classList.add('hidden');
+        }
+
+        function updateIntegrationStatus() {
+            // Update health status
+            document.getElementById('healthStatus').textContent = integrationState.healthConnected ? '🟢' : '⚪';
+            
+            // Update Spotify status
+            document.getElementById('spotifyStatus').textContent = integrationState.spotifyConnected ? '🟢' : '⚪';
+        }
+
+        // iOS Shortcuts Integration
+        function setupiOSShortcuts() {
+            const shortcutsText = `
+iOS Shortcuts Setup:
+
+1. Open Shortcuts app
+2. Tap + to create new shortcut
+3. Add "Get Health Sample" action
+4. Set to "Steps" and "Today"
+5. Add "Text" action with this URL:
+   ${window.location.origin}${window.location.pathname}?steps={{result}}
+6. Add "Open URLs" action
+7. Name it "Sync Steps to Quest Tracker"
+8. Run daily or add to automations!
+
+The app will auto-update your steps when you use this shortcut.
+            `;
+            
+            navigator.clipboard.writeText(shortcutsText).then(() => {
+                showFloatingNotification('Instructions Copied!', 'Paste in Notes app to follow setup');
+            });
+            
+            // Show instructions modal
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+            modal.innerHTML = `
+                <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-xl max-w-md w-full mx-4">
+                    <h3 class="text-lg font-bold mb-4">📱 iOS Shortcuts Setup</h3>
+                    <div class="space-y-3 text-sm">
+                        <div>1. Open Shortcuts app on your iPhone</div>
+                        <div>2. Tap + to create new shortcut</div>
+                        <div>3. Add "Get Health Sample" action</div>
+                        <div>4. Set to "Steps" and "Today"</div>
+                        <div>5. Add "Text" action with this URL:</div>
+                        <code class="block bg-gray-100 dark:bg-gray-700 p-2 rounded text-xs break-all">
+                            ${window.location.origin}${window.location.pathname}?steps={{result}}
+                        </code>
+                        <div>6. Add "Open URLs" action</div>
+                        <div>7. Name it "Sync Steps to Quest Tracker"</div>
+                        <div>8. Run daily or add to automations!</div>
+                    </div>
+                    <div class="flex justify-end space-x-3 mt-6">
+                        <button onclick="this.closest('.fixed').remove()" class="px-4 py-2 bg-blue-600 text-white rounded-lg">
+                            Got it!
+                        </button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+            
+            integrationState.healthConnected = true;
+            updateIntegrationStatus();
+        }
+
+        // URL parameter handling for iOS Shortcuts
+        function handleURLParameters() {
+            const params = new URLSearchParams(window.location.search);
+            
+            if (params.has('steps')) {
+                const steps = parseInt(params.get('steps'));
+                if (steps && steps > 0) {
+                    gameState.dailyStats.steps = steps;
+                    integrationState.lastStepsUpdate = new Date().toISOString();
+                    updateAllUI();
+                    saveGameState();
+                    showFloatingNotification('Steps Synced!', `${steps} steps from Health app`);
+                    
+                    // Clear URL parameters
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                }
+            }
+        }
+
+        // Fixed Spotify Integration with iOS Safari support
+        function connectSpotify() {
+            showMobileDebug('connectSpotify called');
+            
+            try {
+                showMobileDebug('Trying to show modal instead of prompt');
+                showSpotifySetupModal();
+            } catch (error) {
+                showMobileDebug('Error in connectSpotify: ' + error.message);
+            }
+        }
+        
+        function showSpotifySetupModal() {
+            showMobileDebug('Creating Spotify setup modal');
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+            modal.innerHTML = `
+                <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-xl max-w-md w-full mx-4">
+                    <h3 class="text-lg font-bold mb-4">🎵 Spotify Setup</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Spotify Client ID</label>
+                            <input type="text" id="spotifyClientIdInput" class="w-full p-3 border rounded-lg text-base dark:bg-gray-700 dark:border-gray-600" placeholder="Enter your Spotify Client ID">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Redirect URI (optional)</label>
+                            <input type="text" id="spotifyRedirectInput" class="w-full p-3 border rounded-lg text-base dark:bg-gray-700 dark:border-gray-600" placeholder="${window.location.origin + window.location.pathname}">
+                        </div>
+                        <div class="text-xs text-gray-500">
+                            <p class="mb-2">To get a Client ID:</p>
+                            <p>1. Go to <a href="https://developer.spotify.com/dashboard" target="_blank" class="text-blue-500">developer.spotify.com/dashboard</a></p>
+                            <p>2. Create an app</p>
+                            <p>3. Copy the Client ID</p>
+                        </div>
+                    </div>
+                    <div class="flex justify-end space-x-3 mt-6">
+                        <button onclick="this.closest('.fixed').remove()" class="px-4 py-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
+                            Cancel
+                        </button>
+                        <button onclick="proceedWithSpotifyAuth(); this.closest('.fixed').remove();" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+                            Continue
+                        </button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+            showMobileDebug('Modal added to DOM');
+        }
+        
+        function proceedWithSpotifyAuth() {
+            showMobileDebug('proceedWithSpotifyAuth called');
+            
+            const clientId = document.getElementById('spotifyClientIdInput').value.trim();
+            const redirectInput = document.getElementById('spotifyRedirectInput').value.trim();
+            
+            showMobileDebug('Client ID: ' + (clientId ? 'provided' : 'missing'));
+            
+            if (!clientId) {
+                showMobileDebug('No client ID provided');
+                showFloatingNotification('Error', 'Please enter a Spotify Client ID');
+                return;
+            }
+            
+            const redirectUri = redirectInput || (window.location.origin + window.location.pathname);
+            showMobileDebug('Redirect URI: ' + redirectUri);
+            
+            gameState.integrations.spotify.clientId = clientId;
+            
+            // Build auth URL
+            const authUrl = `https://accounts.spotify.com/authorize?` +
+                `client_id=${clientId}&` +
+                `response_type=token&` +
+                `redirect_uri=${encodeURIComponent(redirectUri)}&` +
+                `scope=streaming user-read-playback-state user-modify-playback-state&` +
+                `show_dialog=true`;
+            
+            showMobileDebug('Auth URL created: ' + authUrl.substring(0, 100) + '...');
+            
+            // Try different approaches for iOS Safari
+            showMobileDebug('Attempting to open auth URL...');
+            
+            // Method 1: Try window.open
+            try {
+                const authWindow = window.open(authUrl, '_blank');
+                showMobileDebug('window.open result: ' + (authWindow ? 'success' : 'failed/blocked'));
+                
+                if (!authWindow) {
+                    // Method 2: Direct navigation
+                    showMobileDebug('Popup blocked, trying direct navigation');
+                    showTokenInstructions(authUrl, redirectUri);
+                } else {
+                    // Show instructions for when popup works
+                    setTimeout(() => {
+                        showTokenInstructions(authUrl, redirectUri);
+                    }, 1000);
+                }
+            } catch (error) {
+                showMobileDebug('window.open error: ' + error.message);
+                showTokenInstructions(authUrl, redirectUri);
+            }
+        }
+        
+        function showTokenInstructions(authUrl, redirectUri) {
+            showMobileDebug('Showing token instructions');
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+            modal.innerHTML = `
+                <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-xl max-w-md w-full mx-4">
+                    <h3 class="text-lg font-bold mb-4">🎵 Spotify Authorization</h3>
+                    <div class="space-y-3 text-sm">
+                        <div class="bg-yellow-50 dark:bg-yellow-900/30 p-3 rounded-lg">
+                            <p class="font-medium text-yellow-800 dark:text-yellow-200">Instructions:</p>
+                            <p class="text-yellow-700 dark:text-yellow-300">1. Click the link below to authorize</p>
+                            <p class="text-yellow-700 dark:text-yellow-300">2. After login, copy the access_token from the URL</p>
+                            <p class="text-yellow-700 dark:text-yellow-300">3. Paste it in the field below</p>
+                        </div>
+                        <a href="${authUrl}" target="_blank" class="block bg-green-500 text-white px-4 py-2 rounded-lg text-center hover:bg-green-600">
+                            🎵 Authorize Spotify
+                        </a>
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Access Token</label>
+                            <textarea id="spotifyTokenInput" class="w-full p-3 border rounded-lg text-base dark:bg-gray-700 dark:border-gray-600 h-20" placeholder="Paste access token here (starts with BQA...)"></textarea>
+                        </div>
+                        <div class="text-xs text-gray-500">
+                            <p>The URL will look like:</p>
+                            <code class="bg-gray-100 dark:bg-gray-700 px-1 rounded text-xs">${redirectUri}#access_token=BQA...</code>
+                            <p>Copy everything after "access_token="</p>
+                        </div>
+                    </div>
+                    <div class="flex justify-end space-x-3 mt-6">
+                        <button onclick="this.closest('.fixed').remove()" class="px-4 py-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
+                            Cancel
+                        </button>
+                        <button onclick="connectWithTokenFromModal(); this.closest('.fixed').remove();" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+                            Connect
+                        </button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+        
+        function connectWithTokenFromModal() {
+            const token = document.getElementById('spotifyTokenInput').value.trim();
+            showMobileDebug('Token provided: ' + (token ? 'yes' : 'no'));
+            
+            if (token) {
+                showMobileDebug('Setting up Spotify player with token');
+                spotifyToken = token;
+                setupSpotifyPlayer(token);
+                showFloatingNotification('Spotify Connected!', 'Token saved successfully');
+            } else {
+                showMobileDebug('No token provided');
+                showFloatingNotification('Error', 'Please enter a valid access token');
+            }
+        }
+
+        function showSpotifyInstructions(authUrl) {
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+            modal.innerHTML = `
+                <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-xl max-w-md w-full mx-4">
+                    <h3 class="text-lg font-bold mb-4">🎵 Spotify Setup</h3>
+                    <div class="space-y-3 text-sm">
+                        <div>1. Click the link below to open Spotify authorization:</div>
+                        <a href="${authUrl}" target="_blank" class="block bg-green-500 text-white px-4 py-2 rounded-lg text-center hover:bg-green-600">
+                            🎵 Authorize Spotify
+                        </a>
+                        <div>2. After authorizing, copy the 'access_token' from the URL</div>
+                        <div>3. Paste the token below:</div>
+                        <input type="text" id="spotifyTokenInput" class="w-full p-3 border rounded-lg text-base dark:bg-gray-700 dark:border-gray-600" placeholder="Paste access token here...">
+                    </div>
+                    <div class="flex justify-end space-x-3 mt-6">
+                        <button onclick="this.closest('.fixed').remove()" class="px-4 py-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
+                            Cancel
+                        </button>
+                        <button onclick="connectWithToken(); this.closest('.fixed').remove();" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+                            Connect
+                        </button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+
+        function connectWithToken() {
+            const token = document.getElementById('spotifyTokenInput').value.trim();
+            if (token) {
+                spotifyToken = token;
+                setupSpotifyPlayer(token);
+                showFloatingNotification('Spotify Connected!', 'Token saved successfully');
+            } else {
+                showFloatingNotification('Error', 'Please enter a valid token');
+            }
+        }
+
+        function initializeSpotify() {
+            if (!window.Spotify) return;
+            
+            // Check for token in URL hash
+            const hash = window.location.hash.substring(1);
+            const params = new URLSearchParams(hash);
+            const token = params.get('access_token');
+            
+            if (token) {
+                spotifyToken = token;
+                setupSpotifyPlayer(token);
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }
+        }
+
+        function setupSpotifyPlayer(token) {
+            const player = new Spotify.Player({
+                name: 'Quest Tracker Pro',
+                getOAuthToken: cb => { cb(token); },
+                volume: 0.5
+            });
+
+            player.addListener('ready', ({ device_id }) => {
+                spotifyPlayer = player;
+                isSpotifyReady = true;
+                integrationState.spotifyConnected = true;
+                gameState.integrations.spotify.connected = true;
+                updateIntegrationStatus();
+                showFloatingNotification('Spotify Connected!', 'Music controls now available');
+            });
+
+            player.addListener('not_ready', ({ device_id }) => {
+                console.log('Device ID has gone offline', device_id);
+            });
+
+            player.connect();
+        }
+
+        function playWorkoutMusic() {
+            if (!isSpotifyReady || !spotifyPlayer) {
+                showFloatingNotification('Spotify Not Ready', 'Connect Spotify first');
+                return;
+            }
+            
+            // Example: Play a workout playlist or start music
+            spotifyPlayer.resume().then(() => {
+                showFloatingNotification('🎵 Music Playing', 'Workout mode activated');
+            }).catch(err => {
+                console.error('Spotify playback error:', err);
+                showFloatingNotification('Playback Error', 'Please start music in Spotify app first');
+            });
+        }
+
+        function pauseWorkoutMusic() {
+            if (!isSpotifyReady || !spotifyPlayer) return;
+            
+            spotifyPlayer.pause().then(() => {
+                showFloatingNotification('🎵 Music Paused', 'Focus time');
+            });
+        }
+
+        // Manual Import Functions
+        function showImportOptions() {
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+            modal.innerHTML = `
+                <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-xl max-w-md w-full mx-4">
+                    <h3 class="text-lg font-bold mb-4">📊 Import Data</h3>
+                    <div class="space-y-3">
+                        <button onclick="importStepsManually()" class="w-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 p-3 rounded-lg hover:bg-blue-200 dark:hover:bg-blue-900/50">
+                            🚶‍♂️ Import Steps
+                        </button>
+                        <button onclick="importWorkoutData()" class="w-full bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 p-3 rounded-lg hover:bg-red-200 dark:hover:bg-red-900/50">
+                            💪 Import Workout
+                        </button>
+                        <button onclick="importSleepData()" class="w-full bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 p-3 rounded-lg hover:bg-purple-200 dark:hover:bg-purple-900/50">
+                            😴 Import Sleep
+                        </button>
+                        <button onclick="importCSVData()" class="w-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 p-3 rounded-lg hover:bg-green-200 dark:hover:bg-green-900/50">
+                            📄 Import CSV File
+                        </button>
+                    </div>
+                    <div class="flex justify-end mt-6">
+                        <button onclick="this.closest('.fixed').remove()" class="px-4 py-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
+                            Close
+                        </button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+            closeIntegrationModal();
+        }
+
+        function importStepsManually() {
+            const steps = parseInt(prompt('Enter your steps for today:')) || 0;
+            if (steps > 0) {
+                gameState.dailyStats.steps = steps;
+                updateAllUI();
+                saveGameState();
+                showFloatingNotification('Steps Updated!', `${steps} steps logged`);
+            }
+        }
+
+        function importWorkoutData() {
+            const type = prompt('Workout type (cardio/strength/yoga):') || 'general';
+            const minutes = parseInt(prompt('Duration in minutes:')) || 30;
+            const calories = parseInt(prompt('Calories burned:')) || 200;
+            
+            gameState.dailyStats.workouts++;
+            gameState.dailyStats.caloriesBurned += calories;
+            
+            gameState.workouts.push({
+                id: Date.now(),
+                type: type,
+                name: `${type} workout`,
+                duration: minutes,
+                calories: calories,
+                date: new Date().toISOString()
+            });
+            
+            gainXP(25, `Imported ${type} workout`);
+            updateAllUI();
+            saveGameState();
+            showFloatingNotification('Workout Imported!', `${minutes}min ${type} workout`);
+        }
+
+        function importSleepData() {
+            const hours = parseFloat(prompt('Hours of sleep last night:')) || 8;
+            gameState.dailyStats.sleepHours = hours;
+            
+            gameState.sleepLogs.push({
+                id: Date.now(),
+                hours: hours,
+                date: new Date().toISOString()
+            });
+            
+            gainXP(20, 'Imported sleep data');
+            updateAllUI();
+            saveGameState();
+            showFloatingNotification('Sleep Imported!', `${hours} hours logged`);
+        }
+
+        function importCSVData() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.csv';
+            
+            input.onchange = function(event) {
+                const file = event.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        try {
+                            const csv = e.target.result;
+                            const lines = csv.split('\n');
+                            const headers = lines[0].split(',');
+                            
+                            // Simple CSV parsing for steps, calories, etc.
+                            let importCount = 0;
+                            for (let i = 1; i < lines.length; i++) {
+                                const values = lines[i].split(',');
+                                if (values.length >= headers.length) {
+                                    // Basic import logic - customize based on your CSV format
+                                    if (headers.includes('steps') && values[headers.indexOf('steps')]) {
+                                        gameState.dailyStats.steps = parseInt(values[headers.indexOf('steps')]) || 0;
+                                        importCount++;
+                                    }
+                                }
+                            }
+                            
+                            updateAllUI();
+                            saveGameState();
+                            showFloatingNotification('CSV Imported!', `${importCount} records processed`);
+                        } catch (error) {
+                            showFloatingNotification('Import Failed', 'Invalid CSV format');
+                        }
+                    };
+                    reader.readAsText(file);
+                }
+            };
+            
+            input.click();
+        }
+
+        // Enhanced mood boost functions with Spotify integration
+        function playEnergyMusic() { 
+            if (integrationState.spotifyConnected) {
+                playWorkoutMusic();
+            } else {
+                showFloatingNotification('🎵', 'Playing energizing music (Connect Spotify for controls)'); 
+            }
+        }
+
+        // Profile and Personalization Functions
+        function showProfileSetup() {
+            document.getElementById('profileModal').classList.remove('hidden');
+            loadProfileData();
+            
+            // Add stress level display update
+            document.getElementById('profileStressLevel').addEventListener('input', function() {
+                document.getElementById('stressLevelDisplay').textContent = this.value;
+            });
+        }
+
+        function closeProfileModal() {
+            document.getElementById('profileModal').classList.add('hidden');
+        }
+
+        function loadProfileData() {
+            const profile = gameState.profile;
+            document.getElementById('profileName').value = profile.name || '';
+            document.getElementById('profileAge').value = profile.age || '';
+            document.getElementById('profileGender').value = profile.gender || '';
+            document.getElementById('profileHeight').value = profile.height || '';
+            document.getElementById('profileWeight').value = profile.weight || '';
+            document.getElementById('profileTargetWeight').value = profile.targetWeight || '';
+            document.getElementById('profileActivityLevel').value = profile.activityLevel || '';
+            document.getElementById('profileFitnessGoal').value = profile.fitnessGoal || '';
+            document.getElementById('profileDietType').value = profile.dietType || 'balanced';
+            document.getElementById('profileBedtime').value = profile.bedtime || '23:00';
+            document.getElementById('profileWakeup').value = profile.wakeup || '07:00';
+            document.getElementById('profileHealthConditions').value = profile.healthConditions || '';
+            document.getElementById('profileStressLevel').value = profile.stressLevel || 5;
+            document.getElementById('stressLevelDisplay').textContent = profile.stressLevel || 5;
+        }
+
+        function saveProfile() {
+            const profile = gameState.profile;
+            
+            // Save basic information
+            profile.name = document.getElementById('profileName').value;
+            profile.age = parseInt(document.getElementById('profileAge').value) || null;
+            profile.gender = document.getElementById('profileGender').value;
+            profile.height = parseFloat(document.getElementById('profileHeight').value) || null;
+            profile.weight = parseFloat(document.getElementById('profileWeight').value) || null;
+            profile.targetWeight = parseFloat(document.getElementById('profileTargetWeight').value) || null;
+            profile.activityLevel = document.getElementById('profileActivityLevel').value;
+            profile.fitnessGoal = document.getElementById('profileFitnessGoal').value;
+            profile.dietType = document.getElementById('profileDietType').value;
+            profile.bedtime = document.getElementById('profileBedtime').value;
+            profile.wakeup = document.getElementById('profileWakeup').value;
+            profile.healthConditions = document.getElementById('profileHealthConditions').value;
+            profile.stressLevel = parseInt(document.getElementById('profileStressLevel').value) || 5;
+            
+            profile.lastUpdated = new Date().toISOString();
+            if (!profile.setupDate) {
+                profile.setupDate = new Date().toISOString();
+            }
+            
+            // Calculate derived metrics
+            calculatePersonalizedMetrics();
+            
+            // Check if profile is complete
+            profile.profileComplete = checkProfileCompleteness();
+            
+            // Update goals based on profile
+            updatePersonalizedGoals();
+            
+            // Update UI
+            updateAllUI();
+            closeProfileModal();
+            
+            // Show success notification
+            showFloatingNotification('Profile Updated!', 'Your personalized goals have been calculated');
+            
+            // Save to storage
+            saveGameState();
+            
+            // Generate personalized recommendations
+            generatePersonalizedRecommendations();
+        }
+
+        function calculatePersonalizedMetrics() {
+            const profile = gameState.profile;
+            
+            if (!profile.height || !profile.weight || !profile.age || !profile.gender) {
+                return;
+            }
+            
+            // Calculate BMI
+            const heightInM = profile.height / 100;
+            profile.bmi = (profile.weight / (heightInM * heightInM)).toFixed(1);
+            
+            // Calculate BMR using Mifflin-St Jeor Equation
+            if (profile.gender === 'male') {
+                profile.bmr = Math.round(10 * profile.weight + 6.25 * profile.height - 5 * profile.age + 5);
+            } else {
+                profile.bmr = Math.round(10 * profile.weight + 6.25 * profile.height - 5 * profile.age - 161);
+            }
+            
+            // Calculate TDEE based on activity level
+            const activityMultipliers = {
+                'sedentary': 1.2,
+                'lightly': 1.375,
+                'moderately': 1.55,
+                'very': 1.725,
+                'extremely': 1.9
+            };
+            
+            const multiplier = activityMultipliers[profile.activityLevel] || 1.2;
+            profile.tdee = Math.round(profile.bmr * multiplier);
+            
+            // Determine chronotype based on sleep schedule
+            const bedtimeHour = parseInt(profile.bedtime.split(':')[0]);
+            const wakeupHour = parseInt(profile.wakeup.split(':')[0]);
+            
+            if (bedtimeHour <= 22 && wakeupHour <= 6) {
+                profile.chronotype = 'early';
+                profile.optimalWorkoutTime = '07:00';
+            } else if (bedtimeHour >= 24 || wakeupHour >= 9) {
+                profile.chronotype = 'late';
+                profile.optimalWorkoutTime = '14:00';
+            } else {
+                profile.chronotype = 'moderate';
+                profile.optimalWorkoutTime = '10:00';
+            }
+            
+            // Determine personality type based on goals and preferences
+            if (profile.fitnessGoal === 'endurance' || profile.fitnessGoal === 'strength') {
+                profile.personalityType = 'active';
+            } else if (profile.stressLevel >= 7) {
+                profile.personalityType = 'wellness-focused';
+            } else {
+                profile.personalityType = 'balanced';
+            }
+        }
+
+        function updatePersonalizedGoals() {
+            const profile = gameState.profile;
+            const goals = gameState.goals;
+            
+            if (!profile.tdee) return;
+            
+            // Calculate personalized calorie goal based on fitness goal
+            let calorieAdjustment = 0;
+            switch (profile.fitnessGoal) {
+                case 'weight_loss':
+                    calorieAdjustment = -500; // 500 calorie deficit
+                    break;
+                case 'muscle_gain':
+                    calorieAdjustment = 300; // 300 calorie surplus
+                    break;
+                case 'maintenance':
+                default:
+                    calorieAdjustment = 0;
+                    break;
+            }
+            
+            goals.dailyCalories = Math.max(1200, profile.tdee + calorieAdjustment);
+            
+            // Calculate macros based on diet type and fitness goal
+            const macroDistributions = {
+                'balanced': { protein: 0.3, carbs: 0.4, fat: 0.3 },
+                'keto': { protein: 0.25, carbs: 0.05, fat: 0.7 },
+                'low_carb': { protein: 0.35, carbs: 0.25, fat: 0.4 },
+                'vegetarian': { protein: 0.25, carbs: 0.5, fat: 0.25 },
+                'vegan': { protein: 0.2, carbs: 0.55, fat: 0.25 },
+                'paleo': { protein: 0.35, carbs: 0.25, fat: 0.4 },
+                'mediterranean': { protein: 0.25, carbs: 0.45, fat: 0.3 }
+            };
+            
+            const distribution = macroDistributions[profile.dietType] || macroDistributions['balanced'];
+            
+            goals.dailyProtein = Math.round((goals.dailyCalories * distribution.protein) / 4);
+            goals.dailyCarbs = Math.round((goals.dailyCalories * distribution.carbs) / 4);
+            goals.dailyFat = Math.round((goals.dailyCalories * distribution.fat) / 9);
+            
+            // Calculate personalized step goal based on activity level and fitness goal
+            const baseSteps = {
+                'sedentary': 6000,
+                'lightly': 8000,
+                'moderately': 10000,
+                'very': 12000,
+                'extremely': 15000
+            };
+            
+            goals.dailySteps = baseSteps[profile.activityLevel] || 10000;
+            
+            // Adjust based on fitness goal
+            if (profile.fitnessGoal === 'weight_loss') {
+                goals.dailySteps += 2000;
+            } else if (profile.fitnessGoal === 'endurance') {
+                goals.dailySteps += 3000;
+            }
+            
+            // Calculate water needs (30-35ml per kg body weight)
+            goals.dailyWater = Math.round((profile.weight * 35) / 250) || 8; // 250ml glasses
+            
+            // Calculate sleep needs based on age
+            if (profile.age < 25) {
+                goals.dailySleep = 8.5;
+            } else if (profile.age < 65) {
+                goals.dailySleep = 8;
+            } else {
+                goals.dailySleep = 7.5;
+            }
+            
+            // Calculate focus time based on personality type and goals
+            const baseFocusTime = {
+                'active': 90,
+                'focused': 150,
+                'balanced': 120,
+                'wellness-focused': 100
+            };
+            
+            goals.dailyFocus = baseFocusTime[profile.personalityType] || 120;
+            
+            // Store base goals for future adaptation
+            goals.baseGoals = { ...goals };
+            goals.lastGoalUpdate = new Date().toISOString();
+        }
+
+        function checkProfileCompleteness() {
+            const profile = gameState.profile;
+            const requiredFields = ['name', 'age', 'gender', 'height', 'weight', 'activityLevel', 'fitnessGoal'];
+            
+            let completedFields = 0;
+            requiredFields.forEach(field => {
+                if (profile[field] && profile[field] !== '') {
+                    completedFields++;
+                }
+            });
+            
+            return completedFields === requiredFields.length;
+        }
+
+        // Task Management Functions
+        function showAddTaskModal() {
+            document.getElementById('addTaskModal').classList.remove('hidden');
+        }
+
+        function closeAddTaskModal() {
+            document.getElementById('addTaskModal').classList.add('hidden');
+            // Clear form
+            document.getElementById('taskTitle').value = '';
+            document.getElementById('taskDescription').value = '';
+            document.getElementById('taskCategory').value = 'fitness';
+            document.getElementById('taskXP').value = '25';
+        }
+
+        function addTask() {
+            const title = document.getElementById('taskTitle').value.trim();
+            const description = document.getElementById('taskDescription').value.trim();
+            const category = document.getElementById('taskCategory').value;
+            const xp = parseInt(document.getElementById('taskXP').value) || 25;
+
+            if (!title) {
+                showFloatingNotification('Error', 'Please enter a task title');
+                return;
+            }
+
+            const task = {
+                id: Date.now(),
+                title: title,
+                description: description,
+                category: category,
+                xp: xp,
+                completed: false,
+                dateCreated: new Date().toISOString(),
+                dateCompleted: null
+            };
+
+            gameState.tasks.push(task);
+            updateTasksDisplay();
+            closeAddTaskModal();
+            saveGameState();
+            
+            showFloatingNotification('Task Added!', `${title} added to your quest list`);
+        }
+
+        function completeTask(taskId) {
+            const task = gameState.tasks.find(t => t.id === taskId);
+            if (task && !task.completed) {
+                task.completed = true;
+                task.dateCompleted = new Date().toISOString();
+                
+                // Award XP
+                gainXP(task.xp, `Completed: ${task.title}`);
+                
+                // Update UI
+                updateTasksDisplay();
+                saveGameState();
+                
+                showFloatingNotification('Quest Complete!', `+${task.xp} XP for completing ${task.title}`);
+                
+                // Check for achievements
+                checkTaskAchievements();
+            }
+        }
+
+        function deleteTask(taskId) {
+            gameState.tasks = gameState.tasks.filter(t => t.id !== taskId);
+            updateTasksDisplay();
+            saveGameState();
+            showFloatingNotification('Task Deleted', 'Task removed from your list');
+        }
+
+        function updateTasksDisplay() {
+            const container = document.getElementById('tasksList');
+            const focusContainer = document.getElementById('focusTasksList');
+            
+            if (gameState.tasks.length === 0) {
+                const emptyMessage = `
+                    <div class="text-center py-8 text-gray-500">
+                        <div class="text-4xl mb-2">🎯</div>
+                        <div>No quests yet!</div>
+                        <div class="text-sm">Add your first quest to start earning XP</div>
+                    </div>
+                `;
+                container.innerHTML = emptyMessage;
+                if (focusContainer) focusContainer.innerHTML = emptyMessage;
+                return;
+            }
+
+            const tasksHTML = gameState.tasks.map(task => `
+                <div class="task-item ${task.completed ? 'task-completed' : ''} p-4 bg-white dark:bg-gray-700 rounded-lg border-l-4 border-${getCategoryColor(task.category)} flex items-center justify-between">
+                    <div class="flex items-center space-x-3">
+                        <button onclick="completeTask(${task.id})" class="w-6 h-6 border-2 border-gray-300 dark:border-gray-600 rounded ${task.completed ? 'bg-green-500 border-green-500' : 'hover:border-gray-400'} flex items-center justify-center">
+                            ${task.completed ? '<span class="text-white text-xs">✓</span>' : ''}
+                        </button>
+                        <div>
+                            <div class="font-medium ${task.completed ? 'line-through text-gray-500' : ''}">${task.title}</div>
+                            <div class="text-sm text-gray-600 dark:text-gray-400">${getCategoryEmoji(task.category)} ${task.category} • +${task.xp} XP</div>
+                            ${task.description ? `<div class="text-xs text-gray-500 mt-1">${task.description}</div>` : ''}
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        ${!task.completed ? `<button onclick="completeTask(${task.id})" class="text-green-600 hover:text-green-800 px-2 py-1 text-sm">Complete</button>` : ''}
+                        <button onclick="deleteTask(${task.id})" class="text-red-600 hover:text-red-800 px-2 py-1 text-sm">Delete</button>
+                    </div>
+                </div>
+            `).join('');
+
+            container.innerHTML = tasksHTML;
+            if (focusContainer) focusContainer.innerHTML = tasksHTML;
+        }
+
+        function getCategoryColor(category) {
+            const colors = {
+                'fitness': 'fitness',
+                'nutrition': 'nutrition',
+                'focus': 'focus',
+                'wellness': 'wellness',
+                'personal': 'primary'
+            };
+            return colors[category] || 'primary';
+        }
+
+        function getCategoryEmoji(category) {
+            const emojis = {
+                'fitness': '💪',
+                'nutrition': '🥗',
+                'focus': '🧠',
+                'wellness': '🌱',
+                'personal': '👤'
+            };
+            return emojis[category] || '📝';
+        }
+
+        function generatePersonalizedTasks() {
+            const profile = gameState.profile;
+            const newTasks = [];
+            
+            if (!profile.profileComplete) {
+                newTasks.push({
+                    id: Date.now(),
+                    title: 'Complete Your Profile',
+                    description: 'Set up your profile for personalized recommendations',
+                    category: 'personal',
+                    xp: 50,
+                    completed: false,
+                    dateCreated: new Date().toISOString(),
+                    dateCompleted: null
+                });
+            } else {
+                // Generate tasks based on profile
+                if (profile.fitnessGoal === 'weight_loss') {
+                    newTasks.push({
+                        id: Date.now() + 1,
+                        title: `Walk ${gameState.goals.dailySteps} Steps`,
+                        description: 'Boost your metabolism with regular movement',
+                        category: 'fitness',
+                        xp: 30,
+                        completed: false,
+                        dateCreated: new Date().toISOString(),
+                        dateCompleted: null
+                    });
+                } else if (profile.fitnessGoal === 'muscle_gain') {
+                    newTasks.push({
+                        id: Date.now() + 1,
+                        title: `Consume ${gameState.goals.dailyProtein}g Protein`,
+                        description: 'Meet your protein target for muscle growth',
+                        category: 'nutrition',
+                        xp: 25,
+                        completed: false,
+                        dateCreated: new Date().toISOString(),
+                        dateCompleted: null
+                    });
+                }
+
+                newTasks.push({
+                    id: Date.now() + 2,
+                    title: `Drink ${gameState.goals.dailyWater} Glasses of Water`,
+                    description: 'Stay hydrated for optimal performance',
+                    category: 'wellness',
+                    xp: 20,
+                    completed: false,
+                    dateCreated: new Date().toISOString(),
+                    dateCompleted: null
+                });
+
+                newTasks.push({
+                    id: Date.now() + 3,
+                    title: `Focus for ${gameState.goals.dailyFocus} Minutes`,
+                    description: 'Leverage your peak hours for productivity',
+                    category: 'focus',
+                    xp: 35,
+                    completed: false,
+                    dateCreated: new Date().toISOString(),
+                    dateCompleted: null
+                });
+            }
+
+            // Add new tasks to gameState
+            gameState.tasks.push(...newTasks);
+            updateTasksDisplay();
+            saveGameState();
+            
+            showFloatingNotification('AI Quests Generated!', `${newTasks.length} personalized tasks added`);
+        }
+
+        function checkTaskAchievements() {
+            const completedTasks = gameState.tasks.filter(t => t.completed).length;
+            
+            if (completedTasks === 1) {
+                showFloatingNotification('Achievement Unlocked!', '🥉 First Quest Completed');
+            } else if (completedTasks === 10) {
+                showFloatingNotification('Achievement Unlocked!', '🥈 Quest Master');
+            } else if (completedTasks === 50) {
+                showFloatingNotification('Achievement Unlocked!', '🥇 Quest Legend');
+            }
+        }
+
+        // Timer Functions
+        function startPomodoro() {
+            if (!isTimerRunning) {
+                isTimerRunning = true;
+                timerSeconds = 1500; // 25 minutes
+                document.getElementById('timerStart').classList.add('hidden');
+                document.getElementById('timerPause').classList.remove('hidden');
+                
+                // Start music if Spotify connected
+                if (integrationState.spotifyConnected) {
+                    playWorkoutMusic();
+                }
+                
+                pomodoroTimer = setInterval(updatePomodoroTimer, 1000);
+            }
+        }
+
+        function pausePomodoro() {
+            if (isTimerRunning) {
+                isTimerRunning = false;
+                clearInterval(pomodoroTimer);
+                document.getElementById('timerStart').classList.remove('hidden');
+                document.getElementById('timerPause').classList.add('hidden');
+                
+                // Pause music if Spotify connected
+                if (integrationState.spotifyConnected) {
+                    pauseWorkoutMusic();
+                }
+            }
+        }
+
+        function stopPomodoro() {
+            isTimerRunning = false;
+            clearInterval(pomodoroTimer);
+            timerSeconds = 1500;
+            document.getElementById('timerStart').classList.remove('hidden');
+            document.getElementById('timerPause').classList.add('hidden');
+            updatePomodoroDisplay();
+            
+            // Pause music if Spotify connected
+            if (integrationState.spotifyConnected) {
+                pauseWorkoutMusic();
+            }
+        }
+
+        function updatePomodoroTimer() {
+            timerSeconds--;
+            updatePomodoroDisplay();
+            
+            if (timerSeconds <= 0) {
+                // Timer completed
+                isTimerRunning = false;
+                clearInterval(pomodoroTimer);
+                
+                // Award XP and update stats
+                gameState.dailyStats.pomodoroSessions++;
+                gameState.dailyStats.focusMinutes += 25;
+                gameState.pomodoroStats.totalSessions++;
+                gameState.pomodoroStats.totalFocusTime += 25;
+                
+                gainXP(30, 'Completed Pomodoro session');
+                updateAllUI();
+                saveGameState();
+                
+                showFloatingNotification('Pomodoro Complete!', 'Great focus session! Take a break.');
+                
+                // Pause music if Spotify connected
+                if (integrationState.spotifyConnected) {
+                    pauseWorkoutMusic();
+                }
+                
+                // Reset timer
+                timerSeconds = 1500;
+                document.getElementById('timerStart').classList.remove('hidden');
+                document.getElementById('timerPause').classList.add('hidden');
+                updatePomodoroDisplay();
+            }
+        }
+
+        function updatePomodoroDisplay() {
+            const minutes = Math.floor(timerSeconds / 60);
+            const seconds = timerSeconds % 60;
+            const display = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            
+            document.getElementById('timerDisplay').textContent = display;
+            
+            // Update progress circle
+            const totalSeconds = 1500;
+            const progress = (totalSeconds - timerSeconds) / totalSeconds;
+            const circumference = 628; // 2 * π * r (r = 100)
+            const offset = circumference - (progress * circumference);
+            
+            const progressCircle = document.getElementById('timerProgress');
+            if (progressCircle) {
+                progressCircle.style.strokeDashoffset = offset;
+            }
+        }
+
+        // Focus Timer Functions
+        function startFocusTimer() {
+            if (!isTimerRunning) {
+                isTimerRunning = true;
+                timerSeconds = 1500; // 25 minutes
+                document.getElementById('focusStart').classList.add('hidden');
+                document.getElementById('focusPause').classList.remove('hidden');
+                
+                focusTimer = setInterval(updateFocusTimer, 1000);
+            }
+        }
+
+        function pauseFocusTimer() {
+            if (isTimerRunning) {
+                isTimerRunning = false;
+                clearInterval(focusTimer);
+                document.getElementById('focusStart').classList.remove('hidden');
+                document.getElementById('focusPause').classList.add('hidden');
+            }
+        }
+
+        function stopFocusTimer() {
+            isTimerRunning = false;
+            clearInterval(focusTimer);
+            timerSeconds = 1500;
+            document.getElementById('focusStart').classList.remove('hidden');
+            document.getElementById('focusPause').classList.add('hidden');
+            updateFocusDisplay();
+        }
+
+        function updateFocusTimer() {
+            timerSeconds--;
+            updateFocusDisplay();
+            
+            if (timerSeconds <= 0) {
+                // Timer completed
+                isTimerRunning = false;
+                clearInterval(focusTimer);
+                
+                // Award XP and update stats
+                gameState.dailyStats.pomodoroSessions++;
+                gameState.dailyStats.focusMinutes += 25;
+                
+                gainXP(30, 'Completed focus session');
+                updateAllUI();
+                saveGameState();
+                
+                showFloatingNotification('Focus Complete!', '+25 minutes of deep work!');
+                
+                // Reset timer
+                timerSeconds = 1500;
+                document.getElementById('focusStart').classList.remove('hidden');
+                document.getElementById('focusPause').classList.add('hidden');
+                updateFocusDisplay();
+            }
+        }
+
+        function updateFocusDisplay() {
+            const minutes = Math.floor(timerSeconds / 60);
+            const seconds = timerSeconds % 60;
+            const display = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            
+            const displayElement = document.getElementById('focusTimerDisplay');
+            if (displayElement) {
+                displayElement.textContent = display;
+            }
+            
+            // Update progress circle
+            const totalSeconds = 1500;
+            const progress = (totalSeconds - timerSeconds) / totalSeconds;
+            const circumference = 628;
+            const offset = circumference - (progress * circumference);
+            
+            const progressCircle = document.getElementById('focusTimerProgress');
+            if (progressCircle) {
+                progressCircle.style.strokeDashoffset = offset;
+            }
+        }
+
+        // Activity Logging Functions
+        function startWorkout(type) {
+            const workoutTypes = {
+                'cardio': { name: 'Cardio Session', calories: 300, duration: 20 },
+                'strength': { name: 'Strength Training', calories: 250, duration: 30 },
+                'yoga': { name: 'Yoga Session', calories: 150, duration: 15 }
+            };
+            
+            const workout = workoutTypes[type];
+            if (workout) {
+                gameState.dailyStats.workouts++;
+                gameState.dailyStats.caloriesBurned += workout.calories;
+                
+                // Log workout
+                gameState.workouts.push({
+                    id: Date.now(),
+                    type: type,
+                    name: workout.name,
+                    duration: workout.duration,
+                    calories: workout.calories,
+                    date: new Date().toISOString()
+                });
+                
+                gainXP(25, `Completed ${workout.name}`);
+                updateAllUI();
+                saveGameState();
+                
+                showFloatingNotification(`${workout.name} Complete!`, `+${workout.calories} calories burned`);
+                
+                // Start music if connected
+                if (integrationState.spotifyConnected) {
+                    playWorkoutMusic();
+                }
+            }
+        }
+
+        function logMeal(mealType) {
+            const mealTypes = {
+                'breakfast': { name: 'Breakfast', calories: 400, emoji: '🌅' },
+                'lunch': { name: 'Lunch', calories: 600, emoji: '☀️' },
+                'dinner': { name: 'Dinner', calories: 700, emoji: '🌙' },
+                'snack': { name: 'Snack', calories: 200, emoji: '🍎' }
+            };
+            
+            const meal = mealTypes[mealType];
+            if (meal) {
+                gameState.dailyStats.meals++;
+                gameState.dailyStats.calories += meal.calories;
+                
+                // Log meal
+                gameState.meals.push({
+                    id: Date.now(),
+                    type: mealType,
+                    name: meal.name,
+                    calories: meal.calories,
+                    date: new Date().toISOString()
+                });
+                
+                gainXP(15, `Logged ${meal.name}`);
+                updateAllUI();
+                saveGameState();
+                
+                showFloatingNotification(`${meal.emoji} ${meal.name} Logged!`, `+${meal.calories} calories`);
+            }
+        }
+
+        function logSleep() {
+            const hours = parseFloat(prompt('How many hours did you sleep?')) || 8;
+            gameState.dailyStats.sleepHours = hours;
+            
+            gameState.sleepLogs.push({
+                id: Date.now(),
+                hours: hours,
+                date: new Date().toISOString()
+            });
+            
+            gainXP(20, 'Logged sleep');
+            updateAllUI();
+            saveGameState();
+            
+            showFloatingNotification('Sleep Logged!', `${hours} hours of rest`);
+        }
+
+        function setMood(level) {
+            gameState.player.mood = level;
+            gameState.player.lastMoodUpdate = new Date().toISOString();
+            
+            gameState.moodLogs.push({
+                id: Date.now(),
+                mood: level,
+                date: new Date().toISOString()
+            });
+            
+            updateEnergyMoodDisplay();
+            saveGameState();
+            
+            const moods = ['😴', '😔', '😐', '😊', '😁'];
+            showFloatingNotification('Mood Updated!', `Current mood: ${moods[level - 1]}`);
+        }
+
+        function wellnessActivity(type) {
+            const activities = {
+                'walk': { name: 'Nature Walk', emoji: '🚶‍♀️', xp: 20 },
+                'stretch': { name: 'Stretching', emoji: '🤸‍♀️', xp: 15 },
+                'bath': { name: 'Relaxing Bath', emoji: '🛁', xp: 25 },
+                'music': { name: 'Music Therapy', emoji: '🎵', xp: 15 }
+            };
+            
+            const activity = activities[type];
+            if (activity) {
+                gameState.dailyStats.wellnessActivities++;
+                gainXP(activity.xp, `Completed ${activity.name}`);
+                updateAllUI();
+                saveGameState();
+                
+                showFloatingNotification(`${activity.emoji} ${activity.name}`, `+${activity.xp} XP for self-care`);
+            }
+        }
+
+        function updateEnergyMood() {
+            const energy = parseInt(prompt('Rate your energy level (1-5):')) || 3;
+            const mood = parseInt(prompt('Rate your mood (1-5):')) || 3;
+            
+            if (energy >= 1 && energy <= 5) {
+                gameState.player.energy = energy;
+                gameState.player.lastEnergyUpdate = new Date().toISOString();
+            }
+            
+            if (mood >= 1 && mood <= 5) {
+                gameState.player.mood = mood;
+                gameState.player.lastMoodUpdate = new Date().toISOString();
+            }
+            
+            updateEnergyMoodDisplay();
+            saveGameState();
+            
+            showFloatingNotification('Status Updated!', 'Energy and mood recorded');
+        }
+
+        function generatePersonalizedRecommendations() {
+            const profile = gameState.profile;
+            const recommendations = [];
+            
+            if (!profile.profileComplete) return;
+            
+            // Fitness recommendations based on goals and chronotype
+            if (profile.fitnessGoal === 'weight_loss') {
+                recommendations.push({
+                    type: 'fitness',
+                    title: 'Cardio Power Hour',
+                    message: `Your optimal cardio time is ${profile.optimalWorkoutTime}. Try a 30-minute HIIT session!`,
+                    action: 'startCardioWorkout',
+                    priority: 8
+                });
+            } else if (profile.fitnessGoal === 'muscle_gain') {
+                recommendations.push({
+                    type: 'fitness',
+                    title: 'Strength Training',
+                    message: 'Focus on compound movements today. Your protein goal is ' + gameState.goals.dailyProtein + 'g!',
+                    action: 'startStrengthWorkout',
+                    priority: 9
+                });
+            }
+            
+            // Sleep recommendations based on chronotype
+            const currentHour = new Date().getHours();
+            const bedtimeHour = parseInt(profile.bedtime.split(':')[0]);
+            
+            if (currentHour >= bedtimeHour - 1 && currentHour <= bedtimeHour + 1) {
+                recommendations.push({
+                    type: 'wellness',
+                    title: 'Bedtime Reminder',
+                    message: `Your optimal bedtime is ${profile.bedtime}. Start winding down now for quality sleep.`,
+                    action: 'startBedtimeRoutine',
+                    priority: 9
+                });
+            }
+            
+            // Store recommendations
+            gameState.smartRecommendations = recommendations.sort((a, b) => b.priority - a.priority);
+        }
+
+        function refreshPersonalizedBoosts() {
+            const profile = gameState.profile;
+            const boosts = [];
+            
+            if (!profile.profileComplete) {
+                boosts.push(
+                    { emoji: '👤', text: 'Complete Profile', action: 'showProfileSetup()' },
+                    { emoji: '🎯', text: 'Set Goals', action: 'showProfileSetup()' },
+                    { emoji: '📊', text: 'Get Insights', action: 'showProfileSetup()' },
+                    { emoji: '🧠', text: 'AI Coaching', action: 'showProfileSetup()' }
+                );
+            } else {
+                // Energy boosters based on chronotype and current time
+                const currentHour = new Date().getHours();
+                
+                if (profile.chronotype === 'early' && currentHour < 10) {
+                    boosts.push({ emoji: '☀️', text: 'Morning Stretch', action: 'startMorningStretch()' });
+                } else if (profile.chronotype === 'late' && currentHour > 12) {
+                    boosts.push({ emoji: '🌅', text: 'Afternoon Walk', action: 'startAfternoonWalk()' });
+                }
+                
+                // Stress-based activities
+                if (profile.stressLevel >= 6) {
+                    boosts.push(
+                        { emoji: '🧘‍♀️', text: 'Quick Meditation', action: 'startMeditation()' },
+                        { emoji: '🌸', text: 'Breathing Exercise', action: 'startBreathing()' }
+                    );
+                } else {
+                    boosts.push(
+                        { emoji: '🎵', text: 'Energy Music', action: 'playEnergyMusic()' },
+                        { emoji: '💪', text: 'Quick Workout', action: 'startQuickWorkout()' }
+                    );
+                }
+                
+                // Goal-specific boosters
+                if (profile.fitnessGoal === 'weight_loss') {
+                    boosts.push({ emoji: '🚶‍♀️', text: 'Walk Break', action: 'startWalkBreak()' });
+                } else if (profile.fitnessGoal === 'muscle_gain') {
+                    boosts.push({ emoji: '🥤', text: 'Protein Shake', action: 'logProteinShake()' });
+                }
+                
+                // Always available
+                boosts.push(
+                    { emoji: '💧', text: 'Hydrate', action: 'addWater()' },
+                    { emoji: '📱', text: 'Friend Check', action: 'callFriend()' }
+                );
+            }
+            
+            updateMoodBoosts(boosts);
+        }
+
+        function updateMoodBoosts(customBoosts = null) {
+            const container = document.getElementById('moodBoosts');
+            const boosts = customBoosts || [
+                { emoji: '🚶‍♀️', text: '5-min Walk', action: 'startWalk()' },
+                { emoji: '🧘‍♀️', text: 'Breathe', action: 'startBreathing()' },
+                { emoji: '🎵', text: 'Play Music', action: 'playMusic()' },
+                { emoji: '💧', text: 'Drink Water', action: 'addWater()' }
+            ];
+            
+            container.innerHTML = boosts.map(boost => `
+                <button onclick="${boost.action}" class="p-3 bg-gradient-to-br from-pink-50 to-purple-50 dark:from-pink-900/30 dark:to-purple-900/30 rounded-lg text-center hover:from-pink-100 hover:to-purple-100 dark:hover:from-pink-800/40 dark:hover:to-purple-800/40 transition-all">
+                    <div class="text-lg mb-1">${boost.emoji}</div>
+                    <div class="text-xs font-medium">${boost.text}</div>
+                </button>
+            `).join('');
+        }
+
+        function updateProfileUI() {
+            const profile = gameState.profile;
+            
+            // Update sidebar profile info
+            if (profile.name) {
+                document.getElementById('playerName').textContent = profile.name;
+                document.getElementById('personalizedGreeting').textContent = profile.name;
+            }
+            
+            // Update profile completion badge
+            const badge = document.getElementById('profileCompleteBadge');
+            
+            if (profile.profileComplete) {
+                badge.className = 'absolute -top-1 -right-1 w-4 h-4 rounded-full profile-complete flex items-center justify-center text-xs';
+                badge.textContent = '✓';
+            } else {
+                badge.className = 'absolute -top-1 -right-1 w-4 h-4 rounded-full profile-incomplete flex items-center justify-center text-xs';
+                badge.textContent = '!';
+            }
+            
+            // Update profile quick stats
+            document.getElementById('profileAgeDisplay').textContent = profile.age || '--';
+            document.getElementById('profileBMI').textContent = profile.bmi || '--';
+            
+            // Update profile view
+            document.getElementById('displayName').textContent = profile.name || 'Not set';
+            document.getElementById('displayAge').textContent = profile.age || 'Not set';
+            document.getElementById('displayGender').textContent = profile.gender || 'Not set';
+            document.getElementById('displayHeight').textContent = profile.height ? `${profile.height} cm` : 'Not set';
+            document.getElementById('displayWeight').textContent = profile.weight ? `${profile.weight} kg` : 'Not set';
+            document.getElementById('displayBMI').textContent = profile.bmi || 'Not calculated';
+            document.getElementById('displayBMR').textContent = profile.bmr ? `${profile.bmr} calories` : 'Not calculated';
+            document.getElementById('displayTDEE').textContent = profile.tdee ? `${profile.tdee} calories` : 'Not calculated';
+            document.getElementById('displayActivityLevel').textContent = profile.activityLevel || 'Not set';
+            document.getElementById('displayFitnessGoal').textContent = profile.fitnessGoal || 'Not set';
+            
+            // Update goals display
+            document.getElementById('goalSteps').textContent = gameState.goals.dailySteps;
+            document.getElementById('goalCalories').textContent = gameState.goals.dailyCalories;
+            document.getElementById('goalFocus').textContent = gameState.goals.dailyFocus;
+            document.getElementById('goalWater').textContent = gameState.goals.dailyWater;
+            
+            // Update personalized indicators
+            if (profile.profileComplete) {
+                document.getElementById('personalizedIndicator').textContent = 'Fully Personalized';
+                document.getElementById('personalizedMessage').textContent = 'AI Coach Active';
+                document.getElementById('personalizationTitle').textContent = 'Personalization Active';
+                document.getElementById('personalizationMessage').textContent = 'All systems optimized for your profile';
+                document.getElementById('profileCompleteness').textContent = '100% Complete';
+            } else {
+                document.getElementById('personalizedIndicator').textContent = 'Setup Needed';
+                document.getElementById('personalizedMessage').textContent = 'Complete profile for full personalization';
+                document.getElementById('personalizationTitle').textContent = 'Setup Needed';
+                document.getElementById('personalizationMessage').textContent = 'Complete your profile for personalized features';
+                
+                const completeness = Math.round((Object.values(profile).filter(v => v !== null && v !== '').length / 15) * 100);
+                document.getElementById('profileCompleteness').textContent = `${completeness}% Complete`;
+                document.getElementById('profileCompletionPercentage').textContent = `${completeness}%`;
+                document.getElementById('profileCompletionBar').style.width = `${completeness}%`;
+            }
+            
+            // Show/hide profile setup banner
+            const banner = document.getElementById('profileSetupBanner');
+            if (!profile.profileComplete) {
+                banner.classList.remove('hidden');
+            } else {
+                banner.classList.add('hidden');
+            }
+        }
+
+        function dismissProfileSetup() {
+            document.getElementById('profileSetupBanner').classList.add('hidden');
+        }
+
+        // Initialize the application
+        function initializeApp() {
+            loadGameState();
+            checkDailyReset();
+            updateGreeting();
+            updateAllUI();
+            setupEventListeners();
+            setupAutoSave();
+            refreshPersonalizedBoosts();
+            updateTasksDisplay();
+            generatePersonalizedRecommendations();
+            updateWellnessScore();
+            
+            // Initialize pomodoro display
+            updatePomodoroDisplay();
+            updateFocusDisplay();
+            
+            // Initialize integrations
+            handleURLParameters();
+            initializeSpotify();
+            updateIntegrationStatus();
+            
+            // Check if profile setup is needed
+            if (!gameState.profile.profileComplete) {
+                setTimeout(() => {
+                    document.getElementById('profileSetupBanner').classList.remove('hidden');
+                }, 2000);
+            }
+        }
+
+        function updateAllUI() {
+            updateProfileUI();
+            updatePlayerStats();
+            updateDashboard();
+            updateGoalProgress();
+            updateDailyStats();
+            updateWellnessScore();
+            updateEnergyMoodDisplay();
+            updateNavigation();
+            updateGreeting();
+            updateWeeklyChallenge();
+            updateInsightsView();
+            updateAchievementsView();
+            updateSettingsView();
+            updateIntegrationStatus();
+        }
+
+        function updateWeeklyChallenge() {
+            const completedTasks = gameState.tasks.filter(t => t.completed).length;
+            const challengeProgress = Math.min((completedTasks / 5) * 100, 100);
+            
+            document.getElementById('challengeProgress').style.width = challengeProgress + '%';
+            
+            if (completedTasks >= 5) {
+                document.getElementById('challengeText').textContent = 'Challenge complete! Bonus XP unlocked!';
+            } else {
+                document.getElementById('challengeText').textContent = `Complete ${5 - completedTasks} more tasks this week to unlock bonus XP!`;
+            }
+        }
+
+        function updateInsightsView() {
+            // Update weekly stats
+            const weeklyStats = calculateWeeklyStats();
+            document.getElementById('weeklySteps').textContent = weeklyStats.steps.toLocaleString();
+            document.getElementById('weeklyFocus').textContent = weeklyStats.focus + ' min';
+            document.getElementById('weeklyWorkouts').textContent = weeklyStats.workouts;
+            document.getElementById('avgWellness').textContent = weeklyStats.wellness;
+            
+            // Calculate changes (placeholder)
+            document.getElementById('stepsChange').textContent = '+12%';
+            document.getElementById('focusChange').textContent = '+8%';
+            document.getElementById('workoutsChange').textContent = '+25%';
+            document.getElementById('wellnessChange').textContent = '+5%';
+        }
+
+        function calculateWeeklyStats() {
+            // Calculate stats from history
+            const weekHistory = gameState.history.slice(-7);
+            
+            return {
+                steps: weekHistory.reduce((sum, day) => sum + (day.steps || 0), 0),
+                focus: weekHistory.reduce((sum, day) => sum + (day.focusMinutes || 0), 0),
+                workouts: weekHistory.reduce((sum, day) => sum + (day.workouts || 0), 0),
+                wellness: Math.round(weekHistory.reduce((sum, day) => sum + (day.wellnessScore || 50), 0) / Math.max(weekHistory.length, 1))
+            };
+        }
+
+        function updateAchievementsView() {
+            document.getElementById('currentStreak').textContent = gameState.player.streak;
+            
+            // Update achievement progress based on actual stats
+            const completedTasks = gameState.tasks.filter(t => t.completed).length;
+            const totalWorkouts = gameState.workouts.length;
+            const totalFocusSessions = gameState.pomodoroStats.totalSessions;
+            
+            // You could implement more sophisticated achievement tracking here
+        }
+
+        function updateSettingsView() {
+            document.getElementById('totalXP').textContent = gameState.player.xp;
+            document.getElementById('daysActive').textContent = gameState.history.length;
+            document.getElementById('profileCompleteStatus').textContent = gameState.profile.profileComplete ? 'Yes' : 'No';
+            
+            // Set toggle states
+            document.getElementById('dailyReminders').checked = gameState.settings.notifications;
+            document.getElementById('pomodoroNotifications').checked = gameState.settings.pomodoroNotifications;
+        }
+
+        // Data management functions
+        function exportData() {
+            const dataStr = JSON.stringify(gameState, null, 2);
+            const dataBlob = new Blob([dataStr], {type: 'application/json'});
+            
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(dataBlob);
+            link.download = `quest-tracker-backup-${new Date().toISOString().split('T')[0]}.json`;
+            link.click();
+            
+            showFloatingNotification('Data Exported!', 'Your backup file has been downloaded');
+        }
+
+        function importData() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            
+            input.onchange = function(event) {
+                const file = event.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        try {
+                            const importedData = JSON.parse(e.target.result);
+                            gameState = { ...gameState, ...importedData };
+                            saveGameState();
+                            updateAllUI();
+                            showFloatingNotification('Data Imported!', 'Your backup has been restored');
+                        } catch (error) {
+                            showFloatingNotification('Import Failed', 'Invalid backup file format');
+                        }
+                    };
+                    reader.readAsText(file);
+                }
+            };
+            
+            input.click();
+        }
+
+        function resetData() {
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+            modal.innerHTML = `
+                <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-xl max-w-sm w-full mx-4">
+                    <h3 class="text-lg font-bold mb-4 text-red-600">⚠️ Reset All Data</h3>
+                    <p class="text-sm text-gray-600 dark:text-gray-400 mb-6">This will permanently delete all your data. This action cannot be undone.</p>
+                    <div class="flex justify-end space-x-3">
+                        <button onclick="this.closest('.fixed').remove()" class="px-4 py-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
+                            Cancel
+                        </button>
+                        <button onclick="localStorage.removeItem('${DATA_KEY}'); location.reload();" class="px-4 py-2 bg-red-600 text-white hover:bg-red-700 rounded-lg">
+                            Reset
+                        </button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+
+        // Dark mode setup
+        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            document.documentElement.classList.add('dark');
+        }
+
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', event => {
+            if (event.matches) {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+        });
+
+        // Setup Event Listeners
+        function setupEventListeners() {
+            // Mobile Navigation
+            document.getElementById('openSideNav').addEventListener('click', openSideNav);
+            document.getElementById('closeSideNav').addEventListener('click', closeSideNav);
+            document.getElementById('menuOverlay').addEventListener('click', closeSideNav);
+            
+            // Navigation items
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.addEventListener('click', function() {
+                    const view = this.getAttribute('data-view');
+                    switchView(view);
+                    
+                    // Close mobile nav after selection
+                    if (window.innerWidth < 768) {
+                        closeSideNav();
+                    }
+                });
+            });
+
+            // Settings toggles
+            document.getElementById('dailyReminders').addEventListener('change', function() {
+                gameState.settings.notifications = this.checked;
+                saveGameState();
+            });
+
+            document.getElementById('pomodoroNotifications').addEventListener('change', function() {
+                gameState.settings.pomodoroNotifications = this.checked;
+                saveGameState();
+            });
+        }
+
+        // Mobile Navigation Functions
+        function openSideNav() {
+            document.getElementById('sideNav').classList.add('open');
+            document.getElementById('menuOverlay').classList.remove('hidden');
+        }
+
+        function closeSideNav() {
+            document.getElementById('sideNav').classList.remove('open');
+            document.getElementById('menuOverlay').classList.add('hidden');
+        }
+
+        // View Switching
+        function switchView(viewName) {
+            // Hide all views
+            document.querySelectorAll('.view').forEach(view => {
+                view.classList.add('hidden');
+                view.classList.remove('active');
+            });
+            
+            // Show selected view
+            const targetView = document.getElementById(viewName + '-view');
+            if (targetView) {
+                targetView.classList.remove('hidden');
+                targetView.classList.add('active');
+            }
+            
+            // Update nav items
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            
+            const activeNav = document.querySelector(`[data-view="${viewName}"]`);
+            if (activeNav) {
+                activeNav.classList.add('active');
+            }
+        }
+
+        function updatePlayerStats() {
+            document.getElementById('playerLevel').textContent = gameState.player.level;
+            document.getElementById('playerXP').textContent = gameState.player.xp;
+            
+            const xpNeeded = gameState.player.level * 100;
+            const xpProgress = (gameState.player.xp / xpNeeded) * 100;
+            document.getElementById('xpProgressBar').style.width = xpProgress + '%';
+            document.getElementById('xpProgressText').textContent = `${gameState.player.xp} / ${xpNeeded} XP to Level ${gameState.player.level + 1}`;
+        }
+
+        function updateDashboard() {
+            const stats = gameState.dailyStats;
+            const goals = gameState.goals;
+            
+            // Update dashboard stats
+            document.getElementById('dashSteps').textContent = `${stats.steps} / ${goals.dailySteps}`;
+            document.getElementById('dashStepsBar').style.width = Math.min((stats.steps / goals.dailySteps) * 100, 100) + '%';
+            
+            document.getElementById('dashCals').textContent = `${stats.calories} / ${goals.dailyCalories}`;
+            document.getElementById('dashCalsBar').style.width = Math.min((stats.calories / goals.dailyCalories) * 100, 100) + '%';
+            
+            document.getElementById('dashFocus').textContent = `${stats.focusMinutes} / ${goals.dailyFocus} min`;
+            document.getElementById('dashFocusBar').style.width = Math.min((stats.focusMinutes / goals.dailyFocus) * 100, 100) + '%';
+            
+            document.getElementById('dashSleep').textContent = `${stats.sleepHours} / ${goals.dailySleep} hrs`;
+            document.getElementById('dashSleepBar').style.width = Math.min((stats.sleepHours / goals.dailySleep) * 100, 100) + '%';
+            
+            document.getElementById('dashWater').textContent = `${stats.waterGlasses} / ${goals.dailyWater}`;
+            
+            document.getElementById('dashWorkouts').textContent = stats.workouts;
+            document.getElementById('dashMeals').textContent = stats.meals;
+            document.getElementById('dashSessions').textContent = stats.pomodoroSessions;
+        }
+
+        function updateGoalProgress() {
+            const stats = gameState.dailyStats;
+            const goals = gameState.goals;
+            
+            // Update sidebar stats
+            document.getElementById('dailySteps').textContent = stats.steps;
+            document.getElementById('dailyCalories').textContent = stats.calories;
+            document.getElementById('focusMinutes').textContent = stats.focusMinutes;
+            document.getElementById('waterCount').textContent = stats.waterGlasses;
+            
+            // Update goal status indicators
+            document.getElementById('stepsGoalStatus').textContent = stats.steps >= goals.dailySteps ? '✅' : '📈';
+            document.getElementById('caloriesGoalStatus').textContent = Math.abs(stats.calories - goals.dailyCalories) <= 200 ? '✅' : '📈';
+            document.getElementById('focusGoalStatus').textContent = stats.focusMinutes >= goals.dailyFocus ? '✅' : '📈';
+            document.getElementById('waterGoalStatus').textContent = stats.waterGlasses >= goals.dailyWater ? '✅' : '📈';
+
+            // Update individual view stats
+            document.getElementById('fitnessSteps').textContent = stats.steps;
+            document.getElementById('fitnessWorkouts').textContent = stats.workouts;
+            document.getElementById('fitnessCaloriesBurned').textContent = stats.caloriesBurned;
+            
+            document.getElementById('nutritionCalories').textContent = `${stats.calories} / ${goals.dailyCalories}`;
+            document.getElementById('nutritionProtein').textContent = `${stats.protein}g`;
+            document.getElementById('nutritionCarbs').textContent = `${stats.carbs}g`;
+            document.getElementById('nutritionFat').textContent = `${stats.fat}g`;
+            document.getElementById('nutritionWater').textContent = `${stats.waterGlasses} / ${goals.dailyWater}`;
+            
+            document.getElementById('todayFocusTime').textContent = `${stats.focusMinutes} min`;
+            document.getElementById('todayFocusSessions').textContent = stats.pomodoroSessions;
+            const focusProgress = Math.min((stats.focusMinutes / goals.dailyFocus) * 100, 100);
+            document.getElementById('focusGoalProgress').textContent = `${Math.round(focusProgress)}%`;
+            document.getElementById('focusProgressBar').style.width = focusProgress + '%';
+            
+            document.getElementById('lastNightSleep').textContent = `${stats.sleepHours} hrs`;
+            document.getElementById('sleepGoal').textContent = `${goals.dailySleep} hrs`;
+            document.getElementById('sleepDebt').textContent = `${Math.max(0, goals.dailySleep - stats.sleepHours)} hrs`;
+        }
+
+        function updateDailyStats() {
+            updateGoalProgress();
+        }
+
+        function updateEnergyMoodDisplay() {
+            const player = gameState.player;
+            
+            // Update energy meter
+            const energyMeter = document.getElementById('energyMeter');
+            energyMeter.innerHTML = '';
+            for (let i = 1; i <= 5; i++) {
+                const dot = document.createElement('div');
+                dot.className = `w-2 h-2 rounded-full ${i <= player.energy ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'}`;
+                energyMeter.appendChild(dot);
+            }
+            
+            // Update mood indicator
+            const moods = ['😴', '😔', '😐', '😊', '😁'];
+            document.getElementById('moodIndicator').textContent = moods[player.mood - 1] || '😐';
+            document.getElementById('currentMood').textContent = moods[player.mood - 1] || '😐';
+            
+            // Update recovery bar
+            document.getElementById('recoveryBar').style.width = player.recoveryLevel + '%';
+        }
+
+        function updateNavigation() {
+            // Navigation is handled by event listeners
+        }
+
+        function updateGreeting() {
+            const hour = new Date().getHours();
+            let greeting = 'morning';
+            
+            if (hour >= 12 && hour < 17) {
+                greeting = 'afternoon';
+            } else if (hour >= 17) {
+                greeting = 'evening';
+            }
+            
+            document.getElementById('timeGreeting').textContent = greeting;
+            
+            // Update streak text
+            document.getElementById('streakText').textContent = `Day ${gameState.player.streak + 1} of your personalized journey`;
+        }
+
+        function updateWellnessScore() {
+            const stats = gameState.dailyStats;
+            const goals = gameState.goals;
+            
+            // Calculate wellness score based on goal completion
+            let score = 0;
+            let factors = 0;
+            
+            if (goals.dailySteps > 0) {
+                score += Math.min((stats.steps / goals.dailySteps) * 25, 25);
+                factors++;
+            }
+            
+            if (goals.dailyCalories > 0) {
+                const calorieScore = Math.max(0, 25 - Math.abs(stats.calories - goals.dailyCalories) / 50);
+                score += calorieScore;
+                factors++;
+            }
+            
+            if (goals.dailyFocus > 0) {
+                score += Math.min((stats.focusMinutes / goals.dailyFocus) * 25, 25);
+                factors++;
+            }
+            
+            if (goals.dailyWater > 0) {
+                score += Math.min((stats.waterGlasses / goals.dailyWater) * 25, 25);
+                factors++;
+            }
+            
+            const finalScore = factors > 0 ? Math.round(score) : 50;
+            gameState.player.wellnessScore = finalScore;
+            
+            // Update UI
+            document.getElementById('wellnessScore').textContent = finalScore;
+            
+            const ring = document.getElementById('wellnessScoreRing');
+            const circumference = 220;
+            const offset = circumference - (finalScore / 100) * circumference;
+            ring.style.strokeDashoffset = offset;
+            
+            // Update wellness message
+            let message = 'Keep going!';
+            if (finalScore >= 80) {
+                message = 'Excellent balance!';
+            } else if (finalScore >= 60) {
+                message = 'Good progress!';
+            } else if (finalScore >= 40) {
+                message = 'Building momentum!';
+            }
+            
+            document.getElementById('wellnessMessage').textContent = message;
+        }
+
+        function setupAutoSave() {
+            // Save every 30 seconds
+            setInterval(saveGameState, 30000);
+        }
+
+        function loadGameState() {
+            try {
+                const saved = localStorage.getItem(DATA_KEY);
+                if (saved) {
+                    const parsed = JSON.parse(saved);
+                    gameState = { ...gameState, ...parsed };
+                }
+            } catch (error) {
+                console.error('Error loading game state:', error);
+            }
+        }
+
+        function saveGameState() {
+            try {
+                localStorage.setItem(DATA_KEY, JSON.stringify(gameState));
+                createBackup();
+            } catch (error) {
+                console.error('Error saving game state:', error);
+            }
+        }
+
+        function createBackup() {
+            try {
+                const backupKey = BACKUP_PREFIX + new Date().toISOString().split('T')[0];
+                localStorage.setItem(backupKey, JSON.stringify(gameState));
+                
+                // Clean old backups
+                const allKeys = Object.keys(localStorage);
+                const backupKeys = allKeys.filter(key => key.startsWith(BACKUP_PREFIX));
+                
+                if (backupKeys.length > MAX_BACKUPS) {
+                    backupKeys.sort();
+                    backupKeys.slice(0, backupKeys.length - MAX_BACKUPS).forEach(key => {
+                        localStorage.removeItem(key);
+                    });
+                }
+            } catch (error) {
+                console.error('Error creating backup:', error);
+            }
+        }
+
+        function checkDailyReset() {
+            const today = new Date().toDateString();
+            
+            if (gameState.dailyStats.date !== today) {
+                // Store yesterday's stats in history
+                if (gameState.dailyStats.date) {
+                    gameState.history.push({ ...gameState.dailyStats });
+                    
+                    // Keep only last 30 days
+                    if (gameState.history.length > 30) {
+                        gameState.history = gameState.history.slice(-30);
+                    }
+                }
+                
+                // Reset daily stats
+                gameState.dailyStats = {
+                    date: today,
+                    steps: 0,
+                    calories: 0,
+                    caloriesBurned: 0,
+                    focusMinutes: 0,
+                    waterGlasses: 0,
+                    sleepHours: 0,
+                    workouts: 0,
+                    meals: 0,
+                    protein: 0,
+                    carbs: 0,
+                    fat: 0,
+                    pomodoroSessions: 0,
+                    wellnessActivities: 0,
+                    stressManagement: 0
+                };
+                
+                // Update streak
+                const lastActive = gameState.player.lastActiveDate;
+                if (lastActive) {
+                    const lastDate = new Date(lastActive);
+                    const currentDate = new Date();
+                    const diffTime = currentDate - lastDate;
+                    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+                    
+                    if (diffDays === 1) {
+                        gameState.player.streak++;
+                    } else if (diffDays > 1) {
+                        gameState.player.streak = 0;
+                    }
+                } else {
+                    gameState.player.streak = 0;
+                }
+                
+                gameState.player.lastActiveDate = today;
+                saveGameState();
+            }
+        }
+
+        // Water tracking function
+        function addWater() {
+            gameState.dailyStats.waterGlasses++;
+            updateAllUI();
+            saveGameState();
+            
+            showFloatingNotification('Hydration Boost!', `${gameState.dailyStats.waterGlasses}/${gameState.goals.dailyWater} glasses`);
+            
+            if (gameState.dailyStats.waterGlasses >= gameState.goals.dailyWater) {
+                gainXP(10, 'Daily water goal completed!');
+            }
+        }
+
+        function gainXP(amount, reason) {
+            gameState.player.xp += amount;
+            
+            // Check for level up
+            const xpNeeded = gameState.player.level * 100;
+            if (gameState.player.xp >= xpNeeded) {
+                gameState.player.level++;
+                gameState.player.xp -= xpNeeded;
+                
+                showFloatingNotification('Level Up!', `You reached level ${gameState.player.level}!`);
+                document.getElementById('playerLevel').classList.add('level-up-animation');
+                setTimeout(() => {
+                    document.getElementById('playerLevel').classList.remove('level-up-animation');
+                }, 1000);
+            }
+            
+            updatePlayerStats();
+            saveGameState();
+            
+            // Show XP animation
+            showXPAnimation(amount, reason);
+        }
+
+        function showXPAnimation(amount, reason) {
+            const container = document.getElementById('xpAnimationContainer');
+            const animation = document.createElement('div');
+            animation.className = 'xp-gain bg-green-500 text-white px-3 py-1 rounded-full text-sm font-bold';
+            animation.textContent = `+${amount} XP`;
+            container.appendChild(animation);
+            
+            setTimeout(() => {
+                container.removeChild(animation);
+            }, 800);
+        }
+
+        function showFloatingNotification(title, message) {
+            const notification = document.getElementById('floatingNotification');
+            document.getElementById('notificationTitle').textContent = title;
+            document.getElementById('notificationMessage').textContent = message;
+            
+            notification.classList.remove('hidden');
+            
+            setTimeout(() => {
+                notification.classList.add('hidden');
+            }, 3000);
+        }
+
+        function hideNotification() {
+            document.getElementById('floatingNotification').classList.add('hidden');
+        }
+
+        // Show/Hide functions for floating widgets
+        function showSmartRecommendation() {
+            const recommendation = gameState.smartRecommendations[0];
+            if (recommendation) {
+                document.getElementById('recommendationText').textContent = recommendation.message;
+                document.getElementById('smartRecommendation').classList.remove('hidden');
+            } else {
+                document.getElementById('recommendationText').textContent = 'Complete your profile for personalized AI recommendations!';
+                document.getElementById('smartRecommendation').classList.remove('hidden');
+            }
+        }
+
+        function dismissRecommendation() {
+            document.getElementById('smartRecommendation').classList.add('hidden');
+        }
+
+        function acceptRecommendation() {
+            showFloatingNotification('Great!', 'Recommendation applied successfully');
+            dismissRecommendation();
+        }
+
+        function snoozeRecommendation() {
+            showFloatingNotification('Snoozed', 'We\'ll remind you later');
+            dismissRecommendation();
+        }
+
+        function showPomodoro() {
+            document.getElementById('pomodoroWidget').classList.remove('hidden');
+        }
+
+        function hidePomodoro() {
+            document.getElementById('pomodoroWidget').classList.add('hidden');
+        }
+
+        // Quick action functions
+        function quickLogMeal() {
+            gameState.dailyStats.calories += 500; // Default meal
+            gameState.dailyStats.meals++;
+            updateAllUI();
+            saveGameState();
+            showFloatingNotification('Meal Logged!', '+500 calories');
+            gainXP(15, 'Logged a meal');
+        }
+
+        function startPersonalizedWorkout() {
+            const profile = gameState.profile;
+            let workoutType = 'General Workout';
+            
+            if (profile.fitnessGoal === 'weight_loss') {
+                workoutType = 'Cardio HIIT Session';
+            } else if (profile.fitnessGoal === 'muscle_gain') {
+                workoutType = 'Strength Training';
+            } else if (profile.fitnessGoal === 'endurance') {
+                workoutType = 'Endurance Training';
+            }
+            
+            gameState.dailyStats.workouts++;
+            updateAllUI();
+            saveGameState();
+            showFloatingNotification('Workout Started!', workoutType);
+            gainXP(30, 'Started a workout');
+            
+            // Start music if connected
+            if (integrationState.spotifyConnected) {
+                playWorkoutMusic();
+            }
+        }
+
+        function startQuickWorkout() {
+            gameState.dailyStats.workouts++;
+            updateAllUI();
+            saveGameState();
+            showFloatingNotification('Quick Workout!', '10-minute energy boost');
+            gainXP(20, 'Quick workout completed');
+            
+            // Start music if connected
+            if (integrationState.spotifyConnected) {
+                playWorkoutMusic();
+            }
+        }
+
+        function recalculateGoals() { 
+            updatePersonalizedGoals();
+            updateAllUI();
+            saveGameState();
+            showFloatingNotification('Goals Recalculated!', 'Your personalized goals have been updated');
+        }
+
+        function addCustomActivity() {
+            const activity = prompt('What activity did you do?');
+            const duration = parseInt(prompt('How many minutes?')) || 30;
+            const calories = parseInt(prompt('Estimated calories burned?')) || 200;
+            
+            if (activity) {
+                gameState.dailyStats.workouts++;
+                gameState.dailyStats.caloriesBurned += calories;
+                
+                gameState.workouts.push({
+                    id: Date.now(),
+                    type: 'custom',
+                    name: activity,
+                    duration: duration,
+                    calories: calories,
+                    date: new Date().toISOString()
+                });
+                
+                gainXP(25, `Completed ${activity}`);
+                updateAllUI();
+                saveGameState();
+                
+                showFloatingNotification(`${activity} Complete!`, `+${calories} calories burned`);
+            }
+        }
+
+        // Placeholder functions for actions (implement as needed)
+        function startMorningStretch() { showFloatingNotification('Great!', 'Starting morning stretch routine'); }
+        function startAfternoonWalk() { showFloatingNotification('Perfect!', 'Time for an energizing walk'); }
+        function startMeditation() { 
+            gameState.dailyStats.wellnessActivities++;
+            gainXP(20, 'Meditation session');
+            updateAllUI();
+            saveGameState();
+            showFloatingNotification('Relax', 'Starting meditation session'); 
+        }
+        function startBreathing() { 
+            gameState.dailyStats.stressManagement++;
+            gainXP(15, 'Breathing exercise');
+            updateAllUI();
+            saveGameState();
+            showFloatingNotification('Breathe', 'Starting breathing exercise'); 
+        }
+        function startJournaling() {
+            gameState.dailyStats.wellnessActivities++;
+            gainXP(20, 'Journaling session');
+            updateAllUI();
+            saveGameState();
+            showFloatingNotification('📝', 'Journaling is great for mental health');
+        }
+        function startWalkBreak() { showFloatingNotification('🚶‍♀️', 'Time for a walking break'); }
+        function logProteinShake() { 
+            gameState.dailyStats.protein += 25;
+            gameState.dailyStats.calories += 150;
+            updateAllUI();
+            saveGameState();
+            showFloatingNotification('💪', 'Protein shake logged (+25g protein)'); 
+        }
+        function callFriend() { showFloatingNotification('📱', 'Great idea! Social connection boosts mood'); }
+
+        // Event listeners
+        document.addEventListener('DOMContentLoaded', initializeApp);
+    </script>
+</body>
+</html>
