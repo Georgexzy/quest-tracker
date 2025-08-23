@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Spotify Auth - Quest Tracker</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; }
+        .code-box { background: #f5f5f5; padding: 15px; border-radius: 8px; margin: 10px 0; word-break: break-all; }
+        .success { color: #22c55e; }
+        .error { color: #ef4444; }
+        button { background: #1DB954; color: white; padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; }
+        button:hover { background: #1ed760; }
+    </style>
+</head>
+<body>
+    <h1>🎵 Spotify Authorization</h1>
+    
+    <div id="result"></div>
+    
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const code = urlParams.get('code');
+        const error = urlParams.get('error');
+        const state = urlParams.get('state');
+        
+        const resultDiv = document.getElementById('result');
+        
+        if (error) {
+            resultDiv.innerHTML = `
+                <div class="error">
+                    <h2>❌ Authorization Failed</h2>
+                    <p>Error: ${error}</p>
+                    <p>Please go back to your app and try again.</p>
+                </div>
+            `;
+        } else if (code) {
+            resultDiv.innerHTML = `
+                <div class="success">
+                    <h2>✅ Authorization Successful!</h2>
+                    <p>Copy this authorization code and paste it in your Quest Tracker app:</p>
+                    
+                    <div class="code-box" id="authCode">${code}</div>
+                    
+                    <button onclick="copyCode()">📋 Copy Code</button>
+                    
+                    <h3>Instructions:</h3>
+                    <ol>
+                        <li>Copy the code above</li>
+                        <li>Go back to your Quest Tracker app</li>
+                        <li>In the Spotify setup, choose "Manual Code Entry"</li>
+                        <li>Paste the code and click "Exchange for Token"</li>
+                    </ol>
+                    
+                    ${state ? `<p><small>State: ${state}</small></p>` : ''}
+                </div>
+            `;
+        } else {
+            resultDiv.innerHTML = `
+                <div class="error">
+                    <h2>❌ No Authorization Code</h2>
+                    <p>No authorization code was received. Please try the authorization process again.</p>
+                </div>
+            `;
+        }
+        
+        function copyCode() {
+            const code = document.getElementById('authCode').textContent;
+            navigator.clipboard.writeText(code).then(() => {
+                alert('Code copied to clipboard!');
+            }).catch(() => {
+                // Fallback for older browsers
+                const textArea = document.createElement('textarea');
+                textArea.value = code;
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+                alert('Code copied!');
+            });
+        }
+    </script>
+</body>
+</html>
