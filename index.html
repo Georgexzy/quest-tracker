@@ -1959,6 +1959,13 @@
                     console.log('✅ Game state loaded from localStorage');
                 }
                 
+                // Load Spotify Client ID and set in config
+                const savedClientId = localStorage.getItem('spotify_client_id');
+                if (savedClientId) {
+                    spotifyConfig.clientId = savedClientId;
+                    console.log('✅ Spotify Client ID loaded:', savedClientId);
+                }
+                
                 // Load Spotify auth state
                 const spotifyData = localStorage.getItem('spotify_auth');
                 if (spotifyData) {
