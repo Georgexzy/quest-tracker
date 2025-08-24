@@ -3880,12 +3880,12 @@
                     updateSyncStats();
                 }
                 
-                // Clean URL to avoid reprocessing (delay this)
+                // Clean URL to avoid reprocessing (delay this MUCH longer)
                 setTimeout(() => {
                     const newUrl = window.location.pathname;
                     window.history.replaceState({}, document.title, newUrl);
                     console.log('🧹 URL cleaned');
-                }, 5000); // Wait 5 seconds before cleaning URL
+                }, 30000); // Wait 30 seconds before cleaning URL
                 
                 return true;
             } else {
@@ -4244,6 +4244,22 @@ Note: Keep using your PWA app (home screen icon) for the best experience.`;
                 checkForHealthData();
             }
         }, 2000);
+        
+        // Add debug button for health data checking
+        window.manualHealthCheck = function() {
+            console.log('🔧 Manual health data check triggered');
+            checkForHealthData();
+        };
+        
+        // Add to debug panel
+        window.addDebugHealthData = function() {
+            const currentUrl = new URL(window.location);
+            currentUrl.searchParams.set('steps', '12345');
+            currentUrl.searchParams.set('sleep', '8.5');
+            window.history.replaceState({}, document.title, currentUrl.toString());
+            console.log('🧪 Debug health data added to URL');
+            checkForHealthData();
+        };
 
         // 🧭 TAB NAVIGATION
         function switchTab(tabName) {
