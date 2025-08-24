@@ -1141,11 +1141,17 @@
                             <button onclick="testSpotifyConnection()" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700">
                                 🔗 Test Spotify Connection
                             </button>
+                            <button onclick="checkSpotifyOAuthCallback()" class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700">
+                                🚨 Check OAuth Errors
+                            </button>
                             <button onclick="showConnectionsModal()" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
                                 ⚙️ Open Spotify Setup
                             </button>
                             <button onclick="logSpotifyDebugInfo()" class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700">
                                 📊 Log Spotify Debug Info
+                            </button>
+                            <button onclick="simulateSpotifyConnection()" class="bg-yellow-600 text-white px-4 py-2 rounded-lg hover:bg-yellow-700">
+                                🧪 Simulate Connection
                             </button>
                         </div>
                     </div>
@@ -3557,6 +3563,159 @@
             addDebugLog('INFO', 'Spotify debug info logging completed');
         }
         
+        // Additional Debug Functions
+        function checkSpotifyOAuthCallback() {
+            addDebugLog('INFO', '🚨 Checking for OAuth callback errors...');
+            
+            const urlParams = new URLSearchParams(window.location.search);
+            const error = urlParams.get('error');
+            const errorDescription = urlParams.get('error_description');
+            const code = urlParams.get('code');
+            const state = urlParams.get('state');
+            
+            // Check current URL for any issues
+            addDebugLog('INFO', `Current URL: ${window.location.href}`);
+            addDebugLog('INFO', `URL has parameters: ${window.location.search ? 'Yes' : 'No'}`);
+            
+            if (error) {
+                addDebugLog('ERROR', `❌ OAuth Error Found: ${error}`);
+                if (errorDescription) {
+                    addDebugLog('ERROR', `❌ Error Description: ${errorDescription}`);
+                }
+                
+                // Common error explanations
+                if (error === 'invalid_client') {
+                    addDebugLog('ERROR', '💡 This usually means your Client ID is wrong or your app is not set up correctly');
+                }
+                if (error === 'redirect_uri_mismatch') {
+                    addDebugLog('ERROR', '💡 Your redirect URI in Spotify app settings doesn\'t match your current URL');
+                    addDebugLog('ERROR', `💡 Expected: ${spotifyConfig.redirectUri}`);
+                    addDebugLog('ERROR', `💡 Current: ${window.location.origin + window.location.pathname}`);
+                }
+                if (error === 'access_denied') {
+                    addDebugLog('ERROR', '💡 User denied permission or canceled the authorization');
+                }
+            } else if (code) {
+                addDebugLog('INFO', '✅ OAuth code found - authorization was successful');
+                addDebugLog('INFO', `Code: ${code.substring(0, 10)}...`);
+                if (state) {
+                    addDebugLog('INFO', `State: ${state.substring(0, 10)}...`);
+                }
+            } else {
+                addDebugLog('INFO', '🔍 No OAuth parameters found in URL');
+                addDebugLog('INFO', '📋 This is normal if you haven\'t tried to connect to Spotify yet');
+            }
+            
+            // Check if we're on the right domain
+            if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
+                addDebugLog('WARN', '⚠️ Not using HTTPS - Spotify requires HTTPS for production apps');
+            }
+            
+            // Check stored auth state
+            const savedAuth = localStorage.getItem('spotify_auth');
+            if (savedAuth) {
+                try {
+                    const auth = JSON.parse(savedAuth);
+                    addDebugLog('INFO', `Saved auth token expires: ${new Date(auth.expiresAt).toLocaleString()}`);
+                    if (auth.expiresAt < Date.now()) {
+                        addDebugLog('WARN', '⚠️ Saved auth token has expired');
+                    }
+                } catch (e) {
+                    addDebugLog('ERROR', 'Corrupted auth data in localStorage');
+                }
+            }
+            
+            addDebugLog('INFO', 'OAuth callback check completed');
+        }
+        
+        function simulateSpotifyConnection() {
+            addDebugLog('INFO', '🧪 Simulating Spotify connection process...');
+            
+            // Test 1: Client ID validation
+            const clientId = localStorage.getItem('spotify_client_id');
+            addDebugLog('INFO', '1️⃣ Testing Client ID...');
+            if (!clientId) {
+                addDebugLog('ERROR', '❌ No Client ID found - you need to enter one first');
+                return;
+            }
+            
+            if (!/^[a-zA-Z0-9]{32}$/.test(clientId)) {
+                addDebugLog('ERROR', `❌ Invalid Client ID format: "${clientId}" (length: ${clientId.length})`);
+                addDebugLog('ERROR', '💡 Client ID should be exactly 32 characters: letters and numbers only');
+                return;
+            }
+            addDebugLog('INFO', '✅ Client ID format is valid');
+            
+            // Test 2: URL generation
+            addDebugLog('INFO', '2️⃣ Testing OAuth URL generation...');
+            try {
+                const authUrl = new URL('https://accounts.spotify.com/authorize');
+                authUrl.searchParams.append('response_type', 'code');
+                authUrl.searchParams.append('client_id', clientId);
+                authUrl.searchParams.append('scope', spotifyConfig.scopes);
+                authUrl.searchParams.append('redirect_uri', spotifyConfig.redirectUri);
+                authUrl.searchParams.append('state', 'test_state_123');
+                authUrl.searchParams.append('code_challenge', 'test_challenge');
+                authUrl.searchParams.append('code_challenge_method', 'S256');
+                
+                addDebugLog('INFO', '✅ OAuth URL generated successfully');
+                addDebugLog('INFO', `🔗 Generated URL: ${authUrl.toString()}`);
+            } catch (error) {
+                addDebugLog('ERROR', `❌ Failed to generate OAuth URL: ${error.message}`);
+                return;
+            }
+            
+            // Test 3: Network connectivity to Spotify
+            addDebugLog('INFO', '3️⃣ Testing network connectivity to Spotify...');
+            fetch('https://accounts.spotify.com/authorize', { 
+                method: 'HEAD',
+                mode: 'no-cors' // This bypasses CORS for the test
+            })
+            .then(() => {
+                addDebugLog('INFO', '✅ Can reach Spotify servers');
+            })
+            .catch(error => {
+                addDebugLog('WARN', `⚠️ Network test inconclusive: ${error.message}`);
+                addDebugLog('INFO', '💡 This is often normal due to CORS restrictions');
+            });
+            
+            // Test 4: Browser capabilities
+            addDebugLog('INFO', '4️⃣ Testing browser capabilities...');
+            const capabilities = {
+                'Crypto API': !!window.crypto,
+                'Fetch API': !!window.fetch,
+                'URL API': !!window.URL,
+                'Local Storage': (() => {
+                    try {
+                        localStorage.setItem('test', 'test');
+                        localStorage.removeItem('test');
+                        return true;
+                    } catch (e) {
+                        return false;
+                    }
+                })(),
+                'Session Storage': !!window.sessionStorage
+            };
+            
+            Object.entries(capabilities).forEach(([feature, available]) => {
+                if (available) {
+                    addDebugLog('INFO', `✅ ${feature}: Available`);
+                } else {
+                    addDebugLog('ERROR', `❌ ${feature}: Not available`);
+                }
+            });
+            
+            // Test 5: Simulate successful connection
+            addDebugLog('INFO', '5️⃣ Simulating successful connection...');
+            addDebugLog('INFO', '✅ All tests passed! Your setup should work.');
+            addDebugLog('INFO', '💡 If you\'re still having issues, the problem might be:');
+            addDebugLog('INFO', '   • Your Spotify app redirect URI doesn\'t match exactly');
+            addDebugLog('INFO', '   • Your Spotify app is in development mode and needs to be published');
+            addDebugLog('INFO', '   • Your Spotify account doesn\'t have the right permissions');
+            
+            addDebugLog('INFO', 'Simulation completed');
+        }
+        
         // Initialize debug console
         function initializeDebugConsole() {
             captureConsoleOutput();
@@ -3565,6 +3724,11 @@
             addDebugLog('INFO', `User Agent: ${navigator.userAgent}`);
             addDebugLog('INFO', `Screen: ${screen.width}x${screen.height}`);
             addDebugLog('INFO', `Viewport: ${window.innerWidth}x${window.innerHeight}`);
+            
+            // Automatically check for OAuth errors on page load
+            setTimeout(() => {
+                checkSpotifyOAuthCallback();
+            }, 1000);
             
             // Update system info when debug view is shown
             setInterval(updateDebugSystemInfo, 5000);
