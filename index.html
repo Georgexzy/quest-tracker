@@ -3226,11 +3226,14 @@
         }
         
         function getShortcutURL(type, appURL) {
+            // Use a custom URL scheme for PWA if available, otherwise fallback to web URL
+            const baseURL = appURL.replace('https://', '').replace('http://', '');
+            
             const urls = {
-                steps: `${appURL}?steps=[Health Sample Value]`,
-                workout: `${appURL}?workouts=[Count]`,
-                sleep: `${appURL}?sleep=[Health Sample Value]`,
-                heart: `${appURL}?heartrate=[Average]`
+                steps: `${appURL}?steps=[Health Sample Value]&pwa=1`,
+                workout: `${appURL}?workouts=[Count]&pwa=1`,
+                sleep: `${appURL}?sleep=[Health Sample Value]&pwa=1`,
+                heart: `${appURL}?heartrate=[Average]&pwa=1`
             };
             return urls[type];
         }
@@ -3830,6 +3833,9 @@
                 processHealthData(healthData);
                 updateSyncStats();
                 
+                // Try to switch back to PWA if running in Safari
+                tryRedirectToPWA();
+                
                 // Clean URL to avoid reprocessing
                 const newUrl = window.location.pathname;
                 window.history.replaceState({}, document.title, newUrl);
@@ -3837,6 +3843,108 @@
                 return true;
             }
             return false;
+        }
+        
+        // Check if running in PWA vs Safari and attempt to bridge data
+        function tryRedirectToPWA() {
+            const isPWA = window.matchMedia('(display-mode: standalone)').matches || 
+                         window.navigator.standalone === true ||
+                         document.referrer.includes('android-app://');
+            
+            const isPWAParam = new URLSearchParams(window.location.search).get('pwa');
+            
+            console.log('📱 PWA Detection:', { isPWA, isPWAParam, referrer: document.referrer });
+            
+            if (!isPWA && isPWAParam === '1') {
+                // Running in Safari but intended for PWA
+                showPWABridgeNotification();
+            }
+        }
+        
+        function showPWABridgeNotification() {
+            const notification = document.createElement('div');
+            notification.className = 'fixed top-4 left-4 right-4 bg-blue-600 text-white p-4 rounded-lg shadow-lg z-50';
+            notification.innerHTML = `
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-3">
+                        <span class="text-2xl">📱</span>
+                        <div>
+                            <div class="font-bold">Health Data Synced!</div>
+                            <div class="text-sm opacity-90">Switch back to your Life Quest PWA to see updated progress</div>
+                        </div>
+                    </div>
+                    <button onclick="this.parentElement.parentElement.remove()" class="text-white hover:bg-blue-700 p-1 rounded">
+                        ✕
+                    </button>
+                </div>
+                <div class="mt-3 flex space-x-3">
+                    <button onclick="tryOpenPWA()" class="bg-white text-blue-600 px-4 py-2 rounded font-medium hover:bg-gray-100">
+                        🚀 Open PWA
+                    </button>
+                    <button onclick="copyPWAInstructions()" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-700">
+                        📋 Copy Instructions
+                    </button>
+                </div>
+            `;
+            document.body.appendChild(notification);
+            
+            // Auto-remove after 10 seconds
+            setTimeout(() => {
+                if (notification.parentElement) {
+                    notification.remove();
+                }
+            }, 10000);
+        }
+        
+        function tryOpenPWA() {
+            // Try various methods to open the PWA
+            const pwaURL = window.location.origin + window.location.pathname;
+            
+            // Try custom URL scheme first (if set up)
+            const schemes = [
+                'lifequest://',
+                'life-quest-rpg://',
+                pwaURL
+            ];
+            
+            schemes.forEach((scheme, index) => {
+                setTimeout(() => {
+                    try {
+                        window.open(scheme, '_blank');
+                    } catch (e) {
+                        console.log(`Scheme ${scheme} failed:`, e);
+                    }
+                }, index * 500);
+            });
+            
+            showFloatingNotification('🚀 Opening PWA...', 'Check your home screen or app switcher');
+        }
+        
+        function copyPWAInstructions() {
+            const instructions = `📱 HEALTH DATA SYNCED!
+
+Your Life Quest RPG progress has been updated with:
+${JSON.stringify(getLastSyncData(), null, 2)}
+
+To see your updated progress:
+1. Go to your home screen
+2. Open the Life Quest RPG app icon
+3. Your new health data will be there!
+
+Note: Keep using your PWA app (home screen icon) for the best experience.`;
+            
+            navigator.clipboard.writeText(instructions).then(() => {
+                showFloatingNotification('📋 Copied!', 'Instructions copied to clipboard');
+            });
+        }
+        
+        function getLastSyncData() {
+            return {
+                steps: gameState.dailyStats.steps,
+                sleep: gameState.dailyStats.sleepHours,
+                workouts: gameState.dailyStats.workouts,
+                syncTime: new Date().toLocaleString()
+            };
         }
 
         // Listen for health data from iOS shortcuts
