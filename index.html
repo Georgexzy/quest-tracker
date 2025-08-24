@@ -529,12 +529,105 @@
             generateDailyTasks();
             showAIInsights();
             
+            // Show persistent debug info on load
+            showPersistentDebugInfo();
+            
             // Auto-save every 30 seconds
             setInterval(saveGameState, 30000);
             
             console.log('🎮 Life Quest RPG - Ultimate AI Edition Initialized!');
             logStorageInfo();
         }
+
+        // 🔍 PERSISTENT DEBUG INFO (NO CONSOLE NEEDED)
+        function showPersistentDebugInfo() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const hasHealthData = urlParams.get('steps') || urlParams.get('sleep') || urlParams.get('workouts');
+            const isPWA = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+            
+            // Only show debug panel if there's something interesting to show
+            if (hasHealthData || urlParams.get('pwa') || window.location.search) {
+                const debugPanel = document.createElement('div');
+                debugPanel.className = 'fixed top-4 left-4 right-4 bg-black text-white p-3 rounded-lg shadow-lg z-50 text-xs border-2 border-yellow-400';
+                debugPanel.innerHTML = `
+                    <div class="flex items-center justify-between mb-2">
+                        <div class="font-bold text-yellow-400">🔍 Health Data Debug</div>
+                        <button onclick="this.parentElement.remove()" class="text-white hover:bg-gray-700 px-2 py-1 rounded">✕</button>
+                    </div>
+                    <div class="space-y-1 text-xs">
+                        <div>URL: <span class="font-mono text-blue-300">${window.location.href}</span></div>
+                        <div>Steps: <span class="font-mono ${urlParams.get('steps') ? 'text-green-400' : 'text-red-400'}">${urlParams.get('steps') || 'none'}</span></div>
+                        <div>Sleep: <span class="font-mono ${urlParams.get('sleep') ? 'text-green-400' : 'text-red-400'}">${urlParams.get('sleep') || 'none'}</span></div>
+                        <div>Workouts: <span class="font-mono ${urlParams.get('workouts') ? 'text-green-400' : 'text-red-400'}">${urlParams.get('workouts') || 'none'}</span></div>
+                        <div>PWA Mode: <span class="font-mono ${isPWA ? 'text-green-400' : 'text-red-400'}">${isPWA}</span></div>
+                        <div>PWA Param: <span class="font-mono ${urlParams.get('pwa') ? 'text-blue-400' : 'text-gray-400'}">${urlParams.get('pwa') || 'none'}</span></div>
+                        <div>Current Steps: <span class="font-mono text-yellow-400">${gameState.dailyStats.steps}</span></div>
+                    </div>
+                    <div class="mt-2 flex space-x-2">
+                        <button onclick="testHealthDataProcessing()" class="bg-green-600 text-white px-2 py-1 rounded text-xs hover:bg-green-700">
+                            🧪 Test Processing
+                        </button>
+                        <button onclick="addFakeHealthData()" class="bg-blue-600 text-white px-2 py-1 rounded text-xs hover:bg-blue-700">
+                            📱 Add Test Data
+                        </button>
+                        <button onclick="clearURL()" class="bg-red-600 text-white px-2 py-1 rounded text-xs hover:bg-red-700">
+                            🧹 Clear URL
+                        </button>
+                    </div>
+                `;
+                document.body.appendChild(debugPanel);
+                
+                // Auto-remove after 2 minutes instead of 15 seconds
+                setTimeout(() => {
+                    if (debugPanel.parentElement) {
+                        debugPanel.remove();
+                    }
+                }, 120000);
+            }
+        }
+
+        // Test functions that work without console
+        window.testHealthDataProcessing = function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const testData = {};
+            if (urlParams.get('steps')) testData.steps = parseInt(urlParams.get('steps'));
+            if (urlParams.get('sleep')) testData.sleep = parseFloat(urlParams.get('sleep'));
+            if (urlParams.get('workouts')) testData.workouts = parseInt(urlParams.get('workouts'));
+            
+            if (Object.keys(testData).length > 0) {
+                processHealthData(testData);
+                showFloatingNotification('🧪 Test Complete!', 'Health data processed from URL');
+            } else {
+                showFloatingNotification('❌ No Data', 'No health data found in URL to process');
+            }
+        };
+        
+        window.addFakeHealthData = function() {
+            const currentUrl = new URL(window.location);
+            currentUrl.searchParams.set('steps', '12345');
+            currentUrl.searchParams.set('sleep', '8.5');
+            currentUrl.searchParams.set('workouts', '2');
+            window.history.replaceState({}, document.title, currentUrl.toString());
+            showFloatingNotification('📱 Test Data Added!', 'Fake health data added to URL');
+            
+            // Refresh debug panel
+            setTimeout(() => {
+                document.querySelector('.fixed')?.remove();
+                showPersistentDebugInfo();
+            }, 500);
+        };
+        
+        window.clearURL = function() {
+            const newUrl = window.location.pathname;
+            window.history.replaceState({}, document.title, newUrl);
+            showFloatingNotification('🧹 URL Cleared!', 'All parameters removed');
+            
+            // Refresh debug panel
+            setTimeout(() => {
+                document.querySelector('.fixed')?.remove();
+                showPersistentDebugInfo();
+            }, 500);
+        };
 
         // 💾 STORAGE MANAGEMENT
         function saveGameState() {
