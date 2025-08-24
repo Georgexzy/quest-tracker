@@ -1066,9 +1066,9 @@
                                         </p>
                                     </div>
                                 </div>
-                                <button onclick="${spotifyAuth.isConnected ? 'disconnectSpotify()' : 'connectSpotify()'}" 
+                                <button onclick="connectSpotify(); this.closest('.fixed').remove();" 
                                         class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700">
-                                    ${spotifyAuth.isConnected ? '❌ Disconnect' : '🔗 Connect'}
+                                    🔗 Connect Spotify
                                 </button>
                             </div>
                             
@@ -3079,10 +3079,17 @@
         function initializeApp() {
             loadGameState();
             updateAllUI();
+            updateProfileDisplay();
+            updateTasksList();
+            refreshPersonalizedBoosts();
+            updateXPDisplay();
             setupEventListeners();
             
             // Handle Spotify OAuth callback
             handleSpotifyCallback();
+            
+            // Set time-based greeting
+            updateTimeGreeting();
             
             // Auto-save
             setInterval(saveGameState, 30000);
@@ -3091,6 +3098,18 @@
             setTimeout(showPWAInstallBanner, 5000);
             
             console.log('🚀 Quest Tracker Pro initialized successfully!');
+        }
+        
+        function updateTimeGreeting() {
+            const hour = new Date().getHours();
+            let greeting = 'morning';
+            if (hour >= 12 && hour < 17) greeting = 'afternoon';
+            else if (hour >= 17) greeting = 'evening';
+            
+            document.getElementById('timeGreeting').textContent = greeting;
+            
+            const name = gameState.profile.name || 'Champion';
+            document.getElementById('streakText').textContent = `Day ${gameState.player.streak || 1} of your wellness journey, ${name}!`;
         }
 
         document.addEventListener('DOMContentLoaded', initializeApp);
