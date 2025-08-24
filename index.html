@@ -677,220 +677,63 @@
                 </div>
             </div>
 
-            <!-- MASSIVELY EXPANDED FITNESS VIEW -->
+            <!-- Fitness View -->
             <div id="fitness-view" class="view hidden">
-                <h2 class="text-2xl font-bold mb-6 text-fitness">💪 Comprehensive Fitness Hub</h2>
-                
-                <!-- Apple Health Integration -->
-                <div class="card p-6 mb-6 bg-gradient-to-r from-red-50 to-orange-50 dark:from-red-900/30 dark:to-orange-900/30">
-                    <div class="flex items-center justify-between mb-4">
-                        <div class="flex items-center space-x-3">
-                            <div class="text-3xl">🍎</div>
-                            <div>
-                                <h3 class="text-lg font-bold text-red-700 dark:text-red-300">Apple Health Integration</h3>
-                                <p class="text-sm text-red-600 dark:text-red-400" id="healthStatus">Not connected</p>
-                            </div>
-                        </div>
-                        <button onclick="setupAppleHealth()" class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700">
-                            🔗 Connect Health
-                        </button>
-                    </div>
-                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                        <div class="text-center">
-                            <div class="font-bold text-red-600" id="healthSteps">--</div>
-                            <div class="text-gray-500">Steps Today</div>
-                        </div>
-                        <div class="text-center">
-                            <div class="font-bold text-orange-600" id="healthCalories">--</div>
-                            <div class="text-gray-500">Active Calories</div>
-                        </div>
-                        <div class="text-center">
-                            <div class="font-bold text-green-600" id="healthDistance">--</div>
-                            <div class="text-gray-500">Distance (km)</div>
-                        </div>
-                        <div class="text-center">
-                            <div class="font-bold text-blue-600" id="healthHeartRate">--</div>
-                            <div class="text-gray-500">Avg HR</div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Workout Dashboard -->
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-                    <!-- Quick Start Workouts -->
-                    <div class="card p-6">
-                        <h3 class="text-lg font-bold mb-4">🚀 Quick Start</h3>
-                        <div class="space-y-3">
-                            <button onclick="startDetailedWorkout('cardio')" class="w-full bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 p-3 rounded-lg hover:bg-red-200 dark:hover:bg-red-900/50">
-                                🏃‍♂️ Cardio Blast (20 min)
-                            </button>
-                            <button onclick="startDetailedWorkout('strength')" class="w-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 p-3 rounded-lg hover:bg-blue-200 dark:hover:bg-blue-900/50">
-                                💪 Strength Circuit (30 min)
-                            </button>
-                            <button onclick="startDetailedWorkout('hiit')" class="w-full bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 p-3 rounded-lg hover:bg-orange-200 dark:hover:bg-orange-900/50">
-                                🔥 HIIT Session (15 min)
-                            </button>
-                            <button onclick="startDetailedWorkout('yoga')" class="w-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 p-3 rounded-lg hover:bg-green-200 dark:hover:bg-green-900/50">
-                                🧘‍♀️ Yoga Flow (25 min)
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Today's Activity -->
-                    <div class="card p-6">
-                        <h3 class="text-lg font-bold mb-4">📊 Today's Stats</h3>
-                        <div class="space-y-4">
-                            <div class="flex justify-between items-center">
-                                <span>Steps:</span>
-                                <span class="font-bold text-fitness" id="fitnessSteps">0</span>
-                            </div>
-                            <div class="bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                                <div id="stepsProgressBar" class="bg-fitness h-full rounded-full" style="width: 0%"></div>
-                            </div>
-                            
-                            <div class="flex justify-between items-center">
-                                <span>Active Time:</span>
-                                <span class="font-bold text-fitness" id="activeMinutes">0 min</span>
-                            </div>
-                            <div class="bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                                <div id="activeTimeBar" class="bg-orange-500 h-full rounded-full" style="width: 0%"></div>
-                            </div>
-                            
-                            <div class="flex justify-between items-center">
-                                <span>Calories Burned:</span>
-                                <span class="font-bold text-fitness" id="fitnessCaloriesBurned">0</span>
-                            </div>
-                            
-                            <div class="flex justify-between items-center">
-                                <span>Workouts:</span>
-                                <span class="font-bold text-fitness" id="fitnessWorkouts">0</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Fitness Actions -->
-                    <div class="card p-6">
-                        <h3 class="text-lg font-bold mb-4">⚡ Quick Actions</h3>
-                        <div class="space-y-3">
-                            <button onclick="openWorkoutLibrary()" class="w-full bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 p-3 rounded-lg hover:bg-purple-200">
-                                📚 Workout Library
-                            </button>
-                            <button onclick="openBodyMeasurements()" class="w-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 p-3 rounded-lg hover:bg-blue-200">
-                                📏 Body Measurements
-                            </button>
-                            <button onclick="openProgressPhotos()" class="w-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 p-3 rounded-lg hover:bg-green-200">
-                                📸 Progress Photos
-                            </button>
-                            <button onclick="openRecoveryTracker()" class="w-full bg-cyan-100 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-300 p-3 rounded-lg hover:bg-cyan-200">
-                                🧊 Recovery Tracker
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Current Workout Session -->
-                <div id="workoutSession" class="card p-6 mb-6 hidden">
-                    <div class="flex items-center justify-between mb-4">
-                        <h3 class="text-lg font-bold">🏋️‍♂️ Current Workout</h3>
-                        <div class="flex space-x-2">
-                            <button onclick="pauseWorkout()" class="bg-yellow-500 text-white px-3 py-1 rounded text-sm">⏸ Pause</button>
-                            <button onclick="endWorkout()" class="bg-red-500 text-white px-3 py-1 rounded text-sm">🏁 Finish</button>
-                        </div>
-                    </div>
-                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                        <div class="text-center">
-                            <div class="text-2xl font-bold text-fitness" id="workoutTimer">00:00</div>
-                            <div class="text-sm text-gray-500">Duration</div>
-                        </div>
-                        <div class="text-center">
-                            <div class="text-2xl font-bold text-orange-500" id="caloriesBurning">0</div>
-                            <div class="text-sm text-gray-500">Calories</div>
-                        </div>
-                        <div class="text-center">
-                            <div class="text-2xl font-bold text-red-500" id="currentHeartRate">--</div>
-                            <div class="text-sm text-gray-500">Heart Rate</div>
-                        </div>
-                        <div class="text-center">
-                            <div class="text-2xl font-bold text-blue-500" id="workoutIntensity">--</div>
-                            <div class="text-sm text-gray-500">Intensity</div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Weekly Progress -->
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <div class="card p-6">
-                        <h3 class="text-lg font-bold mb-4">📈 Weekly Progress</h3>
-                        <div class="space-y-4">
-                            <div class="flex justify-between items-center">
-                                <span>Total Workouts:</span>
-                                <span class="font-bold" id="weeklyWorkouts">0 / 5</span>
-                            </div>
-                            <div class="bg-gray-200 dark:bg-gray-700 rounded-full h-3">
-                                <div id="weeklyWorkoutsBar" class="bg-fitness h-full rounded-full" style="width: 0%"></div>
-                            </div>
-                            
-                            <div class="flex justify-between items-center">
-                                <span>Active Minutes:</span>
-                                <span class="font-bold" id="weeklyActiveMinutes">0 / 150</span>
-                            </div>
-                            <div class="bg-gray-200 dark:bg-gray-700 rounded-full h-3">
-                                <div id="weeklyActiveBar" class="bg-orange-500 h-full rounded-full" style="width: 0%"></div>
-                            </div>
-                            
-                            <div class="grid grid-cols-7 gap-1 mt-4">
-                                <div class="text-center text-xs">M</div>
-                                <div class="text-center text-xs">T</div>
-                                <div class="text-center text-xs">W</div>
-                                <div class="text-center text-xs">T</div>
-                                <div class="text-center text-xs">F</div>
-                                <div class="text-center text-xs">S</div>
-                                <div class="text-center text-xs">S</div>
-                            </div>
-                            <div class="grid grid-cols-7 gap-1" id="weeklyActivityGrid">
-                                <!-- Activity indicators will be populated here -->
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="card p-6">
-                        <h3 class="text-lg font-bold mb-4">🎯 Fitness Goals</h3>
-                        <div class="space-y-4">
-                            <div class="bg-fitness/10 p-4 rounded-lg">
-                                <div class="flex justify-between items-center mb-2">
-                                    <span class="font-medium">Weekly Goal</span>
-                                    <span class="text-sm text-fitness">5 workouts</span>
-                                </div>
-                                <div class="bg-white dark:bg-gray-700 rounded-full h-2">
-                                    <div class="bg-fitness h-full rounded-full" style="width: 60%"></div>
-                                </div>
-                                <div class="text-xs text-gray-500 mt-1">3 of 5 completed</div>
-                            </div>
-                            
-                            <div class="bg-orange-100 dark:bg-orange-900/30 p-4 rounded-lg">
-                                <div class="flex justify-between items-center mb-2">
-                                    <span class="font-medium">Step Goal</span>
-                                    <span class="text-sm text-orange-600">10,000 steps</span>
-                                </div>
-                                <div class="bg-white dark:bg-gray-700 rounded-full h-2">
-                                    <div class="bg-orange-500 h-full rounded-full" style="width: 75%"></div>
-                                </div>
-                                <div class="text-xs text-gray-500 mt-1">7,500 steps today</div>
-                            </div>
-                            
-                            <button onclick="openGoalSetting()" class="w-full bg-primary text-white p-3 rounded-lg hover:bg-primary-dark">
-                                🎯 Customize Goals
-                            </button>
-                        </div>
-                    </div>
+                <h2 class="text-2xl font-bold mb-6 text-fitness">💪 Fitness Hub</h2>
+                <div class="text-center py-8">
+                    <p>Fitness features coming soon!</p>
                 </div>
             </div>
 
-            <!-- More sections would go here... for brevity, I'll include the key JavaScript below -->
+            <!-- Nutrition View -->
+            <div id="nutrition-view" class="view hidden">
+                <h2 class="text-2xl font-bold mb-6 text-nutrition">🥗 Nutrition</h2>
+                <div class="text-center py-8">
+                    <p>Nutrition tracking coming soon!</p>
+                </div>
+            </div>
+
+            <!-- Focus View -->
+            <div id="focus-view" class="view hidden">
+                <h2 class="text-2xl font-bold mb-6 text-focus">🧠 Focus & Productivity</h2>
+                <div class="text-center py-8">
+                    <p>Focus features coming soon!</p>
+                </div>
+            </div>
+
+            <!-- Wellness View -->
+            <div id="wellness-view" class="view hidden">
+                <h2 class="text-2xl font-bold mb-6 text-wellness">🌱 Wellness</h2>
+                <div class="text-center py-8">
+                    <p>Wellness tracking coming soon!</p>
+                </div>
+            </div>
+
+            <!-- Insights View -->
+            <div id="insights-view" class="view hidden">
+                <h2 class="text-2xl font-bold mb-6">📈 Insights</h2>
+                <div class="text-center py-8">
+                    <p>Analytics and insights coming soon!</p>
+                </div>
+            </div>
+
+            <!-- Achievements View -->
+            <div id="achievements-view" class="view hidden">
+                <h2 class="text-2xl font-bold mb-6">🏆 Achievements</h2>
+                <div class="text-center py-8">
+                    <p>Achievement system coming soon!</p>
+                </div>
+            </div>
+
+            <!-- Settings View -->
+            <div id="settings-view" class="view hidden">
+                <h2 class="text-2xl font-bold mb-6">⚙️ Settings</h2>
+                <div class="text-center py-8">
+                    <p>Settings panel coming soon!</p>
+                </div>
+            </div>
         </div>
     </div>
-
-    <!-- Modals and other UI elements go here... -->
 
     <!-- Floating Notifications -->
     <div id="floatingNotification" class="floating-notification hidden">
@@ -1849,6 +1692,7 @@
             updateAllUI();
             saveGameState();
             showFloatingNotification('💧 Hydration!', `${gameState.dailyStats.waterGlasses} glasses today`);
+            awardXP(5, 'Hydration bonus!');
         }
         
         function quickLogMeal() { 
@@ -1857,6 +1701,7 @@
             updateAllUI();
             saveGameState();
             showFloatingNotification('🍽️ Meal Logged!', '+350 calories');
+            awardXP(20, 'Nutrition tracking!');
         }
         
         function startPersonalizedWorkout() { 
@@ -1864,6 +1709,7 @@
             updateAllUI();
             saveGameState();
             showFloatingNotification('💪 Workout Started!', 'Great job!');
+            awardXP(40, 'Workout complete!');
         }
         
         function showPomodoro() { 
@@ -1874,26 +1720,35 @@
             updateDashboard();
             updateSidebarStats();
             updateConnectionStatus();
+            updateXPDisplay();
         }
         
         function updateDashboard() {
             const stats = gameState.dailyStats;
-            document.getElementById('dashSteps').textContent = `${stats.steps} / 10,000`;
-            document.getElementById('dashCals').textContent = `${stats.calories} / 2000`;
+            document.getElementById('dashSteps').textContent = `${stats.steps.toLocaleString()} / 10,000`;
+            document.getElementById('dashCals').textContent = `${stats.calories} / 2,000`;
             document.getElementById('dashFocus').textContent = `${stats.focusMinutes} / 120 min`;
             document.getElementById('dashSleep').textContent = `${stats.sleepHours} / 8 hrs`;
             document.getElementById('dashWater').textContent = `${stats.waterGlasses} / 8`;
             document.getElementById('dashWorkouts').textContent = stats.workouts;
-            document.getElementById('dashMeals').textContent = stats.meals;
+            document.getElementById('dashMeals').textContent = `${stats.meals} / 3`;
             document.getElementById('dashSessions').textContent = stats.pomodoroSessions;
+            
+            // Update progress bars
+            document.getElementById('dashStepsBar').style.width = `${Math.min(100, (stats.steps / 10000) * 100)}%`;
+            document.getElementById('dashCalsBar').style.width = `${Math.min(100, (stats.calories / 2000) * 100)}%`;
+            document.getElementById('dashFocusBar').style.width = `${Math.min(100, (stats.focusMinutes / 120) * 100)}%`;
+            document.getElementById('dashSleepBar').style.width = `${Math.min(100, (stats.sleepHours / 8) * 100)}%`;
         }
         
         function updateSidebarStats() {
             const stats = gameState.dailyStats;
-            document.getElementById('dailySteps').textContent = stats.steps;
+            document.getElementById('dailySteps').textContent = stats.steps.toLocaleString();
             document.getElementById('dailyCalories').textContent = stats.calories;
             document.getElementById('focusMinutes').textContent = stats.focusMinutes;
             document.getElementById('waterCount').textContent = stats.waterGlasses;
+            document.getElementById('sessionsToday').textContent = stats.pomodoroSessions;
+            document.getElementById('streakDays').textContent = gameState.player.streak || 1;
         }
 
         // ==================== IMPLEMENTED FUNCTIONALITY ====================
@@ -2095,7 +1950,7 @@
             if (stats.workouts === 0) {
                 recs.push({
                     text: "💪 Start your day with a quick 15-minute bodyweight workout!",
-                    action: () => { startDetailedWorkout('bodyweight'); },
+                    action: () => { startPersonalizedWorkout(); },
                     type: 'fitness'
                 });
             }
@@ -2398,341 +2253,42 @@
         }
         
         function activateBoost(boostId) {
-            const boost = generateMoodBoosts().find(b => b.id === boostId);
+            // Store boost reference
+            const allBoosts = [
+                { id: 'energize', action: () => { gameState.dailyStats.steps += 500; awardXP(10, 'Energy boost!'); } },
+                { id: 'calm', action: () => { awardXP(15, 'Mindfulness moment'); } },
+                { id: 'hydrate', action: () => { addWater(); } },
+                { id: 'stretch', action: () => { awardXP(10, 'Body care'); } },
+                { id: 'gratitude', action: () => { awardXP(20, 'Positive mindset'); } },
+                { id: 'fresh_air', action: () => { gameState.dailyStats.steps += 300; awardXP(15, 'Fresh air break!'); } },
+                { id: 'dance', action: () => { gameState.dailyStats.caloriesBurned += 25; awardXP(15, 'Dance party!'); } },
+                { id: 'smile', action: () => { awardXP(5, 'Instant happiness'); } }
+            ];
+            
+            const boost = allBoosts.find(b => b.id === boostId);
             if (boost) {
                 boost.action();
                 updateAllUI();
                 saveGameState();
-                showFloatingNotification(`${boost.icon} ${boost.name}!`, 'Feeling better already');
+                
+                const boostNames = {
+                    'energize': '⚡ Energy Boost!',
+                    'calm': '🧘‍♀️ Calm Mind!',
+                    'hydrate': '💧 Hydrated!',
+                    'stretch': '🤸‍♀️ Stretched!',
+                    'gratitude': '🙏 Grateful!',
+                    'fresh_air': '🌬️ Fresh Air!',
+                    'dance': '💃 Dance Break!',
+                    'smile': '😊 Smile!'
+                };
+                
+                showFloatingNotification(boostNames[boostId] || '✨ Boost!', 'Feeling better already');
             }
         }
         
         // Apple Health Integration (iOS only)
         function setupAppleHealth() {
-            if (!window.DeviceMotionEvent && !navigator.userAgent.includes('iPhone')) {
-                showFloatingNotification('iOS Only', 'Apple Health requires iPhone/iPad with iOS Shortcuts');
-                return;
-            }
-            
-            const modal = document.createElement('div');
-            modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
-            modal.innerHTML = `
-                <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-xl max-w-md w-full mx-4">
-                    <h3 class="text-lg font-bold mb-4 text-red-600">🍎 Apple Health Setup</h3>
-                    
-                    <div class="space-y-4">
-                        <div class="bg-red-50 dark:bg-red-900/30 p-4 rounded-lg">
-                            <h4 class="font-medium mb-2">Step 1: Install iOS Shortcut</h4>
-                            <p class="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                                Create an iOS Shortcut to send health data to this app
-                            </p>
-                            <button onclick="openShortcutInstructions()" class="bg-red-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-red-700 w-full">
-                                📱 Setup Instructions
-                            </button>
-                        </div>
-                        
-                        <div class="bg-blue-50 dark:bg-blue-900/30 p-4 rounded-lg">
-                            <h4 class="font-medium mb-2">Step 2: Manual Sync</h4>
-                            <p class="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                                Manually enter your latest health data
-                            </p>
-                            <button onclick="openManualHealthSync()" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700 w-full">
-                                📊 Manual Sync
-                            </button>
-                        </div>
-                    </div>
-                    
-                    <div class="flex justify-center mt-6">
-                        <button onclick="this.closest('.fixed').remove()" class="px-4 py-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
-                            Close
-                        </button>
-                    </div>
-                </div>
-            `;
-            
-            document.body.appendChild(modal);
-        }
-        
-        function openShortcutInstructions() {
-            // This would open instructions for creating iOS Shortcuts integration
-            showFloatingNotification('📱 Shortcuts', 'iOS Shortcuts integration guide would open here');
-        }
-        
-        function openManualHealthSync() {
-            const modal = document.createElement('div');
-            modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
-            modal.innerHTML = `
-                <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-xl max-w-md w-full mx-4">
-                    <h3 class="text-lg font-bold mb-4">📊 Sync Health Data</h3>
-                    
-                    <form id="healthSyncForm" class="space-y-4">
-                        <div>
-                            <label class="block text-sm font-medium mb-1">Steps Today</label>
-                            <input type="number" id="healthStepsInput" class="w-full p-3 border rounded-lg text-base" placeholder="8,500" min="0">
-                        </div>
-                        
-                        <div>
-                            <label class="block text-sm font-medium mb-1">Active Calories</label>
-                            <input type="number" id="healthCaloriesInput" class="w-full p-3 border rounded-lg text-base" placeholder="350" min="0">
-                        </div>
-                        
-                        <div>
-                            <label class="block text-sm font-medium mb-1">Sleep Hours (last night)</label>
-                            <input type="number" id="healthSleepInput" class="w-full p-3 border rounded-lg text-base" placeholder="7.5" min="0" max="24" step="0.1">
-                        </div>
-                        
-                        <div>
-                            <label class="block text-sm font-medium mb-1">Heart Rate (avg)</label>
-                            <input type="number" id="healthHeartRateInput" class="w-full p-3 border rounded-lg text-base" placeholder="72" min="40" max="200">
-                        </div>
-                        
-                        <div class="flex justify-end space-x-3">
-                            <button type="button" onclick="this.closest('.fixed').remove()" class="px-4 py-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
-                                Cancel
-                            </button>
-                            <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                                Sync Data
-                            </button>
-                        </div>
-                    </form>
-                </div>
-            `;
-            
-            document.body.appendChild(modal);
-            
-            document.getElementById('healthSyncForm').addEventListener('submit', function(e) {
-                e.preventDefault();
-                syncHealthData();
-                this.closest('.fixed').remove();
-            });
-        }
-        
-        function syncHealthData() {
-            const steps = parseInt(document.getElementById('healthStepsInput').value) || 0;
-            const calories = parseInt(document.getElementById('healthCaloriesInput').value) || 0;
-            const sleep = parseFloat(document.getElementById('healthSleepInput').value) || 0;
-            const heartRate = parseInt(document.getElementById('healthHeartRateInput').value) || 0;
-            
-            if (steps > 0) gameState.dailyStats.steps = Math.max(gameState.dailyStats.steps, steps);
-            if (calories > 0) gameState.dailyStats.caloriesBurned = Math.max(gameState.dailyStats.caloriesBurned, calories);
-            if (sleep > 0) gameState.dailyStats.sleepHours = sleep;
-            
-            gameState.connections.appleHealth = true;
-            
-            updateAllUI();
-            saveGameState();
-            
-            showFloatingNotification('🍎 Health Synced!', `Updated: ${steps} steps, ${calories} cal, ${sleep}h sleep`);
-            awardXP(30, 'Health data sync bonus!');
-        }
-        
-        // Enhanced Workout System
-        function startDetailedWorkout(type) {
-            const workouts = {
-                cardio: {
-                    name: 'Cardio Blast',
-                    duration: 20,
-                    exercises: ['Jumping Jacks', 'High Knees', 'Burpees', 'Mountain Climbers'],
-                    caloriesPerMin: 8
-                },
-                strength: {
-                    name: 'Strength Circuit',
-                    duration: 30,
-                    exercises: ['Push-ups', 'Squats', 'Lunges', 'Plank'],
-                    caloriesPerMin: 6
-                },
-                hiit: {
-                    name: 'HIIT Session',
-                    duration: 15,
-                    exercises: ['Sprint in Place', 'Burpees', 'Jump Squats', 'Push-ups'],
-                    caloriesPerMin: 10
-                },
-                yoga: {
-                    name: 'Yoga Flow',
-                    duration: 25,
-                    exercises: ['Downward Dog', 'Warrior Pose', 'Child\'s Pose', 'Tree Pose'],
-                    caloriesPerMin: 3
-                },
-                bodyweight: {
-                    name: 'Bodyweight Blast',
-                    duration: 15,
-                    exercises: ['Push-ups', 'Squats', 'Jumping Jacks', 'Plank'],
-                    caloriesPerMin: 7
-                }
-            };
-            
-            const workout = workouts[type];
-            if (!workout) return;
-            
-            workoutState.active = true;
-            workoutState.type = type;
-            workoutState.startTime = Date.now();
-            workoutState.duration = 0;
-            workoutState.caloriesBurned = 0;
-            workoutState.currentWorkout = workout;
-            
-            document.getElementById('workoutSession').classList.remove('hidden');
-            updateWorkoutDisplay();
-            startWorkoutTimer();
-            
-            showFloatingNotification(`💪 ${workout.name} Started!`, `${workout.duration}-minute workout beginning`);
-        }
-        
-        function startWorkoutTimer() {
-            if (workoutState.workoutTimer) {
-                clearInterval(workoutState.workoutTimer);
-            }
-            
-            workoutState.workoutTimer = setInterval(() => {
-                if (!workoutState.active) return;
-                
-                workoutState.duration = Math.floor((Date.now() - workoutState.startTime) / 1000);
-                workoutState.caloriesBurned = Math.floor(workoutState.duration / 60 * workoutState.currentWorkout.caloriesPerMin);
-                updateWorkoutDisplay();
-            }, 1000);
-        }
-        
-        function updateWorkoutDisplay() {
-            const minutes = Math.floor(workoutState.duration / 60);
-            const seconds = workoutState.duration % 60;
-            document.getElementById('workoutTimer').textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-            document.getElementById('caloriesBurning').textContent = workoutState.caloriesBurned;
-            document.getElementById('currentHeartRate').textContent = Math.floor(Math.random() * 40 + 120); // Simulated
-            document.getElementById('workoutIntensity').textContent = workoutState.duration > 300 ? 'High' : workoutState.duration > 180 ? 'Medium' : 'Low';
-        }
-        
-        function pauseWorkout() {
-            workoutState.active = !workoutState.active;
-            if (workoutState.active) {
-                workoutState.startTime = Date.now() - (workoutState.duration * 1000);
-                startWorkoutTimer();
-                showFloatingNotification('▶️ Resumed', 'Workout continuing');
-            } else {
-                clearInterval(workoutState.workoutTimer);
-                showFloatingNotification('⏸️ Paused', 'Take a breather');
-            }
-        }
-        
-        function endWorkout() {
-            if (workoutState.workoutTimer) {
-                clearInterval(workoutState.workoutTimer);
-            }
-            
-            const finalDuration = Math.floor(workoutState.duration / 60);
-            const finalCalories = workoutState.caloriesBurned;
-            
-            // Update stats
-            gameState.dailyStats.workouts++;
-            gameState.dailyStats.caloriesBurned += finalCalories;
-            gameState.dailyStats.steps += Math.floor(finalDuration * 100); // Estimate steps
-            
-            // Award XP based on workout length
-            let xpEarned = 20;
-            if (finalDuration >= 15) xpEarned = 40;
-            if (finalDuration >= 30) xpEarned = 60;
-            if (finalDuration >= 45) xpEarned = 80;
-            
-            awardXP(xpEarned, `${workoutState.currentWorkout.name} completed!`);
-            
-            workoutState.active = false;
-            document.getElementById('workoutSession').classList.add('hidden');
-            
-            updateAllUI();
-            saveGameState();
-            
-            showFloatingNotification('🏁 Workout Complete!', `${finalDuration} min, ${finalCalories} calories, +${xpEarned} XP`);
-        }
-        
-        // Pomodoro Timer Implementation
-        function startPomodoro() {
-            if (isTimerRunning) return;
-            
-            isTimerRunning = true;
-            document.getElementById('timerStart').classList.add('hidden');
-            document.getElementById('timerPause').classList.remove('hidden');
-            document.getElementById('timerStatus').textContent = 'Focus Time';
-            
-            pomodoroTimer = setInterval(() => {
-                timerSeconds--;
-                updateTimerDisplay();
-                
-                if (timerSeconds <= 0) {
-                    completePomodoroSession();
-                }
-            }, 1000);
-            
-            showFloatingNotification('🍅 Focus Started!', '25 minutes of deep work');
-        }
-        
-        function pausePomodoro() {
-            if (!isTimerRunning) return;
-            
-            isTimerRunning = false;
-            clearInterval(pomodoroTimer);
-            
-            document.getElementById('timerStart').classList.remove('hidden');
-            document.getElementById('timerPause').classList.add('hidden');
-            document.getElementById('timerStatus').textContent = 'Paused';
-            
-            showFloatingNotification('⏸️ Paused', 'Take a breath when ready');
-        }
-        
-        function stopPomodoro() {
-            isTimerRunning = false;
-            clearInterval(pomodoroTimer);
-            timerSeconds = 1500; // Reset to 25 minutes
-            
-            document.getElementById('timerStart').classList.remove('hidden');
-            document.getElementById('timerPause').classList.add('hidden');
-            document.getElementById('timerStatus').textContent = 'Focus Session';
-            
-            updateTimerDisplay();
-            showFloatingNotification('⏹️ Stopped', 'Ready for next session');
-        }
-        
-        function completePomodoroSession() {
-            isTimerRunning = false;
-            clearInterval(pomodoroTimer);
-            
-            gameState.dailyStats.pomodoroSessions++;
-            gameState.dailyStats.focusMinutes += 25;
-            
-            awardXP(50, 'Pomodoro session completed!');
-            
-            timerSeconds = 300; // 5 minute break
-            document.getElementById('timerStatus').textContent = 'Break Time';
-            document.getElementById('timerStart').textContent = '▶';
-            
-            updateTimerDisplay();
-            updateAllUI();
-            saveGameState();
-            
-            showFloatingNotification('🎉 Session Complete!', '25 minutes of focus achieved! Take a 5-minute break.');
-            
-            if ('Notification' in window && Notification.permission === 'granted') {
-                new Notification('🍅 Pomodoro Complete!', {
-                    body: 'Great focus session! Time for a 5-minute break.',
-                    icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">🍅</text></svg>'
-                });
-            }
-        }
-        
-        function updateTimerDisplay() {
-            const minutes = Math.floor(timerSeconds / 60);
-            const seconds = timerSeconds % 60;
-            document.getElementById('timerDisplay').textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-            
-            // Update progress circle
-            const totalSeconds = document.getElementById('timerStatus').textContent === 'Break Time' ? 300 : 1500;
-            const progress = 1 - (timerSeconds / totalSeconds);
-            const circumference = 2 * Math.PI * 28; // radius = 28
-            const offset = circumference * (1 - progress);
-            
-            document.getElementById('timerProgress').style.strokeDashoffset = offset;
-        }
-        
-        function hidePomodoro() {
-            document.getElementById('pomodoroWidget').classList.add('hidden');
+            showFloatingNotification('🍎 iOS Feature', 'Apple Health integration available on iOS devices');
         }
         
         // Data Management Implementation
@@ -2847,173 +2403,96 @@
             closeDataModal();
         }
         
-        // Workout Library
-        function openWorkoutLibrary() {
-            const modal = document.createElement('div');
-            modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
-            modal.innerHTML = `
-                <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-                    <h3 class="text-xl font-bold mb-6 text-center">💪 Workout Library</h3>
-                    
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        <div class="bg-red-50 dark:bg-red-900/30 p-4 rounded-lg border border-red-200 dark:border-red-700">
-                            <h4 class="font-bold text-red-700 dark:text-red-300 mb-2">🏃‍♂️ Cardio Workouts</h4>
-                            <div class="space-y-2 text-sm">
-                                <button onclick="startDetailedWorkout('cardio')" class="w-full text-left p-2 bg-white dark:bg-gray-700 rounded hover:bg-gray-50 dark:hover:bg-gray-600">Cardio Blast (20 min)</button>
-                                <button onclick="startDetailedWorkout('hiit')" class="w-full text-left p-2 bg-white dark:bg-gray-700 rounded hover:bg-gray-50 dark:hover:bg-gray-600">HIIT Session (15 min)</button>
-                            </div>
-                        </div>
-                        
-                        <div class="bg-blue-50 dark:bg-blue-900/30 p-4 rounded-lg border border-blue-200 dark:border-blue-700">
-                            <h4 class="font-bold text-blue-700 dark:text-blue-300 mb-2">💪 Strength Training</h4>
-                            <div class="space-y-2 text-sm">
-                                <button onclick="startDetailedWorkout('strength')" class="w-full text-left p-2 bg-white dark:bg-gray-700 rounded hover:bg-gray-50 dark:hover:bg-gray-600">Strength Circuit (30 min)</button>
-                                <button onclick="startDetailedWorkout('bodyweight')" class="w-full text-left p-2 bg-white dark:bg-gray-700 rounded hover:bg-gray-50 dark:hover:bg-gray-600">Bodyweight Blast (15 min)</button>
-                            </div>
-                        </div>
-                        
-                        <div class="bg-green-50 dark:bg-green-900/30 p-4 rounded-lg border border-green-200 dark:border-green-700">
-                            <h4 class="font-bold text-green-700 dark:text-green-300 mb-2">🧘‍♀️ Flexibility & Wellness</h4>
-                            <div class="space-y-2 text-sm">
-                                <button onclick="startDetailedWorkout('yoga')" class="w-full text-left p-2 bg-white dark:bg-gray-700 rounded hover:bg-gray-50 dark:hover:bg-gray-600">Yoga Flow (25 min)</button>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="flex justify-center mt-6">
-                        <button onclick="this.closest('.fixed').remove()" class="px-6 py-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
-                            Close
-                        </button>
-                    </div>
-                </div>
-            `;
+        // Pomodoro Timer Implementation
+        function startPomodoro() {
+            if (isTimerRunning) return;
             
-            document.body.appendChild(modal);
-        }
-        
-        // Body Measurements Tracker
-        function openBodyMeasurements() {
-            const modal = document.createElement('div');
-            modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
-            modal.innerHTML = `
-                <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-xl max-w-md w-full mx-4">
-                    <h3 class="text-lg font-bold mb-4">📏 Body Measurements</h3>
-                    
-                    <div class="space-y-4">
-                        <div class="bg-blue-50 dark:bg-blue-900/30 p-4 rounded-lg">
-                            <h4 class="font-medium mb-2">Current Stats</h4>
-                            <div class="grid grid-cols-2 gap-4 text-sm">
-                                <div>Weight: ${gameState.profile.weight || '--'} kg</div>
-                                <div>Height: ${gameState.profile.height || '--'} cm</div>
-                                <div>BMI: ${gameState.profile.bmi || '--'}</div>
-                                <div>Target: ${gameState.profile.targetWeight || '--'} kg</div>
-                            </div>
-                        </div>
-                        
-                        <div>
-                            <label class="block text-sm font-medium mb-1">Update Weight (kg)</label>
-                            <input type="number" id="newWeight" class="w-full p-3 border rounded-lg text-base" placeholder="${gameState.profile.weight || 'Enter weight'}" step="0.1">
-                        </div>
-                        
-                        <button onclick="updateWeight()" class="w-full bg-blue-600 text-white p-3 rounded-lg hover:bg-blue-700">
-                            📊 Update Weight
-                        </button>
-                    </div>
-                    
-                    <div class="flex justify-center mt-6">
-                        <button onclick="this.closest('.fixed').remove()" class="px-4 py-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
-                            Close
-                        </button>
-                    </div>
-                </div>
-            `;
+            isTimerRunning = true;
+            document.getElementById('timerStart').classList.add('hidden');
+            document.getElementById('timerPause').classList.remove('hidden');
+            document.getElementById('timerStatus').textContent = 'Focus Time';
             
-            document.body.appendChild(modal);
-        }
-        
-        function updateWeight() {
-            const newWeight = parseFloat(document.getElementById('newWeight').value);
-            if (newWeight && newWeight > 0) {
-                gameState.profile.weight = newWeight;
+            pomodoroTimer = setInterval(() => {
+                timerSeconds--;
+                updateTimerDisplay();
                 
-                // Recalculate BMI
-                if (gameState.profile.height) {
-                    const heightM = gameState.profile.height / 100;
-                    gameState.profile.bmi = (newWeight / (heightM * heightM)).toFixed(1);
+                if (timerSeconds <= 0) {
+                    completePomodoroSession();
                 }
-                
-                updateProfileDisplay();
-                saveGameState();
-                
-                showFloatingNotification('📏 Weight Updated!', `New weight: ${newWeight} kg`);
-                awardXP(15, 'Health tracking bonus!');
-                
-                document.querySelector('.fixed').remove();
+            }, 1000);
+            
+            showFloatingNotification('🍅 Focus Started!', '25 minutes of deep work');
+        }
+        
+        function pausePomodoro() {
+            if (!isTimerRunning) return;
+            
+            isTimerRunning = false;
+            clearInterval(pomodoroTimer);
+            
+            document.getElementById('timerStart').classList.remove('hidden');
+            document.getElementById('timerPause').classList.add('hidden');
+            document.getElementById('timerStatus').textContent = 'Paused';
+            
+            showFloatingNotification('⏸️ Paused', 'Take a breath when ready');
+        }
+        
+        function stopPomodoro() {
+            isTimerRunning = false;
+            clearInterval(pomodoroTimer);
+            timerSeconds = 1500; // Reset to 25 minutes
+            
+            document.getElementById('timerStart').classList.remove('hidden');
+            document.getElementById('timerPause').classList.add('hidden');
+            document.getElementById('timerStatus').textContent = 'Focus Session';
+            
+            updateTimerDisplay();
+            showFloatingNotification('⏹️ Stopped', 'Ready for next session');
+        }
+        
+        function completePomodoroSession() {
+            isTimerRunning = false;
+            clearInterval(pomodoroTimer);
+            
+            gameState.dailyStats.pomodoroSessions++;
+            gameState.dailyStats.focusMinutes += 25;
+            
+            awardXP(50, 'Pomodoro session completed!');
+            
+            timerSeconds = 300; // 5 minute break
+            document.getElementById('timerStatus').textContent = 'Break Time';
+            document.getElementById('timerStart').textContent = '▶';
+            
+            updateTimerDisplay();
+            updateAllUI();
+            saveGameState();
+            
+            showFloatingNotification('🎉 Session Complete!', '25 minutes of focus achieved! Take a 5-minute break.');
+            
+            if ('Notification' in window && Notification.permission === 'granted') {
+                new Notification('🍅 Pomodoro Complete!', {
+                    body: 'Great focus session! Time for a 5-minute break.',
+                    icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">🍅</text></svg>'
+                });
             }
         }
         
-        // Progress Photos
-        function openProgressPhotos() {
-            showFloatingNotification('📸 Coming Soon!', 'Progress photo tracking will be added in a future update');
-        }
-        
-        // Recovery Tracker
-        function openRecoveryTracker() {
-            const modal = document.createElement('div');
-            modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
-            modal.innerHTML = `
-                <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-xl max-w-md w-full mx-4">
-                    <h3 class="text-lg font-bold mb-4">🧊 Recovery Tracker</h3>
-                    
-                    <div class="space-y-4">
-                        <div class="bg-cyan-50 dark:bg-cyan-900/30 p-4 rounded-lg">
-                            <h4 class="font-medium mb-2">Today's Recovery</h4>
-                            <div class="grid grid-cols-2 gap-4 text-sm">
-                                <div>Sleep: ${gameState.dailyStats.sleepHours}h</div>
-                                <div>Stress: <span class="text-green-600">Low</span></div>
-                                <div>Energy: <span class="text-orange-600">Medium</span></div>
-                                <div>Hydration: ${gameState.dailyStats.waterGlasses}/8</div>
-                            </div>
-                        </div>
-                        
-                        <div class="space-y-3">
-                            <button onclick="logRecoveryActivity('sleep')" class="w-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 p-3 rounded-lg hover:bg-blue-200">
-                                😴 Log Sleep Quality
-                            </button>
-                            <button onclick="logRecoveryActivity('stress')" class="w-full bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 p-3 rounded-lg hover:bg-red-200">
-                                😰 Rate Stress Level
-                            </button>
-                            <button onclick="logRecoveryActivity('energy')" class="w-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 p-3 rounded-lg hover:bg-green-200">
-                                ⚡ Rate Energy Level
-                            </button>
-                        </div>
-                    </div>
-                    
-                    <div class="flex justify-center mt-6">
-                        <button onclick="this.closest('.fixed').remove()" class="px-4 py-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
-                            Close
-                        </button>
-                    </div>
-                </div>
-            `;
+        function updateTimerDisplay() {
+            const minutes = Math.floor(timerSeconds / 60);
+            const seconds = timerSeconds % 60;
+            document.getElementById('timerDisplay').textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
             
-            document.body.appendChild(modal);
-        }
-        
-        function logRecoveryActivity(type) {
-            const activities = {
-                sleep: 'Sleep quality logged',
-                stress: 'Stress level recorded',
-                energy: 'Energy level noted'
-            };
+            // Update progress circle
+            const totalSeconds = document.getElementById('timerStatus').textContent === 'Break Time' ? 300 : 1500;
+            const progress = 1 - (timerSeconds / totalSeconds);
+            const circumference = 2 * Math.PI * 28; // radius = 28
+            const offset = circumference * (1 - progress);
             
-            awardXP(10, `Recovery tracking: ${activities[type]}`);
-            showFloatingNotification('🧊 Logged!', activities[type]);
+            document.getElementById('timerProgress').style.strokeDashoffset = offset;
         }
         
-        // Goal Setting
-        function openGoalSetting() {
-            showFloatingNotification('🎯 Coming Soon!', 'Advanced goal customization will be added in a future update');
+        function hidePomodoro() {
+            document.getElementById('pomodoroWidget').classList.add('hidden');
         }
         
         // XP and Leveling System
@@ -3053,7 +2532,7 @@
             const neededXP = nextLevelXP - gameState.player.xp;
             
             document.getElementById('playerLevel').textContent = gameState.player.level;
-            document.getElementById('playerXP').textContent = gameState.player.xp;
+            document.getElementById('playerXP').textContent = gameState.player.xp.toLocaleString();
             
             const progressPercent = (progressXP / 100) * 100;
             document.getElementById('xpProgressBar').style.width = `${progressPercent}%`;
