@@ -3971,27 +3971,140 @@
         }
         
         function tryOpenPWA() {
-            // Try various methods to open the PWA
+            // Store the health data in a way that the PWA can access it
+            const healthData = extractHealthDataFromURL();
+            if (healthData) {
+                // Store in localStorage with a timestamp
+                const bridgeData = {
+                    ...healthData,
+                    timestamp: Date.now(),
+                    source: 'ios-shortcut'
+                };
+                localStorage.setItem('lifequest_bridge_data', JSON.stringify(bridgeData));
+            }
+            
+            // Try multiple methods to open the PWA
             const pwaURL = window.location.origin + window.location.pathname;
             
-            // Try custom URL scheme first (if set up)
-            const schemes = [
-                'lifequest://',
-                'life-quest-rpg://',
-                pwaURL
+            // Method 1: Try custom PWA URL scheme (if user has set one up)
+            const customSchemes = [
+                'shortcuts://run-shortcut?name=Life%20Quest%20RPG',
+                'lifequest-rpg://',
+                'lifequestapp://'
             ];
             
-            schemes.forEach((scheme, index) => {
-                setTimeout(() => {
-                    try {
-                        window.open(scheme, '_blank');
-                    } catch (e) {
-                        console.log(`Scheme ${scheme} failed:`, e);
-                    }
-                }, index * 500);
-            });
+            let attemptedSchemes = 0;
             
-            showFloatingNotification('🚀 Opening PWA...', 'Check your home screen or app switcher');
+            function tryNextMethod() {
+                if (attemptedSchemes < customSchemes.length) {
+                    const scheme = customSchemes[attemptedSchemes];
+                    attemptedSchemes++;
+                    
+                    // Try to open custom scheme
+                    const timeout = setTimeout(tryNextMethod, 2000);
+                    
+                    window.addEventListener('beforeunload', () => clearTimeout(timeout));
+                    window.location.href = scheme;
+                } else {
+                    // Fallback: Show instructions to manually open PWA
+                    showPWAInstructions();
+                }
+            }
+            
+            // Start with custom schemes
+            if (customSchemes.length > 0) {
+                tryNextMethod();
+            } else {
+                showPWAInstructions();
+            }
+        }
+        
+        function extractHealthDataFromURL() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const data = {};
+            
+            if (urlParams.get('steps')) data.steps = parseInt(urlParams.get('steps'));
+            if (urlParams.get('sleep')) data.sleep = parseFloat(urlParams.get('sleep'));
+            if (urlParams.get('workouts')) data.workouts = parseInt(urlParams.get('workouts'));
+            if (urlParams.get('heartrate')) data.heartRate = parseInt(urlParams.get('heartrate'));
+            if (urlParams.get('calories')) data.calories = parseInt(urlParams.get('calories'));
+            
+            return Object.keys(data).length > 0 ? data : null;
+        }
+        
+        function showPWAInstructions() {
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+            modal.innerHTML = `
+                <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-xl max-w-md w-full mx-4">
+                    <h3 class="text-xl font-bold mb-4 text-center">📱 Switch to Your PWA</h3>
+                    
+                    <div class="text-center mb-6">
+                        <div class="text-6xl mb-4">🏠</div>
+                        <div class="text-lg font-bold mb-2">Your health data is ready!</div>
+                        <div class="text-sm text-gray-600 dark:text-gray-400">Stored safely for your PWA to access</div>
+                    </div>
+                    
+                    <div class="space-y-4">
+                        <div class="bg-green-50 dark:bg-green-900/30 p-4 rounded-lg">
+                            <h4 class="font-bold mb-2">✅ Quick Steps:</h4>
+                            <ol class="list-decimal list-inside space-y-1 text-sm text-gray-600 dark:text-gray-400">
+                                <li>Press the <strong>Home button</strong> or swipe up</li>
+                                <li>Find your <strong>Life Quest RPG</strong> app icon</li>
+                                <li>Tap to open your PWA</li>
+                                <li>Your health data will appear automatically!</li>
+                            </ol>
+                        </div>
+                        
+                        <div class="bg-blue-50 dark:bg-blue-900/30 p-4 rounded-lg">
+                            <h4 class="font-bold mb-2">🔍 Can't find the app?</h4>
+                            <p class="text-sm text-gray-600 dark:text-gray-400">
+                                Look for the app icon that looks different from Safari - it should have no browser UI when opened.
+                            </p>
+                        </div>
+                        
+                        <div class="bg-yellow-50 dark:bg-yellow-900/30 p-4 rounded-lg">
+                            <h4 class="font-bold mb-2">⚡ Data Stored:</h4>
+                            <div class="text-sm space-y-1">
+                                ${getStoredDataSummary()}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="flex space-x-3 mt-6">
+                        <button onclick="this.closest('.fixed').remove()" class="flex-1 bg-primary text-white py-3 rounded-lg">
+                            Got it! 👍
+                        </button>
+                        <button onclick="copyPWAData()" class="flex-1 bg-gray-500 text-white py-3 rounded-lg">
+                            📋 Copy Data
+                        </button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+        
+        function getStoredDataSummary() {
+            const data = extractHealthDataFromURL();
+            if (!data) return '<div class="text-gray-500">No health data found</div>';
+            
+            const summary = [];
+            if (data.steps) summary.push(`<div>🚶‍♂️ ${data.steps.toLocaleString()} steps</div>`);
+            if (data.sleep) summary.push(`<div>😴 ${data.sleep}h sleep</div>`);
+            if (data.workouts) summary.push(`<div>💪 ${data.workouts} workouts</div>`);
+            if (data.heartRate) summary.push(`<div>❤️ ${data.heartRate} avg HR</div>`);
+            if (data.calories) summary.push(`<div>🔥 ${data.calories} calories</div>`);
+            
+            return summary.join('');
+        }
+        
+        function copyPWAData() {
+            const data = extractHealthDataFromURL();
+            const text = `Health Data from iOS Shortcut:\n${JSON.stringify(data, null, 2)}`;
+            
+            navigator.clipboard.writeText(text).then(() => {
+                showFloatingNotification('📋 Copied!', 'Health data copied to clipboard');
+            });
         }
         
         function copyPWAInstructions() {
