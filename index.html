@@ -3103,19 +3103,31 @@
                             </ol>
                         </div>
                         
-                        <div class="bg-gray-100 dark:bg-gray-700 p-3 rounded-lg">
-                            <div class="text-xs text-gray-500 mb-2">Shortcut Import URL:</div>
-                            <div class="font-mono text-sm bg-white dark:bg-gray-800 p-2 rounded border break-all">
-                                ${getSimpleShortcutCode(type, appURL)}
+                        <div class="space-y-3">
+                            <div class="bg-gray-100 dark:bg-gray-700 p-3 rounded-lg">
+                                <div class="text-xs text-gray-500 mb-2">📋 Quick Setup Template:</div>
+                                <div class="text-sm bg-white dark:bg-gray-800 p-3 rounded border">
+                                    <pre class="whitespace-pre-wrap text-xs">${getSimpleShortcutCode(type, appURL)}</pre>
+                                </div>
+                            </div>
+                            
+                            <div class="bg-blue-50 dark:bg-blue-900/30 p-3 rounded-lg">
+                                <div class="text-xs text-blue-600 dark:text-blue-400 mb-2">🔗 Copy this URL for step 3:</div>
+                                <div class="font-mono text-xs bg-white dark:bg-gray-800 p-2 rounded border break-all select-all">
+                                    ${getShortcutURL(type, appURL)}
+                                </div>
+                                <button onclick="copyToClipboard('${getShortcutURL(type, appURL)}')" class="mt-2 text-xs bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600">
+                                    📋 Copy URL
+                                </button>
                             </div>
                         </div>
                         
                         <div class="flex space-x-3">
-                            <button onclick="copyShortcutCode('${getSimpleShortcutCode(type, appURL)}')" class="flex-1 bg-blue-500 text-white py-2 rounded hover:bg-blue-600">
-                                📋 Copy URL
+                            <button onclick="copyShortcutCode(\`${getSimpleShortcutCode(type, appURL)}\`)" class="flex-1 bg-blue-500 text-white py-2 rounded hover:bg-blue-600">
+                                📋 Copy Template
                             </button>
-                            <button onclick="openShortcutDirect('${type}', '${appURL}')" class="flex-1 bg-green-500 text-white py-2 rounded hover:bg-green-600">
-                                🚀 Open Now
+                            <button onclick="window.open('shortcuts://', '_blank')" class="flex-1 bg-green-500 text-white py-2 rounded hover:bg-green-600">
+                                🚀 Open Shortcuts App
                             </button>
                         </div>
                         
@@ -3137,19 +3149,51 @@
         }
         
         function getSimpleShortcutCode(type, appURL) {
-            // Return a simplified shortcut creation URL
-            const shortcuts = {
-                steps: `shortcuts://create-shortcut?name=LifeQuest%20Steps&action=get-health-sample&type=steps&url=${encodeURIComponent(appURL + '?steps=')}`,
-                workout: `shortcuts://create-shortcut?name=LifeQuest%20Workout&action=find-workouts&url=${encodeURIComponent(appURL + '?workouts=')}`,
-                sleep: `shortcuts://create-shortcut?name=LifeQuest%20Sleep&action=get-health-sample&type=sleep&url=${encodeURIComponent(appURL + '?sleep=')}`,
-                heart: `shortcuts://create-shortcut?name=LifeQuest%20Heart&action=get-health-sample&type=heartrate&url=${encodeURIComponent(appURL + '?heartrate=')}`
+            // Return the actual steps since Apple doesn't allow programmatic shortcut creation
+            const instructions = {
+                steps: `1. Open Shortcuts app → + New Shortcut
+2. Add "Get My Health" action → choose "Step Count" → "Today"  
+3. Add "Open Web Page" action → URL: ${appURL}?steps=[Health Sample Value]
+4. Name it "LifeQuest Steps" and save`,
+                workout: `1. Open Shortcuts app → + New Shortcut
+2. Add "Find My Workouts" action → "Today"
+3. Add "Get Count of Items" action
+4. Add "Open Web Page" action → URL: ${appURL}?workouts=[Count]  
+5. Name it "LifeQuest Workouts" and save`,
+                sleep: `1. Open Shortcuts app → + New Shortcut
+2. Add "Get My Health" action → choose "Sleep Analysis" → "Last Night"
+3. Add "Open Web Page" action → URL: ${appURL}?sleep=[Health Sample Value]
+4. Name it "LifeQuest Sleep" and save`,
+                heart: `1. Open Shortcuts app → + New Shortcut
+2. Add "Get My Health" action → choose "Heart Rate" → "Today"
+3. Add "Calculate Statistics" → "Average"
+4. Add "Open Web Page" action → URL: ${appURL}?heartrate=[Average]
+5. Name it "LifeQuest Heart Rate" and save`
             };
-            return shortcuts[type];
+            return instructions[type];
+        }
+        
+        function getShortcutURL(type, appURL) {
+            const urls = {
+                steps: `${appURL}?steps=[Health Sample Value]`,
+                workout: `${appURL}?workouts=[Count]`,
+                sleep: `${appURL}?sleep=[Health Sample Value]`,
+                heart: `${appURL}?heartrate=[Average]`
+            };
+            return urls[type];
+        }
+        
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                showFloatingNotification('📋 Copied!', 'URL copied to clipboard');
+            }).catch(() => {
+                showFloatingNotification('❌ Copy Failed', 'Please copy manually');
+            });
         }
         
         function copyShortcutCode(url) {
             navigator.clipboard.writeText(url).then(() => {
-                showFloatingNotification('📋 Copied!', 'Now paste in Safari and tap Go');
+                showFloatingNotification('📋 Copied!', 'Template copied to clipboard');
             }).catch(() => {
                 showFloatingNotification('❌ Copy Failed', 'Please copy manually');
             });
@@ -3324,51 +3368,63 @@
             modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
             modal.innerHTML = `
                 <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-xl max-w-3xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-                    <h3 class="text-xl font-bold mb-6 text-center">📋 Detailed Setup Instructions</h3>
+                    <h3 class="text-xl font-bold mb-6 text-center">📋 Simple Setup Instructions</h3>
                     
                     <div class="space-y-6 text-sm">
                         <div class="bg-blue-50 dark:bg-blue-900/30 p-4 rounded-lg">
-                            <h4 class="font-bold mb-3">📱 Installing Shortcuts</h4>
-                            <ol class="list-decimal list-inside space-y-2 text-gray-600 dark:text-gray-400">
-                                <li>Download the shortcut files by clicking the buttons in the previous screen</li>
-                                <li>Open the Files app on your iPhone and locate the downloaded .shortcut files</li>
-                                <li>Tap each file and choose "Import to Shortcuts"</li>
-                                <li>Grant health data permissions when prompted</li>
-                                <li>Test each shortcut manually first to ensure they work</li>
-                            </ol>
+                            <h4 class="font-bold mb-3">📱 Creating Shortcuts (4-5 steps each)</h4>
+                            <div class="space-y-4">
+                                <div class="bg-white dark:bg-gray-700 p-3 rounded">
+                                    <h5 class="font-bold text-blue-600 mb-2">🚶‍♂️ Steps Shortcut:</h5>
+                                    <ol class="list-decimal list-inside space-y-1 text-gray-600 dark:text-gray-400">
+                                        <li>Open Shortcuts app → + New Shortcut</li>
+                                        <li>Add "Get My Health" action → choose "Step Count" → "Today"</li>
+                                        <li>Add "Open Web Page" action → URL: <code class="bg-gray-200 dark:bg-gray-600 px-1 rounded">${window.location.href.split('?')[0]}?steps=[Health Sample Value]</code></li>
+                                        <li>Name it "LifeQuest Steps" and save</li>
+                                    </ol>
+                                </div>
+                                
+                                <div class="bg-white dark:bg-gray-700 p-3 rounded">
+                                    <h5 class="font-bold text-purple-600 mb-2">😴 Sleep Shortcut:</h5>
+                                    <ol class="list-decimal list-inside space-y-1 text-gray-600 dark:text-gray-400">
+                                        <li>Open Shortcuts app → + New Shortcut</li>
+                                        <li>Add "Get My Health" action → choose "Sleep Analysis" → "Last Night"</li>
+                                        <li>Add "Open Web Page" action → URL: <code class="bg-gray-200 dark:bg-gray-600 px-1 rounded">${window.location.href.split('?')[0]}?sleep=[Health Sample Value]</code></li>
+                                        <li>Name it "LifeQuest Sleep" and save</li>
+                                    </ol>
+                                </div>
+                                
+                                <div class="bg-white dark:bg-gray-700 p-3 rounded">
+                                    <h5 class="font-bold text-red-600 mb-2">💪 Workout Shortcut:</h5>
+                                    <ol class="list-decimal list-inside space-y-1 text-gray-600 dark:text-gray-400">
+                                        <li>Open Shortcuts app → + New Shortcut</li>
+                                        <li>Add "Find My Workouts" action → "Today"</li>
+                                        <li>Add "Get Count of Items" action</li>
+                                        <li>Add "Open Web Page" action → URL: <code class="bg-gray-200 dark:bg-gray-600 px-1 rounded">${window.location.href.split('?')[0]}?workouts=[Count]</code></li>
+                                        <li>Name it "LifeQuest Workouts" and save</li>
+                                    </ol>
+                                </div>
+                            </div>
                         </div>
                         
                         <div class="bg-green-50 dark:bg-green-900/30 p-4 rounded-lg">
-                            <h4 class="font-bold mb-3">⏰ Setting Up Automation</h4>
+                            <h4 class="font-bold mb-3">⏰ Setting Up Automation (Optional)</h4>
                             <ol class="list-decimal list-inside space-y-2 text-gray-600 dark:text-gray-400">
-                                <li>Open the Shortcuts app and tap the "Automation" tab</li>
-                                <li>Tap the "+" button to create a new automation</li>
+                                <li>Open Shortcuts app → "Automation" tab → "+" button</li>
                                 <li>Choose "Personal Automation" → "Time of Day"</li>
-                                <li>Set your preferred sync time (recommended: 9 AM daily)</li>
-                                <li>Tap "Next" and then "Add Action"</li>
-                                <li>Search for and add your imported health sync shortcuts</li>
-                                <li>Turn OFF "Ask Before Running" for automatic execution</li>
-                                <li>Tap "Done" to save your automation</li>
+                                <li>Set daily sync time (e.g., 9 AM) → "Next"</li>
+                                <li>Add your health sync shortcuts → Turn OFF "Ask Before Running"</li>
+                                <li>Tap "Done" to save</li>
                             </ol>
                         </div>
                         
-                        <div class="bg-yellow-50 dark:bg-yellow-900/30 p-4 rounded-lg">
-                            <h4 class="font-bold mb-3">🔒 Privacy & Permissions</h4>
+                        <div class="bg-orange-50 dark:bg-orange-900/30 p-4 rounded-lg">
+                            <h4 class="font-bold mb-3">🔧 Quick Tips</h4>
                             <ul class="list-disc list-inside space-y-1 text-gray-600 dark:text-gray-400">
-                                <li>All health data stays on your device</li>
-                                <li>Shortcuts only read from Apple Health - no external servers</li>
-                                <li>Data is sent directly to this web app via URL parameters</li>
-                                <li>You can revoke permissions anytime in Settings → Privacy & Security → Health</li>
-                            </ul>
-                        </div>
-                        
-                        <div class="bg-purple-50 dark:bg-purple-900/30 p-4 rounded-lg">
-                            <h4 class="font-bold mb-3">🔧 Troubleshooting</h4>
-                            <ul class="list-disc list-inside space-y-1 text-gray-600 dark:text-gray-400">
-                                <li><strong>Shortcut doesn't import:</strong> Make sure you have the latest iOS and Shortcuts app</li>
-                                <li><strong>No health data:</strong> Check that the Health app has data for that metric</li>
-                                <li><strong>Automation not running:</strong> Verify "Ask Before Running" is turned OFF</li>
-                                <li><strong>Data not syncing:</strong> Manually run the shortcut to test the connection</li>
+                                <li><strong>Test first:</strong> Run each shortcut manually to verify it works</li>
+                                <li><strong>Health permissions:</strong> Allow access when prompted</li>
+                                <li><strong>URL variables:</strong> The [Health Sample Value] and [Count] parts are automatic - don't change them</li>
+                                <li><strong>Manual sync:</strong> Just run the shortcuts anytime to sync data</li>
                             </ul>
                         </div>
                     </div>
