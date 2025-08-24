@@ -67,7 +67,15 @@
     </style>
 </head>
 <body class="bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white transition-colors duration-300">
-    <div class="min-h-screen">
+    <!-- 🔍 BULLETPROOF DEBUG INFO - ALWAYS VISIBLE -->
+    <div id="bulletproof-debug" class="fixed top-0 left-0 right-0 bg-red-600 text-white p-2 text-center text-xs z-[99999] border-b-4 border-yellow-400">
+        <div class="font-bold">🔍 DEBUG: JS Loading Status...</div>
+        <div>URL: <span id="debug-url">Loading...</span></div>
+        <div>Params: <span id="debug-params">Loading...</span></div>
+        <div>Protocol: <span id="debug-protocol">Loading...</span></div>
+    </div>
+    
+    <div class="min-h-screen" style="margin-top: 60px;">
         <!-- Header -->
         <header class="gradient-bg text-white p-4 shadow-lg">
             <div class="max-w-7xl mx-auto">
@@ -539,57 +547,77 @@
             logStorageInfo();
         }
 
-        // 🔍 PERSISTENT DEBUG INFO (NO CONSOLE NEEDED)
+        // 🔍 SUPER VISIBLE DEBUG PANEL - ALWAYS ON TOP
         function showPersistentDebugInfo() {
+            // Add a HUGE bright debug banner at the very top
+            const bigBanner = document.createElement('div');
+            bigBanner.className = 'fixed top-0 left-0 right-0 bg-red-600 text-white p-2 text-center font-bold z-[9999] text-lg';
+            bigBanner.innerHTML = '🔍 DEBUG MODE ACTIVE - URL INFO BELOW 🔍';
+            document.body.appendChild(bigBanner);
+            
             const urlParams = new URLSearchParams(window.location.search);
             const hasHealthData = urlParams.get('steps') || urlParams.get('sleep') || urlParams.get('workouts');
             const isPWA = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
             
             // ALWAYS show debug panel to troubleshoot webapp:// scheme
             const debugPanel = document.createElement('div');
-            debugPanel.className = 'fixed top-4 left-4 right-4 bg-black text-white p-3 rounded-lg shadow-lg z-50 text-xs border-2 border-yellow-400';
+            debugPanel.className = 'fixed top-12 left-0 right-0 bg-black text-white p-4 shadow-lg z-[9998] text-sm border-4 border-yellow-400';
             debugPanel.innerHTML = `
-                <div class="flex items-center justify-between mb-2">
-                    <div class="font-bold text-yellow-400">🔍 Always-On Debug Panel</div>
-                    <button onclick="this.parentElement.remove()" class="text-white hover:bg-gray-700 px-2 py-1 rounded">✕</button>
+                <div class="flex items-center justify-between mb-3">
+                    <div class="font-bold text-yellow-400 text-lg">🔍 ALWAYS-ON DEBUG PANEL</div>
+                    <button onclick="this.parentElement.remove(); document.querySelector('.fixed.top-0').remove();" class="text-white hover:bg-gray-700 px-3 py-2 rounded font-bold">✕ CLOSE</button>
                 </div>
-                <div class="space-y-1 text-xs">
-                    <div>Full URL: <span class="font-mono text-blue-300">${window.location.href}</span></div>
-                    <div>Protocol: <span class="font-mono text-cyan-400">${window.location.protocol}</span></div>
-                    <div>Host: <span class="font-mono text-cyan-400">${window.location.host}</span></div>
-                    <div>Search: <span class="font-mono text-cyan-400">"${window.location.search}"</span></div>
-                    <div>Hash: <span class="font-mono text-cyan-400">"${window.location.hash}"</span></div>
-                    <div>Steps: <span class="font-mono ${urlParams.get('steps') ? 'text-green-400' : 'text-red-400'}">${urlParams.get('steps') || 'none'}</span></div>
-                    <div>Sleep: <span class="font-mono ${urlParams.get('sleep') ? 'text-green-400' : 'text-red-400'}">${urlParams.get('sleep') || 'none'}</span></div>
-                    <div>Workouts: <span class="font-mono ${urlParams.get('workouts') ? 'text-green-400' : 'text-red-400'}">${urlParams.get('workouts') || 'none'}</span></div>
-                    <div>PWA Mode: <span class="font-mono ${isPWA ? 'text-green-400' : 'text-red-400'}">${isPWA}</span></div>
-                    <div>PWA Param: <span class="font-mono ${urlParams.get('pwa') ? 'text-blue-400' : 'text-gray-400'}">${urlParams.get('pwa') || 'none'}</span></div>
-                    <div>Current Steps: <span class="font-mono text-yellow-400">${gameState.dailyStats.steps}</span></div>
-                    <div>Has Health Data: <span class="font-mono ${hasHealthData ? 'text-green-400' : 'text-red-400'}">${hasHealthData}</span></div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="space-y-2">
+                        <div class="font-bold text-yellow-300">🌐 URL INFORMATION:</div>
+                        <div>Full URL: <span class="font-mono text-blue-300 break-all">${window.location.href}</span></div>
+                        <div>Protocol: <span class="font-mono text-cyan-400 font-bold">${window.location.protocol}</span></div>
+                        <div>Host: <span class="font-mono text-cyan-400">${window.location.host}</span></div>
+                        <div>Search: <span class="font-mono text-cyan-400">"${window.location.search}"</span></div>
+                        <div>Hash: <span class="font-mono text-cyan-400">"${window.location.hash}"</span></div>
+                    </div>
+                    <div class="space-y-2">
+                        <div class="font-bold text-yellow-300">📱 HEALTH DATA:</div>
+                        <div>Steps: <span class="font-mono font-bold ${urlParams.get('steps') ? 'text-green-400' : 'text-red-400'}">${urlParams.get('steps') || 'NONE'}</span></div>
+                        <div>Sleep: <span class="font-mono font-bold ${urlParams.get('sleep') ? 'text-green-400' : 'text-red-400'}">${urlParams.get('sleep') || 'NONE'}</span></div>
+                        <div>Workouts: <span class="font-mono font-bold ${urlParams.get('workouts') ? 'text-green-400' : 'text-red-400'}">${urlParams.get('workouts') || 'NONE'}</span></div>
+                        <div>PWA Mode: <span class="font-mono font-bold ${isPWA ? 'text-green-400' : 'text-red-400'}">${isPWA}</span></div>
+                        <div>Current Steps in App: <span class="font-mono text-yellow-400 font-bold">${gameState.dailyStats.steps}</span></div>
+                    </div>
                 </div>
-                <div class="mt-2 flex space-x-2">
-                    <button onclick="testHealthDataProcessing()" class="bg-green-600 text-white px-2 py-1 rounded text-xs hover:bg-green-700">
-                        🧪 Test Processing
+                <div class="mt-4 flex flex-wrap gap-2">
+                    <button onclick="testHealthDataProcessing()" class="bg-green-600 text-white px-3 py-2 rounded hover:bg-green-700 font-bold">
+                        🧪 TEST PROCESSING
                     </button>
-                    <button onclick="addFakeHealthData()" class="bg-blue-600 text-white px-2 py-1 rounded text-xs hover:bg-blue-700">
-                        📱 Add Test Data
+                    <button onclick="addFakeHealthData()" class="bg-blue-600 text-white px-3 py-2 rounded hover:bg-blue-700 font-bold">
+                        📱 ADD TEST DATA
                     </button>
-                    <button onclick="clearURL()" class="bg-red-600 text-white px-2 py-1 rounded text-xs hover:bg-red-700">
-                        🧹 Clear URL
+                    <button onclick="clearURL()" class="bg-red-600 text-white px-3 py-2 rounded hover:bg-red-700 font-bold">
+                        🧹 CLEAR URL
                     </button>
-                    <button onclick="forceRefreshDebug()" class="bg-purple-600 text-white px-2 py-1 rounded text-xs hover:bg-purple-700">
-                        🔄 Refresh
+                    <button onclick="forceRefreshDebug()" class="bg-purple-600 text-white px-3 py-2 rounded hover:bg-purple-700 font-bold">
+                        🔄 REFRESH DEBUG
                     </button>
+                </div>
+                <div class="mt-3 text-yellow-200 text-sm">
+                    👆 This panel shows EVERYTHING about the current URL and health data detection!
                 </div>
             `;
             document.body.appendChild(debugPanel);
             
-            // Auto-remove after 3 minutes  
+            // Make sure it's visible above everything
+            setTimeout(() => {
+                debugPanel.style.zIndex = '99999';
+                bigBanner.style.zIndex = '99998';
+            }, 100);
+            
+            // Auto-remove after 5 minutes  
             setTimeout(() => {
                 if (debugPanel.parentElement) {
                     debugPanel.remove();
+                    bigBanner.remove();
                 }
-            }, 180000);
+            }, 300000);
         }
 
         // Force refresh debug info
