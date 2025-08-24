@@ -3230,10 +3230,10 @@
             const baseURL = appURL.replace('https://', '').replace('http://', '');
             
             const urls = {
-                steps: `${appURL}?steps=[Health Sample Value]&pwa=1`,
-                workout: `${appURL}?workouts=[Count]&pwa=1`,
-                sleep: `${appURL}?sleep=[Health Sample Value]&pwa=1`,
-                heart: `${appURL}?heartrate=[Average]&pwa=1`
+                steps: `${appURL}?pwa=1&steps=[Health Sample Value]`,
+                workout: `${appURL}?pwa=1&workouts=[Count]`,
+                sleep: `${appURL}?pwa=1&sleep=[Health Sample Value]`,
+                heart: `${appURL}?pwa=1&heartrate=[Average]`
             };
             return urls[type];
         }
