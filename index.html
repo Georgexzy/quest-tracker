@@ -759,7 +759,7 @@
         
         // Enhanced Spotify Integration with PKCE
         let spotifyConfig = {
-            clientId: '74b3057640a247b8beba9a81ccd122bc', // Demo client - users should use their own
+            clientId: '', // Will be set by user
             redirectUri: window.location.origin + window.location.pathname,
             scopes: ['user-read-playbook-state', 'user-modify-playback-state', 'user-read-currently-playing', 'streaming'].join(' ')
         };
@@ -890,6 +890,8 @@
         // ==================== SPOTIFY INTEGRATION WITH PKCE ====================
         
         function showConnectionsModal() {
+            const savedClientId = localStorage.getItem('spotify_client_id') || '';
+            
             const modal = document.createElement('div');
             modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
             modal.innerHTML = `
@@ -909,10 +911,27 @@
                                         </p>
                                     </div>
                                 </div>
-                                <button onclick="connectSpotify(); this.closest('.fixed').remove();" 
+                                <button onclick="setupSpotifyConnection()" 
                                         class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700">
-                                    🔗 Connect Spotify
+                                    🔗 ${spotifyAuth.isConnected ? 'Reconnect' : 'Setup'} Spotify
                                 </button>
+                            </div>
+                            
+                            <!-- Client ID Input -->
+                            <div class="mb-4 p-4 bg-white dark:bg-gray-700 rounded-lg border border-green-300 dark:border-green-600">
+                                <label class="block text-sm font-medium text-green-800 dark:text-green-200 mb-2">
+                                    🔑 Your Spotify Client ID
+                                </label>
+                                <input type="text" id="spotifyClientId" value="${savedClientId}" 
+                                       class="w-full p-3 border rounded-lg text-base font-mono text-sm"
+                                       placeholder="Enter your Spotify App Client ID">
+                                <div class="text-xs text-green-600 dark:text-green-400 mt-2">
+                                    <strong>How to get your Client ID:</strong><br>
+                                    1. Go to <a href="https://developer.spotify.com/dashboard" target="_blank" class="underline">developer.spotify.com/dashboard</a><br>
+                                    2. Click "Create an App" → Name it "Quest Tracker"<br>
+                                    3. Add redirect URI: <code class="bg-gray-100 dark:bg-gray-600 px-1 rounded">${window.location.origin + window.location.pathname}</code><br>
+                                    4. Copy the "Client ID" and paste it above
+                                </div>
                             </div>
                             
                             <div class="text-sm text-green-700 dark:text-green-300 space-y-2">
@@ -926,6 +945,9 @@
                                 <div class="mt-4 p-3 bg-green-200 dark:bg-green-800 rounded-lg">
                                     <div class="text-sm font-medium text-green-800 dark:text-green-200">Music Player Available</div>
                                     <div class="text-xs text-green-600 dark:text-green-400 mt-1">Control your music during workouts and focus sessions</div>
+                                    <button onclick="disconnectSpotify()" class="mt-2 text-xs bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600">
+                                        Disconnect
+                                    </button>
                                 </div>
                             ` : ''}
                         </div>
@@ -1010,6 +1032,36 @@
                 .replace(/\+/g, '-')
                 .replace(/\//g, '_')
                 .replace(/=/g, '');
+        }
+
+        // Setup Spotify Connection with Custom Client ID
+        function setupSpotifyConnection() {
+            const clientIdInput = document.getElementById('spotifyClientId');
+            const clientId = clientIdInput?.value?.trim();
+            
+            if (!clientId) {
+                showFloatingNotification('❌ Client ID Required', 'Please enter your Spotify Client ID first');
+                return;
+            }
+            
+            // Validate Client ID format (32 character hex string)
+            if (!/^[a-f0-9]{32}$/i.test(clientId)) {
+                showFloatingNotification('❌ Invalid Client ID', 'Client ID should be 32 characters (letters and numbers)');
+                return;
+            }
+            
+            // Save Client ID and update config
+            localStorage.setItem('spotify_client_id', clientId);
+            spotifyConfig.clientId = clientId;
+            
+            showFloatingNotification('✅ Client ID Saved!', 'Now connecting to Spotify...');
+            
+            // Close the modal and start OAuth flow
+            document.querySelector('.fixed')?.remove();
+            
+            setTimeout(() => {
+                connectSpotify();
+            }, 1000);
         }
 
         // Spotify PKCE OAuth Flow
