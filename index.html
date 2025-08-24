@@ -3856,26 +3856,79 @@
                                  window.location.search.includes('sleep=') || 
                                  window.location.search.includes('workouts=');
             
-            console.log('📱 PWA Detection:', { 
-                isPWA, 
-                isPWAParam, 
-                hasHealthData,
-                userAgent: navigator.userAgent,
-                displayMode: window.matchMedia('(display-mode: standalone)').matches,
-                standalone: window.navigator.standalone,
-                referrer: document.referrer,
-                url: window.location.href
-            });
+            // Show visible debug info if health data detected
+            if (hasHealthData || isPWAParam) {
+                showVisibleDebugInfo({
+                    isPWA, 
+                    isPWAParam, 
+                    hasHealthData,
+                    displayMode: window.matchMedia('(display-mode: standalone)').matches,
+                    standalone: window.navigator.standalone,
+                    referrer: document.referrer,
+                    url: window.location.href
+                });
+            }
             
             // Show bridge notification if:
             // 1. Has health data AND pwa=1 parameter, OR
             // 2. Has health data and NOT in PWA mode
             if ((hasHealthData && isPWAParam === '1') || (hasHealthData && !isPWA)) {
-                console.log('🌉 Showing PWA bridge notification');
                 showPWABridgeNotification();
             } else if (hasHealthData) {
-                console.log('📱 Health data detected but already in PWA mode');
+                // Show a different notification if already in PWA
+                showFloatingNotification('📱 Health Data Received', 'Data synced successfully in PWA mode');
             }
+        }
+        
+        function showVisibleDebugInfo(debugData) {
+            const debugPanel = document.createElement('div');
+            debugPanel.className = 'fixed bottom-4 left-4 right-4 bg-gray-900 text-white p-4 rounded-lg shadow-lg z-50 text-xs';
+            debugPanel.innerHTML = `
+                <div class="flex items-center justify-between mb-2">
+                    <div class="font-bold">🔍 PWA Debug Info</div>
+                    <button onclick="this.parentElement.parentElement.remove()" class="text-white hover:bg-gray-700 px-2 py-1 rounded">✕</button>
+                </div>
+                <div class="grid grid-cols-2 gap-2 text-xs">
+                    <div>Is PWA: <span class="font-mono ${debugData.isPWA ? 'text-green-400' : 'text-red-400'}">${debugData.isPWA}</span></div>
+                    <div>PWA Param: <span class="font-mono ${debugData.isPWAParam ? 'text-blue-400' : 'text-gray-400'}">${debugData.isPWAParam || 'null'}</span></div>
+                    <div>Has Health Data: <span class="font-mono ${debugData.hasHealthData ? 'text-green-400' : 'text-red-400'}">${debugData.hasHealthData}</span></div>
+                    <div>Display Mode: <span class="font-mono ${debugData.displayMode ? 'text-green-400' : 'text-red-400'}">${debugData.displayMode}</span></div>
+                    <div>Standalone: <span class="font-mono ${debugData.standalone ? 'text-green-400' : 'text-red-400'}">${debugData.standalone}</span></div>
+                    <div>Bridge Trigger: <span class="font-mono ${(debugData.hasHealthData && debugData.isPWAParam === '1') || (debugData.hasHealthData && !debugData.isPWA) ? 'text-green-400' : 'text-red-400'}">${(debugData.hasHealthData && debugData.isPWAParam === '1') || (debugData.hasHealthData && !debugData.isPWA)}</span></div>
+                </div>
+                <div class="mt-2 text-xs text-gray-400">
+                    URL: ${debugData.url}
+                </div>
+                <div class="mt-2 flex space-x-2">
+                    <button onclick="testBridgeNotification()" class="bg-blue-600 text-white px-3 py-1 rounded text-xs hover:bg-blue-700">
+                        🧪 Test Bridge
+                    </button>
+                    <button onclick="simulateHealthData()" class="bg-green-600 text-white px-3 py-1 rounded text-xs hover:bg-green-700">
+                        📱 Add Health Data
+                    </button>
+                </div>
+            `;
+            document.body.appendChild(debugPanel);
+            
+            // Auto-remove after 15 seconds
+            setTimeout(() => {
+                if (debugPanel.parentElement) {
+                    debugPanel.remove();
+                }
+            }, 15000);
+        }
+        
+        function testBridgeNotification() {
+            showPWABridgeNotification();
+            showFloatingNotification('🧪 Test Triggered', 'Bridge notification should appear now');
+        }
+        
+        function simulateHealthData() {
+            // Add health data to URL and reload
+            const currentUrl = new URL(window.location);
+            currentUrl.searchParams.set('steps', '12345');
+            currentUrl.searchParams.set('pwa', '1');
+            window.location.href = currentUrl.toString();
         }
         
         function showPWABridgeNotification() {
