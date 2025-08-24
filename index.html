@@ -540,25 +540,59 @@
         function saveGameState() {
             try {
                 const serializedState = JSON.stringify(gameState);
-                // Since localStorage is not available, use a fallback in-memory storage
-                window.gameStateBackup = gameState;
-                console.log('Game state saved to memory backup');
+                
+                // Save to localStorage (PWA environment)
+                localStorage.setItem('lifeQuestRPG', serializedState);
+                localStorage.setItem('lifeQuestRPG_lastSave', new Date().toISOString());
+                
+                console.log('✅ Game state saved to localStorage:', {
+                    level: gameState.level,
+                    xp: gameState.xp,
+                    steps: gameState.dailyStats.steps,
+                    tasks: gameState.tasks.length,
+                    achievements: gameState.achievements.length
+                });
             } catch (error) {
-                console.error('Failed to save game state:', error);
-                showFloatingNotification('⚠️ Save Error', 'Unable to save progress');
+                console.error('❌ Failed to save game state:', error);
+                showFloatingNotification('⚠️ Save Error', 'Unable to save progress to browser');
+                
+                // Fallback to memory storage
+                window.gameStateBackup = { ...gameState };
+                console.log('📝 Fallback: Saved to memory backup');
             }
         }
 
         function loadGameState() {
             try {
-                // Try to load from memory backup
-                if (window.gameStateBackup) {
-                    gameState = { ...gameState, ...window.gameStateBackup };
-                    console.log('Game state loaded from memory backup');
+                // Try to load from localStorage first
+                const savedState = localStorage.getItem('lifeQuestRPG');
+                const lastSave = localStorage.getItem('lifeQuestRPG_lastSave');
+                
+                if (savedState) {
+                    const parsedState = JSON.parse(savedState);
+                    gameState = { ...gameState, ...parsedState };
+                    
+                    console.log('✅ Game state loaded from localStorage:', {
+                        lastSave: lastSave,
+                        level: gameState.level,
+                        steps: gameState.dailyStats.steps,
+                        tasks: gameState.tasks.length
+                    });
+                    
+                    showFloatingNotification('💾 Progress Loaded', 'Your data has been restored');
+                } else {
+                    console.log('📱 No saved data found, starting fresh');
                 }
             } catch (error) {
-                console.error('Failed to load game state:', error);
-                // Use default state
+                console.error('❌ Failed to load game state:', error);
+                
+                // Try fallback memory storage
+                if (window.gameStateBackup) {
+                    gameState = { ...gameState, ...window.gameStateBackup };
+                    console.log('📝 Loaded from memory backup');
+                } else {
+                    console.log('🆕 Using default game state');
+                }
             }
         }
 
