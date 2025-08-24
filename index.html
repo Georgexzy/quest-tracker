@@ -468,6 +468,9 @@
                 <button class="nav-item w-full text-left p-3 rounded-lg font-medium transition-all" data-view="settings">
                     ⚙️ Settings
                 </button>
+                <button class="nav-item w-full text-left p-3 rounded-lg font-medium transition-all" data-view="debug">
+                    🐛 Debug Console
+                </button>
             </div>
         </div>
     </nav>
@@ -1069,6 +1072,86 @@
                 </div>
             </div>
 
+            <!-- Debug Console View -->
+            <div id="debug-view" class="view hidden">
+                <h2 class="text-2xl font-bold mb-6 text-red-600">🐛 Debug Console</h2>
+                
+                <div class="space-y-6">
+                    <!-- Debug Controls -->
+                    <div class="card p-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-lg font-bold">Console Controls</h3>
+                            <div class="flex space-x-2">
+                                <button onclick="clearDebugLog()" class="bg-red-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-red-600">
+                                    🗑️ Clear Log
+                                </button>
+                                <button onclick="exportDebugLog()" class="bg-blue-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-600">
+                                    📤 Export Log
+                                </button>
+                            </div>
+                        </div>
+                        <p class="text-sm text-gray-600 dark:text-gray-400">
+                            This debug console captures all error messages, warnings, and important logs. Perfect for troubleshooting Spotify connection issues on mobile!
+                        </p>
+                    </div>
+
+                    <!-- System Information -->
+                    <div class="card p-6">
+                        <h3 class="text-lg font-bold mb-4">📱 System Information</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                            <div>
+                                <div class="font-medium">User Agent:</div>
+                                <div class="text-gray-600 dark:text-gray-400 break-all" id="debugUserAgent"></div>
+                            </div>
+                            <div>
+                                <div class="font-medium">Screen Size:</div>
+                                <div class="text-gray-600 dark:text-gray-400" id="debugScreenSize"></div>
+                            </div>
+                            <div>
+                                <div class="font-medium">Current URL:</div>
+                                <div class="text-gray-600 dark:text-gray-400 break-all" id="debugCurrentURL"></div>
+                            </div>
+                            <div>
+                                <div class="font-medium">Spotify Client ID:</div>
+                                <div class="text-gray-600 dark:text-gray-400" id="debugSpotifyClientId"></div>
+                            </div>
+                            <div>
+                                <div class="font-medium">Spotify Connected:</div>
+                                <div class="text-gray-600 dark:text-gray-400" id="debugSpotifyStatus"></div>
+                            </div>
+                            <div>
+                                <div class="font-medium">Local Storage:</div>
+                                <div class="text-gray-600 dark:text-gray-400" id="debugLocalStorage"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Debug Log -->
+                    <div class="card p-6">
+                        <h3 class="text-lg font-bold mb-4">📋 Debug Log</h3>
+                        <div id="debugLog" class="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg h-96 overflow-y-auto font-mono text-sm">
+                            <div class="text-gray-500 dark:text-gray-400">Debug console initialized. Logs will appear here...</div>
+                        </div>
+                    </div>
+
+                    <!-- Test Spotify Connection -->
+                    <div class="card p-6">
+                        <h3 class="text-lg font-bold mb-4">🎵 Spotify Connection Test</h3>
+                        <div class="space-y-4">
+                            <button onclick="testSpotifyConnection()" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700">
+                                🔗 Test Spotify Connection
+                            </button>
+                            <button onclick="showConnectionsModal()" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+                                ⚙️ Open Spotify Setup
+                            </button>
+                            <button onclick="logSpotifyDebugInfo()" class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700">
+                                📊 Log Spotify Debug Info
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Settings View -->
             <div id="settings-view" class="view hidden">
                 <h2 class="text-2xl font-bold mb-6">⚙️ Settings</h2>
@@ -1327,7 +1410,10 @@
                                     1. Go to <a href="https://developer.spotify.com/dashboard" target="_blank" class="underline">developer.spotify.com/dashboard</a><br>
                                     2. Click "Create an App" → Name it "Quest Tracker"<br>
                                     3. Add redirect URI: <code class="bg-gray-100 dark:bg-gray-600 px-1 rounded">${window.location.origin + window.location.pathname}</code><br>
-                                    4. Copy the "Client ID" and paste it above
+                                    4. Copy the "Client ID" and paste it above<br><br>
+                                    <strong>⚠️ Critical: The redirect URI must match EXACTLY!</strong><br>
+                                    Current URL: <code class="bg-yellow-100 dark:bg-yellow-900 px-1 rounded text-xs">${window.location.href}</code><br>
+                                    <span class="text-red-600 dark:text-red-400">If you're seeing errors, check the browser console (F12) for details.</span>
                                 </div>
                             </div>
                             
@@ -1441,15 +1527,18 @@
                 return;
             }
             
-            // Validate Client ID format (32 character hex string)
-            if (!/^[a-f0-9]{32}$/i.test(clientId)) {
-                showFloatingNotification('❌ Invalid Client ID', 'Client ID should be 32 characters (letters and numbers)');
+            // Validate Client ID format (32 characters, letters and numbers)
+            if (!/^[a-zA-Z0-9]{32}$/.test(clientId)) {
+                showFloatingNotification('❌ Invalid Client ID', `Client ID should be exactly 32 characters. Yours is ${clientId.length} characters.`);
                 return;
             }
             
             // Save Client ID and update config
             localStorage.setItem('spotify_client_id', clientId);
             spotifyConfig.clientId = clientId;
+            
+            console.log('✅ Client ID saved:', clientId);
+            console.log('🔗 Redirect URI will be:', spotifyConfig.redirectUri);
             
             showFloatingNotification('✅ Client ID Saved!', 'Now connecting to Spotify...');
             
@@ -1483,12 +1572,20 @@
                 authUrl.searchParams.append('code_challenge', codeChallenge);
                 authUrl.searchParams.append('code_challenge_method', 'S256');
                 
+                console.log('🔗 Authorization URL:', authUrl.toString());
+                console.log('📝 Parameters being sent:');
+                console.log('  - Client ID:', spotifyConfig.clientId);
+                console.log('  - Redirect URI:', spotifyConfig.redirectUri);
+                console.log('  - Scopes:', spotifyConfig.scopes);
+                console.log('  - State:', state);
+                console.log('  - Code Challenge:', codeChallenge);
+                
                 // Redirect to Spotify authorization
                 window.location.href = authUrl.toString();
                 
             } catch (error) {
                 console.error('❌ Spotify connection error:', error);
-                showFloatingNotification('Connection Error', 'Failed to connect to Spotify');
+                showFloatingNotification('Connection Error', `Failed to connect to Spotify: ${error.message}`);
             }
         }
 
@@ -3250,6 +3347,227 @@
             
             const name = gameState.profile.name || 'Champion';
             document.getElementById('streakText').textContent = `Day ${gameState.player.streak || 1} of your wellness journey, ${name}!`;
+        }
+
+        // ==================== DEBUG CONSOLE FUNCTIONALITY ====================
+        
+        // Debug log storage
+        let debugLogs = [];
+        
+        // Override console methods to capture logs
+        const originalConsole = {
+            log: console.log,
+            error: console.error,
+            warn: console.warn,
+            info: console.info
+        };
+        
+        function captureConsoleOutput() {
+            console.log = function(...args) {
+                originalConsole.log.apply(console, args);
+                addDebugLog('LOG', args.join(' '));
+            };
+            
+            console.error = function(...args) {
+                originalConsole.error.apply(console, args);
+                addDebugLog('ERROR', args.join(' '));
+            };
+            
+            console.warn = function(...args) {
+                originalConsole.warn.apply(console, args);
+                addDebugLog('WARN', args.join(' '));
+            };
+            
+            console.info = function(...args) {
+                originalConsole.info.apply(console, args);
+                addDebugLog('INFO', args.join(' '));
+            };
+        }
+        
+        function addDebugLog(level, message) {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = {
+                timestamp,
+                level,
+                message: String(message),
+                id: Date.now() + Math.random()
+            };
+            
+            debugLogs.push(logEntry);
+            
+            // Keep only last 1000 logs
+            if (debugLogs.length > 1000) {
+                debugLogs = debugLogs.slice(-1000);
+            }
+            
+            updateDebugLogDisplay();
+        }
+        
+        function updateDebugLogDisplay() {
+            const debugLogElement = document.getElementById('debugLog');
+            if (!debugLogElement) return;
+            
+            const logHTML = debugLogs.slice(-50).map(log => {
+                const levelColor = {
+                    'LOG': 'text-gray-800 dark:text-gray-200',
+                    'INFO': 'text-blue-600 dark:text-blue-400',
+                    'WARN': 'text-yellow-600 dark:text-yellow-400',
+                    'ERROR': 'text-red-600 dark:text-red-400'
+                };
+                
+                return `
+                    <div class="border-b border-gray-200 dark:border-gray-700 pb-2 mb-2">
+                        <div class="flex items-center justify-between text-xs">
+                            <span class="font-mono ${levelColor[log.level] || 'text-gray-600'}">[${log.level}]</span>
+                            <span class="text-gray-500">${log.timestamp}</span>
+                        </div>
+                        <div class="text-sm mt-1 break-words">${escapeHtml(log.message)}</div>
+                    </div>
+                `;
+            }).join('');
+            
+            debugLogElement.innerHTML = logHTML || '<div class="text-gray-500 dark:text-gray-400">No logs yet...</div>';
+            
+            // Auto-scroll to bottom
+            debugLogElement.scrollTop = debugLogElement.scrollHeight;
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        function clearDebugLog() {
+            debugLogs = [];
+            updateDebugLogDisplay();
+            addDebugLog('INFO', 'Debug log cleared');
+        }
+        
+        function exportDebugLog() {
+            const exportData = {
+                exportDate: new Date().toISOString(),
+                userAgent: navigator.userAgent,
+                url: window.location.href,
+                appVersion: APP_VERSION,
+                logs: debugLogs
+            };
+            
+            const dataStr = JSON.stringify(exportData, null, 2);
+            const dataBlob = new Blob([dataStr], { type: 'application/json' });
+            
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(dataBlob);
+            link.download = `quest-tracker-debug-${new Date().toISOString().split('T')[0]}.json`;
+            link.click();
+            
+            addDebugLog('INFO', 'Debug log exported to file');
+        }
+        
+        function updateDebugSystemInfo() {
+            // Update system information
+            if (document.getElementById('debugUserAgent')) {
+                document.getElementById('debugUserAgent').textContent = navigator.userAgent;
+                document.getElementById('debugScreenSize').textContent = `${screen.width}x${screen.height} (${window.innerWidth}x${window.innerHeight})`;
+                document.getElementById('debugCurrentURL').textContent = window.location.href;
+                document.getElementById('debugSpotifyClientId').textContent = localStorage.getItem('spotify_client_id') || 'Not set';
+                document.getElementById('debugSpotifyStatus').textContent = spotifyAuth.isConnected ? 'Connected' : 'Not connected';
+                
+                // Check localStorage availability
+                try {
+                    localStorage.setItem('test', 'test');
+                    localStorage.removeItem('test');
+                    document.getElementById('debugLocalStorage').textContent = 'Available';
+                } catch (e) {
+                    document.getElementById('debugLocalStorage').textContent = 'Blocked or full';
+                }
+            }
+        }
+        
+        function testSpotifyConnection() {
+            addDebugLog('INFO', '🎵 Testing Spotify connection...');
+            
+            const clientId = localStorage.getItem('spotify_client_id');
+            if (!clientId) {
+                addDebugLog('ERROR', 'No Spotify Client ID found in localStorage');
+                return;
+            }
+            
+            addDebugLog('INFO', `Client ID found: ${clientId}`);
+            addDebugLog('INFO', `Client ID length: ${clientId.length} characters`);
+            addDebugLog('INFO', `Redirect URI: ${spotifyConfig.redirectUri}`);
+            addDebugLog('INFO', `Current URL: ${window.location.href}`);
+            addDebugLog('INFO', `Spotify Auth State: ${JSON.stringify(spotifyAuth, null, 2)}`);
+            
+            // Test Client ID format
+            if (!/^[a-zA-Z0-9]{32}$/.test(clientId)) {
+                addDebugLog('ERROR', 'Invalid Client ID format - should be exactly 32 alphanumeric characters');
+            } else {
+                addDebugLog('INFO', 'Client ID format is valid');
+            }
+            
+            // Test URL parameters for OAuth callback
+            const urlParams = new URLSearchParams(window.location.search);
+            const code = urlParams.get('code');
+            const state = urlParams.get('state');
+            const error = urlParams.get('error');
+            
+            if (code) {
+                addDebugLog('INFO', `OAuth code found: ${code.substring(0, 10)}...`);
+            }
+            if (state) {
+                addDebugLog('INFO', `OAuth state found: ${state.substring(0, 10)}...`);
+            }
+            if (error) {
+                addDebugLog('ERROR', `OAuth error found: ${error}`);
+            }
+            
+            addDebugLog('INFO', 'Spotify connection test completed - check logs above for details');
+        }
+        
+        function logSpotifyDebugInfo() {
+            addDebugLog('INFO', '📊 Logging detailed Spotify debug information...');
+            
+            // Spotify config
+            addDebugLog('INFO', `Spotify Config: ${JSON.stringify(spotifyConfig, null, 2)}`);
+            
+            // Spotify auth state
+            addDebugLog('INFO', `Spotify Auth: ${JSON.stringify(spotifyAuth, null, 2)}`);
+            
+            // Browser capabilities
+            addDebugLog('INFO', `Crypto API available: ${!!window.crypto}`);
+            addDebugLog('INFO', `Fetch API available: ${!!window.fetch}`);
+            addDebugLog('INFO', `URL API available: ${!!window.URL}`);
+            addDebugLog('INFO', `SessionStorage available: ${!!window.sessionStorage}`);
+            
+            // Spotify Web Playback SDK
+            addDebugLog('INFO', `Spotify SDK loaded: ${!!window.Spotify}`);
+            addDebugLog('INFO', `Spotify Player instance: ${!!spotifyPlayer}`);
+            addDebugLog('INFO', `Spotify Device ID: ${spotifyDeviceId || 'None'}`);
+            
+            // Network test
+            fetch('https://accounts.spotify.com/api/token', { method: 'HEAD' })
+                .then(() => {
+                    addDebugLog('INFO', 'Spotify API endpoint is reachable');
+                })
+                .catch(error => {
+                    addDebugLog('ERROR', `Spotify API endpoint test failed: ${error.message}`);
+                });
+            
+            addDebugLog('INFO', 'Spotify debug info logging completed');
+        }
+        
+        // Initialize debug console
+        function initializeDebugConsole() {
+            captureConsoleOutput();
+            addDebugLog('INFO', 'Debug console initialized');
+            addDebugLog('INFO', `App version: ${APP_VERSION}`);
+            addDebugLog('INFO', `User Agent: ${navigator.userAgent}`);
+            addDebugLog('INFO', `Screen: ${screen.width}x${screen.height}`);
+            addDebugLog('INFO', `Viewport: ${window.innerWidth}x${window.innerHeight}`);
+            
+            // Update system info when debug view is shown
+            setInterval(updateDebugSystemInfo, 5000);
         }
 
         document.addEventListener('DOMContentLoaded', initializeApp);
