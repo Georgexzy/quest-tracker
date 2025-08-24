@@ -3691,9 +3691,16 @@
             let xpAwarded = 0;
             let updates = [];
             
-            if (data.steps && data.steps > gameState.dailyStats.steps) {
+            // Always update with health data (it's the authoritative source)
+            if (data.steps && data.steps > 0) {
+                const oldSteps = gameState.dailyStats.steps;
                 gameState.dailyStats.steps = data.steps;
-                xpAwarded += Math.floor(data.steps / 100);
+                
+                // Only award XP if steps increased
+                if (data.steps > oldSteps) {
+                    xpAwarded += Math.floor((data.steps - oldSteps) / 100);
+                }
+                
                 updates.push(`${data.steps.toLocaleString()} steps`);
                 
                 if (data.steps >= 8000) {
@@ -3701,9 +3708,15 @@
                 }
             }
             
-            if (data.sleep && data.sleep > gameState.dailyStats.sleepHours) {
+            if (data.sleep && data.sleep > 0) {
+                const oldSleep = gameState.dailyStats.sleepHours;
                 gameState.dailyStats.sleepHours = data.sleep;
-                xpAwarded += data.sleep * 10;
+                
+                // Only award XP if sleep increased
+                if (data.sleep > oldSleep) {
+                    xpAwarded += (data.sleep - oldSleep) * 10;
+                }
+                
                 updates.push(`${data.sleep}h sleep`);
                 
                 if (data.sleep >= 8) {
@@ -3711,9 +3724,15 @@
                 }
             }
             
-            if (data.workouts && data.workouts > gameState.dailyStats.workouts) {
+            if (data.workouts && data.workouts >= 0) {
+                const oldWorkouts = gameState.dailyStats.workouts;
                 gameState.dailyStats.workouts = data.workouts;
-                xpAwarded += data.workouts * 50;
+                
+                // Only award XP if workouts increased
+                if (data.workouts > oldWorkouts) {
+                    xpAwarded += (data.workouts - oldWorkouts) * 50;
+                }
+                
                 updates.push(`${data.workouts} workouts`);
             }
             
@@ -3723,22 +3742,25 @@
                 updates.push(`${data.calories} calories burned`);
             }
             
-            if (data.heartRate) {
+            if (data.heartRate && data.heartRate > 0) {
                 // Store heart rate data (could be used for AI insights)
                 gameState.dailyStats.avgHeartRate = data.heartRate;
                 updates.push(`${data.heartRate} avg HR`);
             }
             
-            if (updates.length > 0) {
-                updateAllUI();
-                saveGameState();
-                awardXP(xpAwarded, 'Apple Health data synced! 📱');
-                showFloatingNotification('📱 Health Synced!', updates.join(', '));
-                
-                // Award achievement for first Apple Health sync
-                if (!gameState.achievements.find(a => a.title.includes('Apple Health'))) {
-                    addAchievement('📱 Apple Health Connected', 'Successfully synced Apple Health data!', 100);
-                }
+            // Always update UI and show notification when health data is received
+            updateAllUI();
+            saveGameState();
+            
+            if (xpAwarded > 0) {
+                awardXP(xpAwarded, 'Apple Health progress! 📱');
+            }
+            
+            showFloatingNotification('📱 Health Synced!', updates.join(', '));
+            
+            // Award achievement for first Apple Health sync
+            if (!gameState.achievements.find(a => a.title.includes('Apple Health'))) {
+                addAchievement('📱 Apple Health Connected', 'Successfully synced Apple Health data!', 100);
             }
         }
         
