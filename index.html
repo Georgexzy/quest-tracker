@@ -3149,26 +3149,44 @@
         }
         
         function getSimpleShortcutCode(type, appURL) {
-            // Return the actual steps since Apple doesn't allow programmatic shortcut creation
+            // Return the actual steps with correct iOS Shortcuts terminology
             const instructions = {
-                steps: `1. Open Shortcuts app → + New Shortcut
-2. Add "Get My Health" action → choose "Step Count" → "Today"  
-3. Add "Open Web Page" action → URL: ${appURL}?steps=[Health Sample Value]
-4. Name it "LifeQuest Steps" and save`,
-                workout: `1. Open Shortcuts app → + New Shortcut
-2. Add "Find My Workouts" action → "Today"
-3. Add "Get Count of Items" action
-4. Add "Open Web Page" action → URL: ${appURL}?workouts=[Count]  
-5. Name it "LifeQuest Workouts" and save`,
-                sleep: `1. Open Shortcuts app → + New Shortcut
-2. Add "Get My Health" action → choose "Sleep Analysis" → "Last Night"
-3. Add "Open Web Page" action → URL: ${appURL}?sleep=[Health Sample Value]
-4. Name it "LifeQuest Sleep" and save`,
-                heart: `1. Open Shortcuts app → + New Shortcut
-2. Add "Get My Health" action → choose "Heart Rate" → "Today"
-3. Add "Calculate Statistics" → "Average"
-4. Add "Open Web Page" action → URL: ${appURL}?heartrate=[Average]
-5. Name it "LifeQuest Heart Rate" and save`
+                steps: `1. Open Shortcuts app → + (top right)
+2. Search "Get Health Sample" → Add it
+3. Tap "Health Sample Type" → select "Steps"
+4. Tap "Time Period" → select "Today"
+5. Search "Open URLs" → Add it
+6. In URL field, paste: ${appURL}?steps=
+7. Tap after "steps=" → Insert Variable → "Health Sample"
+8. Tap "Done" → Name it "LifeQuest Steps"`,
+                workout: `1. Open Shortcuts app → + (top right)
+2. Search "Find Health Samples" → Add it
+3. Set "Sample Type" to "Workouts"
+4. Set "Time Period" to "Today"
+5. Search "Get Numbers from Input" → Add it
+6. Set "Get" to "Count"
+7. Search "Open URLs" → Add it
+8. In URL field, paste: ${appURL}?workouts=
+9. Tap after "workouts=" → Insert Variable → "Count"
+10. Tap "Done" → Name it "LifeQuest Workouts"`,
+                sleep: `1. Open Shortcuts app → + (top right)
+2. Search "Get Health Sample" → Add it
+3. Tap "Health Sample Type" → select "Sleep Analysis"
+4. Set "Time Period" to "Last Night"
+5. Search "Open URLs" → Add it
+6. In URL field, paste: ${appURL}?sleep=
+7. Tap after "sleep=" → Insert Variable → "Health Sample"
+8. Tap "Done" → Name it "LifeQuest Sleep"`,
+                heart: `1. Open Shortcuts app → + (top right)
+2. Search "Get Health Sample" → Add it
+3. Set "Health Sample Type" to "Heart Rate"
+4. Set "Time Period" to "Today"
+5. Search "Calculate Statistics" → Add it
+6. Set "Operation" to "Average"
+7. Search "Open URLs" → Add it
+8. In URL field, paste: ${appURL}?heartrate=
+9. Tap after "heartrate=" → Insert Variable → "Average"
+10. Tap "Done" → Name it "LifeQuest Heart Rate"`
             };
             return instructions[type];
         }
