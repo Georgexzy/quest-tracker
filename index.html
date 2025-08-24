@@ -3852,12 +3852,29 @@
                          document.referrer.includes('android-app://');
             
             const isPWAParam = new URLSearchParams(window.location.search).get('pwa');
+            const hasHealthData = window.location.search.includes('steps=') || 
+                                 window.location.search.includes('sleep=') || 
+                                 window.location.search.includes('workouts=');
             
-            console.log('📱 PWA Detection:', { isPWA, isPWAParam, referrer: document.referrer });
+            console.log('📱 PWA Detection:', { 
+                isPWA, 
+                isPWAParam, 
+                hasHealthData,
+                userAgent: navigator.userAgent,
+                displayMode: window.matchMedia('(display-mode: standalone)').matches,
+                standalone: window.navigator.standalone,
+                referrer: document.referrer,
+                url: window.location.href
+            });
             
-            if (!isPWA && isPWAParam === '1') {
-                // Running in Safari but intended for PWA
+            // Show bridge notification if:
+            // 1. Has health data AND pwa=1 parameter, OR
+            // 2. Has health data and NOT in PWA mode
+            if ((hasHealthData && isPWAParam === '1') || (hasHealthData && !isPWA)) {
+                console.log('🌉 Showing PWA bridge notification');
                 showPWABridgeNotification();
+            } else if (hasHealthData) {
+                console.log('📱 Health data detected but already in PWA mode');
             }
         }
         
