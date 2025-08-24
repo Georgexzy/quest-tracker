@@ -3830,15 +3830,19 @@
             
             if (Object.keys(healthData).length > 0) {
                 console.log('📱 Processing health data from URL:', healthData);
+                
+                // Show debug panel BEFORE processing data
+                tryRedirectToPWA();
+                
+                // Then process the health data
                 processHealthData(healthData);
                 updateSyncStats();
                 
-                // Try to switch back to PWA if running in Safari
-                tryRedirectToPWA();
-                
-                // Clean URL to avoid reprocessing
-                const newUrl = window.location.pathname;
-                window.history.replaceState({}, document.title, newUrl);
+                // Clean URL to avoid reprocessing (delay this)
+                setTimeout(() => {
+                    const newUrl = window.location.pathname;
+                    window.history.replaceState({}, document.title, newUrl);
+                }, 3000); // Wait 3 seconds before cleaning URL
                 
                 return true;
             }
