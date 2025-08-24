@@ -3780,11 +3780,8 @@
             }
         }
         
-        // Listen for health data from iOS shortcuts
-        window.addEventListener('load', () => {
-            initializeApp();
-            
-            // Check URL parameters for health data from shortcuts
+        // Function to check and process URL parameters
+        function checkForHealthData() {
             const urlParams = new URLSearchParams(window.location.search);
             const healthData = {};
             
@@ -3795,14 +3792,43 @@
             if (urlParams.get('calories')) healthData.calories = parseInt(urlParams.get('calories'));
             
             if (Object.keys(healthData).length > 0) {
+                console.log('📱 Processing health data from URL:', healthData);
                 processHealthData(healthData);
                 updateSyncStats();
                 
-                // Clean URL to avoid reprocessing on refresh
+                // Clean URL to avoid reprocessing
                 const newUrl = window.location.pathname;
                 window.history.replaceState({}, document.title, newUrl);
+                
+                return true;
             }
+            return false;
+        }
+
+        // Listen for health data from iOS shortcuts
+        window.addEventListener('load', () => {
+            initializeApp();
+            checkForHealthData();
         });
+
+        // Also check when the page gets focus (when switching back from shortcuts)
+        window.addEventListener('focus', () => {
+            console.log('📱 Page focused, checking for health data...');
+            checkForHealthData();
+        });
+
+        // Listen for URL changes (in case the URL updates without reload)
+        window.addEventListener('popstate', () => {
+            console.log('📱 URL changed, checking for health data...');
+            checkForHealthData();
+        });
+
+        // Also check periodically for URL changes (fallback)
+        setInterval(() => {
+            if (window.location.search) {
+                checkForHealthData();
+            }
+        }, 2000);
 
         // 🧭 TAB NAVIGATION
         function switchTab(tabName) {
