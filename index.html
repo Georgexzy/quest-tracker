@@ -3983,40 +3983,81 @@
                 localStorage.setItem('lifequest_bridge_data', JSON.stringify(bridgeData));
             }
             
-            // Try multiple methods to open the PWA
-            const pwaURL = window.location.origin + window.location.pathname;
+            // Get current URL components for PWA schemes
+            const currentURL = new URL(window.location.href);
+            const domain = currentURL.hostname;
+            const path = currentURL.pathname;
             
-            // Method 1: Try custom PWA URL scheme (if user has set one up)
-            const customSchemes = [
+            // Method 1: Direct PWA webapp:// scheme (iOS native PWA opener)
+            const webappScheme = `webapp://${domain}${path}`;
+            
+            // Method 2: Alternative PWA schemes to try
+            const pwaSchemes = [
+                webappScheme,
+                `pwa://${domain}${path}`,
+                `web+app://${domain}${path}`
+            ];
+            
+            // Method 3: Custom shortcuts-based schemes
+            const shortcutSchemes = [
                 'shortcuts://run-shortcut?name=Life%20Quest%20RPG',
                 'lifequest-rpg://',
                 'lifequestapp://'
             ];
             
+            // Combine all schemes to try
+            const allSchemes = [...pwaSchemes, ...shortcutSchemes];
+            
             let attemptedSchemes = 0;
+            let success = false;
             
             function tryNextMethod() {
-                if (attemptedSchemes < customSchemes.length) {
-                    const scheme = customSchemes[attemptedSchemes];
+                if (attemptedSchemes < allSchemes.length && !success) {
+                    const scheme = allSchemes[attemptedSchemes];
                     attemptedSchemes++;
                     
-                    // Try to open custom scheme
-                    const timeout = setTimeout(tryNextMethod, 2000);
+                    console.log(`🚀 Attempting to open PWA with: ${scheme}`);
                     
-                    window.addEventListener('beforeunload', () => clearTimeout(timeout));
-                    window.location.href = scheme;
-                } else {
-                    // Fallback: Show instructions to manually open PWA
+                    // Create a hidden iframe to test the scheme
+                    const testFrame = document.createElement('iframe');
+                    testFrame.style.display = 'none';
+                    testFrame.src = scheme;
+                    document.body.appendChild(testFrame);
+                    
+                    // Try direct navigation as backup
+                    const timeout = setTimeout(() => {
+                        if (!success) {
+                            try {
+                                window.location.href = scheme;
+                            } catch (e) {
+                                console.log(`Failed to open: ${scheme}`, e);
+                            }
+                            // Clean up and try next method
+                            testFrame.remove();
+                            tryNextMethod();
+                        }
+                    }, 2000);
+                    
+                    // Listen for successful navigation away from page
+                    window.addEventListener('beforeunload', () => {
+                        success = true;
+                        clearTimeout(timeout);
+                        testFrame.remove();
+                        showFloatingNotification('🚀 Opening PWA...', 'Switching to your installed app');
+                    }, { once: true });
+                    
+                } else if (!success) {
+                    // All methods failed, show manual instructions
+                    console.log('🔄 All PWA opening methods failed, showing manual instructions');
                     showPWAInstructions();
                 }
             }
             
-            // Start with custom schemes
-            if (customSchemes.length > 0) {
-                tryNextMethod();
-            } else {
-                showPWAInstructions();
-            }
+            // Show immediate feedback
+            showFloatingNotification('🚀 Opening PWA...', 'Attempting to open your installed app');
+            
+            // Start trying schemes
+            tryNextMethod();
         }
         
         function extractHealthDataFromURL() {
