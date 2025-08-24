@@ -3819,32 +3819,77 @@
         
         // Function to check and process URL parameters
         function checkForHealthData() {
+            console.log('🔍 Checking for health data...');
+            console.log('Current URL:', window.location.href);
+            console.log('Search params:', window.location.search);
+            
             const urlParams = new URLSearchParams(window.location.search);
             const healthData = {};
             
+            // Check URL parameters
             if (urlParams.get('steps')) healthData.steps = parseInt(urlParams.get('steps'));
             if (urlParams.get('sleep')) healthData.sleep = parseFloat(urlParams.get('sleep'));
             if (urlParams.get('workouts')) healthData.workouts = parseInt(urlParams.get('workouts'));
             if (urlParams.get('heartrate')) healthData.heartRate = parseInt(urlParams.get('heartrate'));
             if (urlParams.get('calories')) healthData.calories = parseInt(urlParams.get('calories'));
             
+            console.log('🔍 URL Health Data:', healthData);
+            
+            // Also check for bridge data from localStorage (fallback for webapp:// scheme)
+            let bridgeData = null;
+            try {
+                const storedBridgeData = localStorage.getItem('lifequest_bridge_data');
+                if (storedBridgeData) {
+                    bridgeData = JSON.parse(storedBridgeData);
+                    console.log('🔍 Bridge Data Found:', bridgeData);
+                    
+                    // Check if data is recent (within last 5 minutes)
+                    if (bridgeData && Date.now() - bridgeData.timestamp < 5 * 60 * 1000) {
+                        console.log('📱 Using recent bridge data');
+                        // Merge bridge data into health data
+                        Object.assign(healthData, bridgeData);
+                        // Clear the bridge data since we're using it
+                        localStorage.removeItem('lifequest_bridge_data');
+                    }
+                }
+            } catch (error) {
+                console.log('⚠️ Error reading bridge data:', error);
+            }
+            
+            console.log('🔍 Final Health Data:', healthData);
+            
             if (Object.keys(healthData).length > 0) {
-                console.log('📱 Processing health data from URL:', healthData);
+                console.log('📱 Processing health data:', healthData);
                 
-                // Show debug panel BEFORE processing data
-                tryRedirectToPWA();
+                // Check if we're in PWA mode
+                const isPWA = window.matchMedia('(display-mode: standalone)').matches || 
+                             window.navigator.standalone === true;
                 
-                // Then process the health data
-                processHealthData(healthData);
-                updateSyncStats();
+                if (isPWA) {
+                    console.log('✅ PWA mode detected - processing data directly');
+                    // Process data directly in PWA mode
+                    processHealthData(healthData);
+                    updateSyncStats();
+                    showFloatingNotification('📱 Health Data Synced!', 'Data imported successfully in PWA');
+                } else {
+                    console.log('🌐 Browser mode detected - showing bridge notification');
+                    // Show debug panel BEFORE processing data
+                    tryRedirectToPWA();
+                    // Still process the data in browser mode too
+                    processHealthData(healthData);
+                    updateSyncStats();
+                }
                 
                 // Clean URL to avoid reprocessing (delay this)
                 setTimeout(() => {
                     const newUrl = window.location.pathname;
                     window.history.replaceState({}, document.title, newUrl);
-                }, 3000); // Wait 3 seconds before cleaning URL
+                    console.log('🧹 URL cleaned');
+                }, 5000); // Wait 5 seconds before cleaning URL
                 
                 return true;
+            } else {
+                console.log('ℹ️ No health data found in URL or bridge');
             }
             return false;
         }
