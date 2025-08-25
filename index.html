@@ -3704,23 +3704,57 @@
 
         async function initializeSpotifyData() {
             try {
+                console.log('🎵 Starting Spotify data initialization...');
+                
                 // Get user profile
+                console.log('🎵 Fetching user profile...');
                 spotifyState.userProfile = await makeSpotifyRequest('https://api.spotify.com/v1/me');
+                console.log('✅ User profile loaded:', spotifyState.userProfile?.display_name);
                 
                 // Get user's top tracks
+                console.log('🎵 Fetching top tracks...');
                 spotifyState.topTracks = await makeSpotifyRequest('https://api.spotify.com/v1/me/top/tracks?limit=50&time_range=medium_term');
+                console.log('✅ Top tracks loaded:', spotifyState.topTracks?.items?.length || 0);
+                
+                // If no medium_term data, try short_term
+                if (!spotifyState.topTracks?.items?.length) {
+                    console.log('🎵 No medium-term data, trying short-term...');
+                    spotifyState.topTracks = await makeSpotifyRequest('https://api.spotify.com/v1/me/top/tracks?limit=50&time_range=short_term');
+                    console.log('✅ Short-term top tracks loaded:', spotifyState.topTracks?.items?.length || 0);
+                }
                 
                 // Get user's top artists
+                console.log('🎵 Fetching top artists...');
                 spotifyState.topArtists = await makeSpotifyRequest('https://api.spotify.com/v1/me/top/artists?limit=50&time_range=medium_term');
+                console.log('✅ Top artists loaded:', spotifyState.topArtists?.items?.length || 0);
+                
+                // If no medium_term data, try short_term
+                if (!spotifyState.topArtists?.items?.length) {
+                    console.log('🎵 No medium-term artists, trying short-term...');
+                    spotifyState.topArtists = await makeSpotifyRequest('https://api.spotify.com/v1/me/top/artists?limit=50&time_range=short_term');
+                    console.log('✅ Short-term top artists loaded:', spotifyState.topArtists?.items?.length || 0);
+                }
                 
                 // Get recently played
-                spotifyState.recentlyPlayed = await makeSpotifyRequest('https://api.spotify.com/v1/me/player/recently-played?limit=50');
+                console.log('🎵 Fetching recently played...');
+                try {
+                    spotifyState.recentlyPlayed = await makeSpotifyRequest('https://api.spotify.com/v1/me/player/recently-played?limit=50');
+                    console.log('✅ Recently played loaded:', spotifyState.recentlyPlayed?.items?.length || 0);
+                } catch (error) {
+                    console.warn('⚠️ Could not load recently played tracks:', error);
+                    spotifyState.recentlyPlayed = { items: [] };
+                }
                 
                 // Analyze music preferences
+                console.log('🎵 Analyzing music preferences...');
                 analyzeMusicPreferences();
                 
                 // Update music achievements
                 checkMusicAchievements();
+                
+                // Update UI
+                updateMusicAnalytics();
+                updateMusicRecommendations();
                 
                 // Initialize web player after successful data load
                 console.log('🎵 Initializing web player after data load...');
@@ -3743,8 +3777,8 @@
                 showFloatingNotification('🎵 Data Loaded!', 'Your Spotify music profile has been analyzed');
                 
             } catch (error) {
-                console.error('Error initializing Spotify data:', error);
-                showFloatingNotification('⚠️ Data Load Error', 'Some Spotify features may be limited');
+                console.error('❌ Error initializing Spotify data:', error);
+                showFloatingNotification('⚠️ Data Load Error', 'Some Spotify features may be limited. Check console for details.');
             }
         }
 
@@ -4054,64 +4088,273 @@
         }
 
         async function generateActivityPlaylist(activity) {
+            console.log('🎵 Starting playlist generation for:', activity);
+            
+            // Show loading state
+            showFloatingNotification('🔄 Generating Playlist...', 'AI is analyzing your music preferences');
+            
             try {
                 let recommendations = [];
                 let insight = '';
                 
+                console.log('🎵 Spotify state check:', {
+                    isConnected: spotifyState.isConnected,
+                    hasTopTracks: spotifyState.topTracks?.items?.length || 0,
+                    hasTopArtists: spotifyState.topArtists?.items?.length || 0
+                });
+                
                 switch (activity) {
                     case 'workout':
+                        console.log('🎵 Generating workout recommendations...');
                         recommendations = await getWorkoutRecommendations();
                         insight = 'High-energy tracks selected based on your listening history to boost your workout performance!';
                         break;
                     case 'focus':
+                        console.log('🎵 Generating focus recommendations...');
                         recommendations = await getFocusRecommendations();
                         insight = 'Concentration-enhancing music chosen to help you maintain focus and productivity!';
                         break;
                     case 'relaxation':
+                        console.log('🎵 Generating relaxation recommendations...');
                         recommendations = await getRelaxationRecommendations();
                         insight = 'Calming tracks selected to help you unwind and reduce stress based on your preferences!';
                         break;
+                    default:
+                        throw new Error(`Unknown activity: ${activity}`);
+                }
+                
+                console.log('🎵 Recommendations received:', recommendations?.tracks?.length || 0);
+                
+                if (!recommendations || !recommendations.tracks || recommendations.tracks.length === 0) {
+                    throw new Error('No recommendations returned');
                 }
                 
                 showActivityPlaylistModal(activity, recommendations, insight);
                 
+                // Award XP for successful playlist generation
+                awardXP(25, `AI ${activity} playlist generated! 🎵`);
+                
             } catch (error) {
-                console.error('Error generating playlist:', error);
-                showFloatingNotification('⚠️ Playlist Error', 'Unable to generate recommendations');
+                console.error('❌ Error generating playlist:', error);
+                
+                let errorMessage = 'Unable to generate recommendations';
+                if (error.message.includes('Token')) {
+                    errorMessage = 'Please reconnect your Spotify account';
+                } else if (error.message.includes('No recommendations')) {
+                    errorMessage = 'No suitable tracks found. Try listening to more music on Spotify first.';
+                } else if (error.message.includes('401')) {
+                    errorMessage = 'Spotify authentication expired. Please reconnect.';
+                } else if (error.message.includes('403')) {
+                    errorMessage = 'Spotify Premium required for this feature';
+                } else if (error.message.includes('429')) {
+                    errorMessage = 'Too many requests. Please wait a moment and try again.';
+                }
+                
+                showFloatingNotification('⚠️ Playlist Error', errorMessage);
+                
+                // Show a basic fallback playlist
+                showFallbackPlaylist(activity);
             }
         }
 
+        function showFallbackPlaylist(activity) {
+            const fallbackPlaylists = {
+                workout: [
+                    { name: 'Thunder', artist: 'Imagine Dragons', emoji: '⚡' },
+                    { name: 'Stronger', artist: 'Kanye West', emoji: '💪' },
+                    { name: 'Eye of the Tiger', artist: 'Survivor', emoji: '🐅' },
+                    { name: 'Can\'t Hold Us', artist: 'Macklemore', emoji: '🔥' },
+                    { name: 'Till I Collapse', artist: 'Eminem', emoji: '🎯' }
+                ],
+                focus: [
+                    { name: 'Weightless', artist: 'Marconi Union', emoji: '🌊' },
+                    { name: 'Clair de Lune', artist: 'Debussy', emoji: '🌙' },
+                    { name: 'Max Richter - Sleep', artist: 'Max Richter', emoji: '☁️' },
+                    { name: 'Brain Food', artist: 'Various Artists', emoji: '🧠' },
+                    { name: 'Study Music', artist: 'ChilledCow', emoji: '📚' }
+                ],
+                relaxation: [
+                    { name: 'Spa Relaxation', artist: 'Nature Sounds', emoji: '🧘‍♀️' },
+                    { name: 'Ocean Waves', artist: 'Nature Collection', emoji: '🌊' },
+                    { name: 'Forest Sounds', artist: 'Meditation Music', emoji: '🌲' },
+                    { name: 'Rain Sounds', artist: 'Sleep Stories', emoji: '🌧️' },
+                    { name: 'Meditation Music', artist: 'Zen Garden', emoji: '🕯️' }
+                ]
+            };
+
+            const activityEmojis = {
+                workout: '🏃‍♂️',
+                focus: '🧠',
+                relaxation: '😌'
+            };
+
+            const playlist = fallbackPlaylists[activity] || fallbackPlaylists.workout;
+
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+            modal.innerHTML = `
+                <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-xl max-w-md w-full mx-4">
+                    <h3 class="text-xl font-bold mb-4 text-center">${activityEmojis[activity]} ${activity.charAt(0).toUpperCase() + activity.slice(1)} Music Ideas</h3>
+                    
+                    <div class="bg-yellow-50 dark:bg-yellow-900/30 p-4 rounded-lg mb-6">
+                        <h4 class="font-bold mb-2 text-yellow-700 dark:text-yellow-300">💡 Music Suggestions</h4>
+                        <div class="text-sm text-yellow-600 dark:text-yellow-400">
+                            Here are some popular ${activity} tracks to search for on your music platform:
+                        </div>
+                    </div>
+                    
+                    <div class="space-y-3 mb-6">
+                        ${playlist.map(track => `
+                            <div class="flex items-center space-x-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                                <div class="text-2xl">${track.emoji}</div>
+                                <div class="flex-1">
+                                    <div class="font-medium">${track.name}</div>
+                                    <div class="text-sm text-gray-600 dark:text-gray-400">${track.artist}</div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                    
+                    <div class="bg-blue-50 dark:bg-blue-900/30 p-4 rounded-lg mb-4">
+                        <div class="text-sm text-blue-600 dark:text-blue-400">
+                            💡 Tip: Connect your Spotify account to get personalized AI recommendations based on your actual listening history!
+                        </div>
+                    </div>
+                    
+                    <button onclick="this.closest('.fixed').remove()" class="w-full bg-gray-500 text-white py-3 rounded-lg hover:bg-gray-600">
+                        Close
+                    </button>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+
         async function getWorkoutRecommendations() {
-            const seedTracks = spotifyState.topTracks.items
-                .slice(0, 5)
-                .map(track => track.id)
-                .join(',');
+            console.log('🎵 Getting workout recommendations...');
             
-            return await makeSpotifyRequest(
-                `https://api.spotify.com/v1/recommendations?seed_tracks=${seedTracks}&target_energy=0.8&target_danceability=0.7&min_tempo=120&limit=20`
-            );
+            // Check if we have enough top tracks
+            if (!spotifyState.topTracks?.items || spotifyState.topTracks.items.length === 0) {
+                console.log('⚠️ No top tracks available, using genre seeds');
+                return await getGenreBasedRecommendations('workout');
+            }
+            
+            try {
+                const seedTracks = spotifyState.topTracks.items
+                    .slice(0, Math.min(5, spotifyState.topTracks.items.length))
+                    .map(track => track.id)
+                    .join(',');
+                
+                console.log('🎵 Using seed tracks:', seedTracks);
+                
+                const recommendations = await makeSpotifyRequest(
+                    `https://api.spotify.com/v1/recommendations?seed_tracks=${seedTracks}&target_energy=0.8&target_danceability=0.7&min_tempo=120&limit=20`
+                );
+                
+                console.log('✅ Workout recommendations received:', recommendations.tracks?.length || 0);
+                return recommendations;
+                
+            } catch (error) {
+                console.warn('⚠️ Track-based recommendations failed, trying genre-based:', error);
+                return await getGenreBasedRecommendations('workout');
+            }
         }
 
         async function getFocusRecommendations() {
-            const seedTracks = spotifyState.topTracks.items
-                .slice(0, 5)
-                .map(track => track.id)
-                .join(',');
+            console.log('🎵 Getting focus recommendations...');
             
-            return await makeSpotifyRequest(
-                `https://api.spotify.com/v1/recommendations?seed_tracks=${seedTracks}&target_energy=0.3&target_valence=0.5&max_tempo=100&target_instrumentalness=0.7&limit=20`
-            );
+            if (!spotifyState.topTracks?.items || spotifyState.topTracks.items.length === 0) {
+                console.log('⚠️ No top tracks available, using genre seeds');
+                return await getGenreBasedRecommendations('focus');
+            }
+            
+            try {
+                const seedTracks = spotifyState.topTracks.items
+                    .slice(0, Math.min(5, spotifyState.topTracks.items.length))
+                    .map(track => track.id)
+                    .join(',');
+                
+                console.log('🎵 Using seed tracks:', seedTracks);
+                
+                const recommendations = await makeSpotifyRequest(
+                    `https://api.spotify.com/v1/recommendations?seed_tracks=${seedTracks}&target_energy=0.3&target_valence=0.5&max_tempo=100&target_instrumentalness=0.7&limit=20`
+                );
+                
+                console.log('✅ Focus recommendations received:', recommendations.tracks?.length || 0);
+                return recommendations;
+                
+            } catch (error) {
+                console.warn('⚠️ Track-based recommendations failed, trying genre-based:', error);
+                return await getGenreBasedRecommendations('focus');
+            }
         }
 
         async function getRelaxationRecommendations() {
-            const seedTracks = spotifyState.topTracks.items
-                .slice(0, 5)
-                .map(track => track.id)
-                .join(',');
+            console.log('🎵 Getting relaxation recommendations...');
             
-            return await makeSpotifyRequest(
-                `https://api.spotify.com/v1/recommendations?seed_tracks=${seedTracks}&target_energy=0.2&target_valence=0.6&max_tempo=80&target_acousticness=0.8&limit=20`
-            );
+            if (!spotifyState.topTracks?.items || spotifyState.topTracks.items.length === 0) {
+                console.log('⚠️ No top tracks available, using genre seeds');
+                return await getGenreBasedRecommendations('relaxation');
+            }
+            
+            try {
+                const seedTracks = spotifyState.topTracks.items
+                    .slice(0, Math.min(5, spotifyState.topTracks.items.length))
+                    .map(track => track.id)
+                    .join(',');
+                
+                console.log('🎵 Using seed tracks:', seedTracks);
+                
+                const recommendations = await makeSpotifyRequest(
+                    `https://api.spotify.com/v1/recommendations?seed_tracks=${seedTracks}&target_energy=0.2&target_valence=0.6&max_tempo=80&target_acousticness=0.8&limit=20`
+                );
+                
+                console.log('✅ Relaxation recommendations received:', recommendations.tracks?.length || 0);
+                return recommendations;
+                
+            } catch (error) {
+                console.warn('⚠️ Track-based recommendations failed, trying genre-based:', error);
+                return await getGenreBasedRecommendations('relaxation');
+            }
+        }
+
+        async function getGenreBasedRecommendations(activity) {
+            console.log('🎵 Getting genre-based recommendations for:', activity);
+            
+            const genreSeeds = {
+                workout: ['pop', 'hip-hop', 'electronic', 'rock', 'dance'],
+                focus: ['ambient', 'classical', 'chill', 'instrumental', 'jazz'],
+                relaxation: ['ambient', 'new-age', 'acoustic', 'folk', 'classical']
+            };
+            
+            const targetAttributes = {
+                workout: { target_energy: 0.8, target_danceability: 0.7, min_tempo: 120 },
+                focus: { target_energy: 0.3, target_valence: 0.5, max_tempo: 100, target_instrumentalness: 0.7 },
+                relaxation: { target_energy: 0.2, target_valence: 0.6, max_tempo: 80, target_acousticness: 0.8 }
+            };
+            
+            try {
+                const genres = genreSeeds[activity] || genreSeeds.workout;
+                const seedGenres = genres.slice(0, 5).join(',');
+                const attributes = targetAttributes[activity] || targetAttributes.workout;
+                
+                const params = new URLSearchParams({
+                    seed_genres: seedGenres,
+                    limit: '20',
+                    ...attributes
+                });
+                
+                console.log('🎵 Using genre seeds:', seedGenres);
+                const recommendations = await makeSpotifyRequest(
+                    `https://api.spotify.com/v1/recommendations?${params.toString()}`
+                );
+                
+                console.log('✅ Genre-based recommendations received:', recommendations.tracks?.length || 0);
+                return recommendations;
+                
+            } catch (error) {
+                console.error('❌ Genre-based recommendations also failed:', error);
+                return { tracks: [] };
+            }
         }
 
         function showActivityPlaylistModal(activity, recommendations, insight) {
@@ -4236,7 +4479,16 @@
 
         function updateMusicAnalytics() {
             const analyticsContainer = document.getElementById('musicAnalytics');
-            if (!analyticsContainer) return;
+            if (!analyticsContainer) {
+                console.log('⚠️ Music analytics container not found');
+                return;
+            }
+            
+            console.log('🎵 Updating music analytics...', {
+                isConnected: spotifyState.isConnected,
+                topTracks: spotifyState.topTracks?.items?.length || 0,
+                topArtists: spotifyState.topArtists?.items?.length || 0
+            });
             
             if (!spotifyState.isConnected) {
                 analyticsContainer.innerHTML = `
@@ -4248,12 +4500,26 @@
                 return;
             }
             
+            // Check if we have data
+            if (!spotifyState.topArtists?.items || !spotifyState.topTracks?.items) {
+                analyticsContainer.innerHTML = `
+                    <div class="text-center text-gray-500 py-8">
+                        <div class="text-4xl mb-2">🔄</div>
+                        <div>Loading your music data...</div>
+                        <div class="text-xs mt-2">This may take a moment</div>
+                    </div>
+                `;
+                return;
+            }
+            
             const topGenres = {};
-            if (spotifyState.topArtists.items) {
+            if (spotifyState.topArtists.items && spotifyState.topArtists.items.length > 0) {
                 spotifyState.topArtists.items.forEach(artist => {
-                    artist.genres.forEach(genre => {
-                        topGenres[genre] = (topGenres[genre] || 0) + 1;
-                    });
+                    if (artist.genres && artist.genres.length > 0) {
+                        artist.genres.forEach(genre => {
+                            topGenres[genre] = (topGenres[genre] || 0) + 1;
+                        });
+                    }
                 });
             }
             
@@ -4261,25 +4527,27 @@
                 .sort(([,a], [,b]) => b - a)
                 .slice(0, 5);
             
+            console.log('🎵 Top genres found:', sortedGenres);
+            
             analyticsContainer.innerHTML = `
                 <div class="space-y-4">
                     <div class="bg-green-50 dark:bg-green-900/30 p-4 rounded-lg">
                         <h4 class="font-bold mb-2 text-green-700 dark:text-green-300">🎵 Your Music Profile</h4>
                         <div class="text-sm text-green-600 dark:text-green-400">
                             ${sortedGenres.length > 0 ? 
-                                `Top Genres: ${sortedGenres.map(([genre]) => genre).join(', ')}` : 
-                                'Loading your music preferences...'
+                                `Top Genres: ${sortedGenres.map(([genre]) => genre).slice(0, 3).join(', ')}${sortedGenres.length > 3 ? ' +more' : ''}` : 
+                                'No genre data available yet - keep listening!'
                             }
                         </div>
                     </div>
                     
                     <div class="grid grid-cols-2 gap-4">
                         <div class="bg-blue-50 dark:bg-blue-900/30 p-3 rounded-lg text-center">
-                            <div class="text-2xl font-bold text-blue-600">${spotifyState.topTracks.items?.length || 0}</div>
+                            <div class="text-2xl font-bold text-blue-600">${spotifyState.topTracks?.items?.length || 0}</div>
                             <div class="text-sm text-blue-500">Top Tracks</div>
                         </div>
                         <div class="bg-purple-50 dark:bg-purple-900/30 p-3 rounded-lg text-center">
-                            <div class="text-2xl font-bold text-purple-600">${spotifyState.topArtists.items?.length || 0}</div>
+                            <div class="text-2xl font-bold text-purple-600">${spotifyState.topArtists?.items?.length || 0}</div>
                             <div class="text-sm text-purple-500">Top Artists</div>
                         </div>
                     </div>
@@ -4287,16 +4555,29 @@
                     <div class="bg-orange-50 dark:bg-orange-900/30 p-4 rounded-lg">
                         <h4 class="font-bold mb-2 text-orange-700 dark:text-orange-300">🤖 AI Analysis</h4>
                         <div class="text-sm text-orange-600 dark:text-orange-400">
-                            ${spotifyState.musicPreferences && spotifyState.musicPreferences.workoutGenres.length > 0 ? 
+                            ${spotifyState.musicPreferences && (spotifyState.musicPreferences.workoutGenres.length > 0 || spotifyState.musicPreferences.focusGenres.length > 0) ? 
                                 `Your music taste shows preferences for ${spotifyState.musicPreferences.workoutGenres.length > 0 ? 'high-energy workout music' : 'diverse genres'}. 
-                                Perfect for ${spotifyState.musicPreferences.focusGenres.length > 0 ? 'focus sessions and' : ''} 
+                                Perfect for ${spotifyState.musicPreferences.focusGenres.length > 0 ? 'focus sessions and ' : ''}
                                 ${spotifyState.musicPreferences.relaxationGenres.length > 0 ? 'relaxation' : 'various activities'}.` :
-                                'Your music preferences are being analyzed to provide personalized recommendations!'
+                                spotifyState.topTracks?.items?.length > 0 ? 
+                                'Your music preferences have been analyzed! Try generating an AI playlist for specific activities.' :
+                                'Keep listening to build your music profile for better AI recommendations!'
                             }
                         </div>
                     </div>
+                    
+                    ${spotifyState.topTracks?.items?.length === 0 ? `
+                        <div class="bg-yellow-50 dark:bg-yellow-900/30 p-4 rounded-lg">
+                            <h4 class="font-bold mb-2 text-yellow-700 dark:text-yellow-300">💡 Tip</h4>
+                            <div class="text-sm text-yellow-600 dark:text-yellow-400">
+                                No listening history found. Listen to music on Spotify for a few days, then refresh your data to get AI recommendations!
+                            </div>
+                        </div>
+                    ` : ''}
                 </div>
             `;
+            
+            console.log('✅ Music analytics updated successfully');
         }
 
         function updateMusicRecommendations() {
