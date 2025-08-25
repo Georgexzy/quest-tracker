@@ -460,6 +460,38 @@
                             </button>
                         </div>
                     </div>
+                    
+                    <!-- Steps Tracker -->
+                    <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg">
+                        <h4 class="font-bold mb-4">👟 Steps Tracker</h4>
+                        <div class="p-4 bg-green-50 dark:bg-green-900/30 rounded-lg">
+                            <div class="flex items-center justify-between mb-3">
+                                <h5 class="font-medium text-green-700 dark:text-green-300">Daily Steps Goal</h5>
+                                <span id="fitnessStepsDisplay" class="text-sm text-green-600 dark:text-green-400">0 steps</span>
+                            </div>
+                            <div class="flex space-x-2 mb-3">
+                                <input type="number" id="fitnessStepsInput" placeholder="Enter steps..." min="0" max="50000"
+                                       class="flex-1 p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-base">
+                                <button onclick="addSteps()" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition-all">
+                                    Add
+                                </button>
+                            </div>
+                            <div class="flex space-x-2 mb-3">
+                                <button onclick="quickAddSteps(1000)" class="flex-1 bg-green-400 text-white py-1 rounded text-sm hover:bg-green-500 transition-all">
+                                    +1K
+                                </button>
+                                <button onclick="quickAddSteps(2500)" class="flex-1 bg-green-500 text-white py-1 rounded text-sm hover:bg-green-600 transition-all">
+                                    +2.5K
+                                </button>
+                                <button onclick="quickAddSteps(5000)" class="flex-1 bg-green-600 text-white py-1 rounded text-sm hover:bg-green-700 transition-all">
+                                    +5K
+                                </button>
+                            </div>
+                            <button onclick="quickLogSteps()" class="w-full bg-green-700 text-white py-2 rounded hover:bg-green-800 transition-all">
+                                👟 Quick Log 2K Steps + Music
+                            </button>
+                        </div>
+                    </div>
 
                     <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg">
                         <h3 class="text-xl font-bold mb-4">📅 AI Workout Plan</h3>
@@ -509,6 +541,31 @@
                         </div>
                     </div>
 
+                    <!-- Water Tracker -->
+                    <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg">
+                        <h4 class="font-bold mb-4">💧 Hydration Tracker</h4>
+                        <div class="p-4 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
+                            <div class="flex items-center justify-between mb-3">
+                                <h5 class="font-medium text-blue-700 dark:text-blue-300">Daily Water Goal</h5>
+                                <span id="nutritionWaterDisplay" class="text-sm text-blue-600 dark:text-blue-400">0/8 glasses</span>
+                            </div>
+                            <div class="grid grid-cols-4 gap-2 mb-3" id="nutritionWaterGlasses">
+                                <!-- Water glasses will be populated here -->
+                            </div>
+                            <div class="flex space-x-2 mb-3">
+                                <button onclick="addWaterGlass()" class="flex-1 bg-blue-500 text-white py-2 rounded text-sm hover:bg-blue-600 transition-all">
+                                    + Glass
+                                </button>
+                                <button onclick="removeWaterGlass()" class="flex-1 bg-blue-300 text-white py-2 rounded text-sm hover:bg-blue-400 transition-all">
+                                    - Glass
+                                </button>
+                            </div>
+                            <button onclick="quickTrackWater()" class="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition-all">
+                                💧 Quick Log Water + Music
+                            </button>
+                        </div>
+                    </div>
+                    
                     <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg">
                         <h3 class="text-xl font-bold mb-4">📅 AI Meal Plan</h3>
                         <div id="weeklyMealPlan" class="space-y-3">
@@ -702,25 +759,6 @@
                         <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg">
                             <h4 class="font-bold mb-4">📊 Manual Tracking</h4>
                             <div class="space-y-4">
-                                <!-- Water Tracker -->
-                                <div class="p-4 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
-                                    <div class="flex items-center justify-between mb-3">
-                                        <h5 class="font-medium text-blue-700 dark:text-blue-300">💧 Water Tracker</h5>
-                                        <span id="waterDisplay" class="text-sm text-blue-600 dark:text-blue-400">0/8 glasses</span>
-                                    </div>
-                                    <div class="grid grid-cols-4 gap-2 mb-3" id="waterGlasses">
-                                        <!-- Water glasses will be populated here -->
-                                    </div>
-                                    <div class="flex space-x-2">
-                                        <button onclick="addWaterGlass()" class="flex-1 bg-blue-500 text-white py-2 rounded text-sm hover:bg-blue-600 transition-all">
-                                            + Glass
-                                        </button>
-                                        <button onclick="removeWaterGlass()" class="flex-1 bg-blue-300 text-white py-2 rounded text-sm hover:bg-blue-400 transition-all">
-                                            - Glass
-                                        </button>
-                                    </div>
-                                </div>
-                                
                                 <!-- Steps Tracker -->
                                 <div class="p-4 bg-green-50 dark:bg-green-900/30 rounded-lg">
                                     <div class="flex items-center justify-between mb-3">
