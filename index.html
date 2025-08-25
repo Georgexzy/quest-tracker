@@ -811,6 +811,95 @@
                         </div>
                     </div>
                     
+                    <!-- User Profile -->
+                    <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg">
+                        <h3 class="text-xl font-bold mb-4">👤 Personal Profile</h3>
+                        <div class="space-y-4">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium mb-1">📏 Height (cm)</label>
+                                    <input type="number" id="userHeight" placeholder="170" min="100" max="250"
+                                           class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-base">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium mb-1">⚖️ Weight (kg)</label>
+                                    <input type="number" id="userWeight" placeholder="70" min="30" max="300"
+                                           class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-base">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium mb-1">🎂 Age</label>
+                                    <input type="number" id="userAge" placeholder="25" min="13" max="120"
+                                           class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-base">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium mb-1">⚧️ Gender</label>
+                                    <select id="userGender" class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-base">
+                                        <option value="">Select Gender</option>
+                                        <option value="male">Male</option>
+                                        <option value="female">Female</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium mb-1">🏃 Activity Level</label>
+                                    <select id="activityLevel" class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-base">
+                                        <option value="">Select Activity Level</option>
+                                        <option value="sedentary">Sedentary (little/no exercise)</option>
+                                        <option value="light">Light (1-3 days/week)</option>
+                                        <option value="moderate">Moderate (3-5 days/week)</option>
+                                        <option value="active">Active (6-7 days/week)</option>
+                                        <option value="very_active">Very Active (2x/day, intense)</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium mb-1">🎯 Primary Goal</label>
+                                    <select id="fitnessGoal" class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-base">
+                                        <option value="">Select Goal</option>
+                                        <option value="lose_weight">Lose Weight</option>
+                                        <option value="maintain_weight">Maintain Weight</option>
+                                        <option value="gain_weight">Gain Weight</option>
+                                        <option value="build_muscle">Build Muscle</option>
+                                        <option value="improve_fitness">Improve Fitness</option>
+                                        <option value="general_health">General Health</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium mb-1">🏋️ Available Equipment</label>
+                                <div class="grid grid-cols-2 md:grid-cols-3 gap-2" id="equipmentSelection">
+                                    <!-- Equipment checkboxes will be populated here -->
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium mb-1">🏥 Health Conditions (optional)</label>
+                                <div class="grid grid-cols-2 gap-2" id="healthConditions">
+                                    <!-- Health condition checkboxes will be populated here -->
+                                </div>
+                            </div>
+                            
+                            <button onclick="saveUserProfile()" class="w-full bg-primary text-white py-3 rounded-lg hover:bg-purple-600 transition-all font-medium">
+                                💾 Save Profile & Calculate Metrics
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Calculated Metrics -->
+                    <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg">
+                        <h3 class="text-xl font-bold mb-4">📊 Your Health Metrics</h3>
+                        <div id="healthMetrics" class="space-y-4">
+                            <!-- Health metrics will be populated here -->
+                        </div>
+                    </div>
+                    
+                    <!-- Daily Targets -->
+                    <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg">
+                        <h3 class="text-xl font-bold mb-4">🎯 Personalized Daily Targets</h3>
+                        <div id="dailyTargets" class="space-y-3">
+                            <!-- Daily targets will be populated here -->
+                        </div>
+                    </div>
+                    
                     <!-- Interests Manager -->
                     <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg">
                         <h3 class="text-xl font-bold mb-4">🎯 Interests Manager</h3>
@@ -1196,6 +1285,34 @@
             xp: 0,
             totalXP: 0,
             currentStreak: 0,
+            profile: {
+                height: 0, // cm
+                weight: 0, // kg
+                age: 0,
+                gender: '',
+                activityLevel: '',
+                fitnessGoal: '',
+                equipment: [],
+                healthConditions: [],
+                preferences: {
+                    workoutTypes: [],
+                    dietaryRestrictions: [],
+                    timePreferences: {}
+                }
+            },
+            healthMetrics: {
+                bmi: 0,
+                bmr: 0,
+                tdee: 0,
+                idealWeight: { min: 0, max: 0 },
+                bodyFatPercentage: 0,
+                waterRequirement: 0,
+                proteinRequirement: 0,
+                dailyCalorieTarget: 0,
+                dailyStepsTarget: 0,
+                weeklyExerciseMinutes: 0,
+                riskFactors: []
+            },
             dailyStats: {
                 workouts: 0,
                 waterGlasses: 0,
@@ -1206,7 +1323,8 @@
                 tasksCompleted: 0,
                 totalTasks: 0,
                 caloriesBurned: 0,
-                exerciseMinutes: 0
+                exerciseMinutes: 0,
+                steps: 0
             },
             tasks: [],
             achievements: [],
@@ -3454,6 +3572,455 @@
             showFloatingNotification('💾 Spotify Config Saved', 'Client ID saved. You can now connect to Spotify!');
         }
 
+        // 👤 USER PROFILE & HEALTH METRICS SYSTEM
+        function initializeProfileUI() {
+            populateEquipmentOptions();
+            populateHealthConditions();
+            loadUserProfile();
+            updateHealthMetricsUI();
+            updateDailyTargetsUI();
+        }
+
+        function populateEquipmentOptions() {
+            const equipmentContainer = document.getElementById('equipmentSelection');
+            if (!equipmentContainer) return;
+            
+            const equipment = [
+                'dumbbells', 'barbells', 'resistance_bands', 'kettlebells', 
+                'yoga_mat', 'pull_up_bar', 'treadmill', 'stationary_bike',
+                'rowing_machine', 'weight_plates', 'medicine_ball', 'foam_roller'
+            ];
+            
+            equipmentContainer.innerHTML = equipment.map(item => `
+                <label class="flex items-center space-x-2 text-sm cursor-pointer">
+                    <input type="checkbox" value="${item}" onchange="updateEquipmentSelection()" 
+                           class="rounded border-gray-300 text-primary focus:ring-primary">
+                    <span class="capitalize">${item.replace('_', ' ')}</span>
+                </label>
+            `).join('');
+        }
+
+        function populateHealthConditions() {
+            const conditionsContainer = document.getElementById('healthConditions');
+            if (!conditionsContainer) return;
+            
+            const conditions = [
+                'diabetes', 'hypertension', 'heart_condition', 'joint_issues',
+                'back_problems', 'asthma', 'arthritis', 'osteoporosis'
+            ];
+            
+            conditionsContainer.innerHTML = conditions.map(condition => `
+                <label class="flex items-center space-x-2 text-sm cursor-pointer">
+                    <input type="checkbox" value="${condition}" onchange="updateHealthConditions()" 
+                           class="rounded border-gray-300 text-primary focus:ring-primary">
+                    <span class="capitalize">${condition.replace('_', ' ')}</span>
+                </label>
+            `).join('');
+        }
+
+        function updateEquipmentSelection() {
+            const checkboxes = document.querySelectorAll('#equipmentSelection input[type="checkbox"]:checked');
+            gameState.profile.equipment = Array.from(checkboxes).map(cb => cb.value);
+        }
+
+        function updateHealthConditions() {
+            const checkboxes = document.querySelectorAll('#healthConditions input[type="checkbox"]:checked');
+            gameState.profile.healthConditions = Array.from(checkboxes).map(cb => cb.value);
+        }
+
+        function saveUserProfile() {
+            // Get profile data
+            gameState.profile.height = parseFloat(document.getElementById('userHeight').value) || 0;
+            gameState.profile.weight = parseFloat(document.getElementById('userWeight').value) || 0;
+            gameState.profile.age = parseInt(document.getElementById('userAge').value) || 0;
+            gameState.profile.gender = document.getElementById('userGender').value;
+            gameState.profile.activityLevel = document.getElementById('activityLevel').value;
+            gameState.profile.fitnessGoal = document.getElementById('fitnessGoal').value;
+            
+            // Validate required fields
+            if (!gameState.profile.height || !gameState.profile.weight || !gameState.profile.age || !gameState.profile.gender) {
+                showFloatingNotification('⚠️ Incomplete Profile', 'Please fill in height, weight, age, and gender');
+                return;
+            }
+            
+            // Calculate health metrics
+            calculateHealthMetrics();
+            
+            // Update AI with profile data
+            updateAIWithProfileData();
+            
+            // Save to storage
+            saveGameState();
+            
+            // Update UI
+            updateHealthMetricsUI();
+            updateDailyTargetsUI();
+            updateStatsUIWithTargets();
+            
+            showFloatingNotification('✅ Profile Saved', 'Health metrics calculated and AI updated with your data');
+        }
+
+        function calculateHealthMetrics() {
+            const { height, weight, age, gender, activityLevel, fitnessGoal } = gameState.profile;
+            
+            // BMI Calculation
+            const heightInMeters = height / 100;
+            gameState.healthMetrics.bmi = weight / (heightInMeters * heightInMeters);
+            
+            // BMR Calculation (Mifflin-St Jeor Equation)
+            if (gender === 'male') {
+                gameState.healthMetrics.bmr = (10 * weight) + (6.25 * height) - (5 * age) + 5;
+            } else {
+                gameState.healthMetrics.bmr = (10 * weight) + (6.25 * height) - (5 * age) - 161;
+            }
+            
+            // TDEE Calculation (Total Daily Energy Expenditure)
+            const activityMultipliers = {
+                sedentary: 1.2,
+                light: 1.375,
+                moderate: 1.55,
+                active: 1.725,
+                very_active: 1.9
+            };
+            gameState.healthMetrics.tdee = gameState.healthMetrics.bmr * (activityMultipliers[activityLevel] || 1.2);
+            
+            // Ideal Weight Range (BMI 18.5-24.9)
+            const minIdealWeight = 18.5 * (heightInMeters * heightInMeters);
+            const maxIdealWeight = 24.9 * (heightInMeters * heightInMeters);
+            gameState.healthMetrics.idealWeight = { min: minIdealWeight, max: maxIdealWeight };
+            
+            // Daily calorie target based on fitness goal
+            const goalAdjustments = {
+                lose_weight: -500,
+                maintain_weight: 0,
+                gain_weight: 300,
+                build_muscle: 200,
+                improve_fitness: -200,
+                general_health: 0
+            };
+            gameState.healthMetrics.dailyCalorieTarget = Math.round(
+                gameState.healthMetrics.tdee + (goalAdjustments[fitnessGoal] || 0)
+            );
+            
+            // Water requirement (ml/day)
+            gameState.healthMetrics.waterRequirement = Math.round(weight * 35); // 35ml per kg
+            
+            // Protein requirement (g/day)
+            const proteinMultipliers = {
+                lose_weight: 2.2,
+                maintain_weight: 1.6,
+                gain_weight: 1.8,
+                build_muscle: 2.4,
+                improve_fitness: 2.0,
+                general_health: 1.2
+            };
+            gameState.healthMetrics.proteinRequirement = Math.round(
+                weight * (proteinMultipliers[fitnessGoal] || 1.2)
+            );
+            
+            // Daily steps target
+            const baseSteps = age < 65 ? 10000 : 7000;
+            const activityStepsMultiplier = {
+                sedentary: 0.8,
+                light: 1.0,
+                moderate: 1.2,
+                active: 1.4,
+                very_active: 1.6
+            };
+            gameState.healthMetrics.dailyStepsTarget = Math.round(
+                baseSteps * (activityStepsMultiplier[activityLevel] || 1.0)
+            );
+            
+            // Weekly exercise minutes
+            const weeklyMinutes = {
+                sedentary: 75,
+                light: 150,
+                moderate: 225,
+                active: 300,
+                very_active: 375
+            };
+            gameState.healthMetrics.weeklyExerciseMinutes = weeklyMinutes[activityLevel] || 150;
+            
+            // Body fat percentage estimation (rough calculation)
+            let bodyFatPercentage;
+            if (gender === 'male') {
+                bodyFatPercentage = (1.20 * gameState.healthMetrics.bmi) + (0.23 * age) - 16.2;
+            } else {
+                bodyFatPercentage = (1.20 * gameState.healthMetrics.bmi) + (0.23 * age) - 5.4;
+            }
+            gameState.healthMetrics.bodyFatPercentage = Math.max(5, Math.min(50, bodyFatPercentage));
+            
+            // Risk factors assessment
+            assessHealthRisks();
+        }
+
+        function assessHealthRisks() {
+            const risks = [];
+            const { bmi, age } = { bmi: gameState.healthMetrics.bmi, age: gameState.profile.age };
+            
+            if (bmi < 18.5) risks.push('Underweight - consider gaining healthy weight');
+            if (bmi > 25) risks.push('Overweight - consider weight management');
+            if (bmi > 30) risks.push('Obesity - consult healthcare provider');
+            if (age > 65) risks.push('Age-related considerations for exercise intensity');
+            
+            if (gameState.profile.healthConditions.includes('diabetes')) {
+                risks.push('Diabetes - monitor blood sugar during exercise');
+            }
+            if (gameState.profile.healthConditions.includes('hypertension')) {
+                risks.push('Hypertension - avoid high-intensity exercise without clearance');
+            }
+            if (gameState.profile.healthConditions.includes('heart_condition')) {
+                risks.push('Heart condition - consult cardiologist before intense exercise');
+            }
+            
+            gameState.healthMetrics.riskFactors = risks;
+        }
+
+        function updateAIWithProfileData() {
+            // Update AI patterns with profile-based insights
+            gameState.patterns.profile = {
+                fitnessLevel: calculateFitnessLevel(),
+                metabolicRate: gameState.healthMetrics.bmr / gameState.healthMetrics.tdee,
+                goalAlignment: gameState.profile.fitnessGoal,
+                equipmentAvailable: gameState.profile.equipment.length,
+                healthConsiderations: gameState.profile.healthConditions.length
+            };
+            
+            // Adjust AI confidence based on data completeness
+            const dataCompleteness = calculateProfileCompleteness();
+            gameState.ai.confidence = Math.min(1.0, gameState.ai.confidence + (dataCompleteness * 0.1));
+        }
+
+        function calculateFitnessLevel() {
+            const { activityLevel, age, bmi } = { 
+                activityLevel: gameState.profile.activityLevel, 
+                age: gameState.profile.age, 
+                bmi: gameState.healthMetrics.bmi 
+            };
+            
+            let fitnessScore = 50; // Base score
+            
+            // Activity level adjustments
+            const activityScores = {
+                sedentary: -20,
+                light: -10,
+                moderate: 0,
+                active: 15,
+                very_active: 25
+            };
+            fitnessScore += activityScores[activityLevel] || 0;
+            
+            // Age adjustments
+            if (age < 30) fitnessScore += 10;
+            else if (age > 50) fitnessScore -= 10;
+            else if (age > 65) fitnessScore -= 20;
+            
+            // BMI adjustments
+            if (bmi >= 18.5 && bmi <= 24.9) fitnessScore += 10;
+            else if (bmi > 30) fitnessScore -= 15;
+            
+            return Math.max(0, Math.min(100, fitnessScore));
+        }
+
+        function calculateProfileCompleteness() {
+            const required = ['height', 'weight', 'age', 'gender', 'activityLevel', 'fitnessGoal'];
+            const completed = required.filter(field => gameState.profile[field]).length;
+            const equipmentBonus = gameState.profile.equipment.length > 0 ? 0.1 : 0;
+            return (completed / required.length) + equipmentBonus;
+        }
+
+        function updateHealthMetricsUI() {
+            const container = document.getElementById('healthMetrics');
+            if (!container) return;
+            
+            const metrics = gameState.healthMetrics;
+            
+            if (metrics.bmi === 0) {
+                container.innerHTML = `
+                    <div class="text-center text-gray-500 dark:text-gray-400 py-8">
+                        <div class="text-4xl mb-2">👤</div>
+                        <p>Complete your profile to see personalized health metrics</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            const bmiCategory = getBMICategory(metrics.bmi);
+            const bmiColor = getBMIColor(bmiCategory);
+            
+            container.innerHTML = `
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="p-4 ${bmiColor} rounded-lg">
+                        <h4 class="font-bold mb-2">📊 Body Mass Index</h4>
+                        <div class="text-2xl font-bold">${metrics.bmi.toFixed(1)}</div>
+                        <div class="text-sm">${bmiCategory}</div>
+                    </div>
+                    
+                    <div class="p-4 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
+                        <h4 class="font-bold mb-2 text-blue-700 dark:text-blue-300">🔥 Metabolic Rate</h4>
+                        <div class="text-2xl font-bold text-blue-600">${Math.round(metrics.bmr)}</div>
+                        <div class="text-sm text-blue-500">BMR (calories/day)</div>
+                        <div class="text-xs mt-1">TDEE: ${Math.round(metrics.tdee)} cal/day</div>
+                    </div>
+                    
+                    <div class="p-4 bg-green-50 dark:bg-green-900/30 rounded-lg">
+                        <h4 class="font-bold mb-2 text-green-700 dark:text-green-300">🎯 Ideal Weight Range</h4>
+                        <div class="text-lg font-bold text-green-600">
+                            ${metrics.idealWeight.min.toFixed(1)} - ${metrics.idealWeight.max.toFixed(1)} kg
+                        </div>
+                        <div class="text-sm text-green-500">Based on healthy BMI range</div>
+                    </div>
+                    
+                    <div class="p-4 bg-purple-50 dark:bg-purple-900/30 rounded-lg">
+                        <h4 class="font-bold mb-2 text-purple-700 dark:text-purple-300">💪 Body Composition</h4>
+                        <div class="text-2xl font-bold text-purple-600">${metrics.bodyFatPercentage.toFixed(1)}%</div>
+                        <div class="text-sm text-purple-500">Estimated body fat</div>
+                    </div>
+                </div>
+                
+                ${metrics.riskFactors.length > 0 ? `
+                    <div class="mt-4 p-4 bg-yellow-50 dark:bg-yellow-900/30 rounded-lg">
+                        <h4 class="font-bold mb-2 text-yellow-700 dark:text-yellow-300">⚠️ Health Considerations</h4>
+                        <div class="text-sm text-yellow-600 dark:text-yellow-400 space-y-1">
+                            ${metrics.riskFactors.map(risk => `<div>• ${risk}</div>`).join('')}
+                        </div>
+                    </div>
+                ` : ''}
+            `;
+        }
+
+        function getBMICategory(bmi) {
+            if (bmi < 18.5) return 'Underweight';
+            if (bmi < 25) return 'Normal weight';
+            if (bmi < 30) return 'Overweight';
+            return 'Obese';
+        }
+
+        function getBMIColor(category) {
+            const colors = {
+                'Underweight': 'bg-blue-50 dark:bg-blue-900/30',
+                'Normal weight': 'bg-green-50 dark:bg-green-900/30',
+                'Overweight': 'bg-yellow-50 dark:bg-yellow-900/30',
+                'Obese': 'bg-red-50 dark:bg-red-900/30'
+            };
+            return colors[category] || 'bg-gray-50 dark:bg-gray-700';
+        }
+
+        function updateDailyTargetsUI() {
+            const container = document.getElementById('dailyTargets');
+            if (!container) return;
+            
+            const metrics = gameState.healthMetrics;
+            
+            if (metrics.dailyCalorieTarget === 0) {
+                container.innerHTML = `
+                    <div class="text-center text-gray-500 dark:text-gray-400 py-8">
+                        <div class="text-4xl mb-2">🎯</div>
+                        <p>Set up your profile to get personalized daily targets</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            const waterGlasses = Math.ceil(metrics.waterRequirement / 250); // 250ml per glass
+            
+            container.innerHTML = `
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div class="flex items-center justify-between p-3 bg-red-50 dark:bg-red-900/30 rounded-lg">
+                        <div>
+                            <div class="font-medium text-red-700 dark:text-red-300">🍽️ Daily Calories</div>
+                            <div class="text-sm text-red-600 dark:text-red-400">Based on ${gameState.profile.fitnessGoal.replace('_', ' ')}</div>
+                        </div>
+                        <div class="text-xl font-bold text-red-600">${metrics.dailyCalorieTarget}</div>
+                    </div>
+                    
+                    <div class="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
+                        <div>
+                            <div class="font-medium text-blue-700 dark:text-blue-300">💧 Water Intake</div>
+                            <div class="text-sm text-blue-600 dark:text-blue-400">${metrics.waterRequirement}ml total</div>
+                        </div>
+                        <div class="text-xl font-bold text-blue-600">${waterGlasses} glasses</div>
+                    </div>
+                    
+                    <div class="flex items-center justify-between p-3 bg-green-50 dark:bg-green-900/30 rounded-lg">
+                        <div>
+                            <div class="font-medium text-green-700 dark:text-green-300">🥩 Protein Goal</div>
+                            <div class="text-sm text-green-600 dark:text-green-400">For ${gameState.profile.fitnessGoal.replace('_', ' ')}</div>
+                        </div>
+                        <div class="text-xl font-bold text-green-600">${metrics.proteinRequirement}g</div>
+                    </div>
+                    
+                    <div class="flex items-center justify-between p-3 bg-orange-50 dark:bg-orange-900/30 rounded-lg">
+                        <div>
+                            <div class="font-medium text-orange-700 dark:text-orange-300">👟 Daily Steps</div>
+                            <div class="text-sm text-orange-600 dark:text-orange-400">Activity level: ${gameState.profile.activityLevel}</div>
+                        </div>
+                        <div class="text-xl font-bold text-orange-600">${metrics.dailyStepsTarget.toLocaleString()}</div>
+                    </div>
+                    
+                    <div class="flex items-center justify-between p-3 bg-purple-50 dark:bg-purple-900/30 rounded-lg">
+                        <div>
+                            <div class="font-medium text-purple-700 dark:text-purple-300">⏱️ Weekly Exercise</div>
+                            <div class="text-sm text-purple-600 dark:text-purple-400">${Math.round(metrics.weeklyExerciseMinutes/7)} min/day average</div>
+                        </div>
+                        <div class="text-xl font-bold text-purple-600">${metrics.weeklyExerciseMinutes} min</div>
+                    </div>
+                    
+                    <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                        <div>
+                            <div class="font-medium text-gray-700 dark:text-gray-300">🏋️ Equipment Available</div>
+                            <div class="text-sm text-gray-600 dark:text-gray-400">${gameState.profile.equipment.length} items</div>
+                        </div>
+                        <div class="text-xl font-bold text-gray-600 dark:text-gray-400">${gameState.profile.equipment.length > 0 ? '✅' : '❌'}</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function updateStatsUIWithTargets() {
+            // Update goal displays with personalized targets
+            const metrics = gameState.healthMetrics;
+            
+            if (metrics.dailyCalorieTarget > 0) {
+                const calorieGoal = document.querySelector('#caloriesCount + .text-xs');
+                if (calorieGoal) {
+                    calorieGoal.textContent = `Goal: ${metrics.dailyCalorieTarget}`;
+                    calorieGoal.classList.remove('text-nutrition');
+                    calorieGoal.classList.add('text-red-600');
+                }
+                
+                const waterGoal = document.querySelector('#waterCount + .text-xs');
+                if (waterGoal) {
+                    const waterGlasses = Math.ceil(metrics.waterRequirement / 250);
+                    waterGoal.textContent = `Goal: ${waterGlasses} glasses`;
+                }
+            }
+        }
+
+        function loadUserProfile() {
+            if (!gameState.profile.height) return;
+            
+            // Load profile data into form
+            document.getElementById('userHeight').value = gameState.profile.height || '';
+            document.getElementById('userWeight').value = gameState.profile.weight || '';
+            document.getElementById('userAge').value = gameState.profile.age || '';
+            document.getElementById('userGender').value = gameState.profile.gender || '';
+            document.getElementById('activityLevel').value = gameState.profile.activityLevel || '';
+            document.getElementById('fitnessGoal').value = gameState.profile.fitnessGoal || '';
+            
+            // Load equipment selections
+            gameState.profile.equipment.forEach(equipment => {
+                const checkbox = document.querySelector(`#equipmentSelection input[value="${equipment}"]`);
+                if (checkbox) checkbox.checked = true;
+            });
+            
+            // Load health conditions
+            gameState.profile.healthConditions.forEach(condition => {
+                const checkbox = document.querySelector(`#healthConditions input[value="${condition}"]`);
+                if (checkbox) checkbox.checked = true;
+            });
+        }
+
         // Update settings display on page load
         function loadSettings() {
             document.getElementById('notificationsToggle').checked = gameState.settings.notifications;
@@ -3469,6 +4036,9 @@
                 document.getElementById('aiSensitivity').value = gameState.ai.sensitivity;
                 document.getElementById('sensitivityValue').textContent = `${Math.round(gameState.ai.sensitivity * 100)}%`;
             }
+            
+            // Initialize profile UI
+            initializeProfileUI();
             
             updateInterestsUI();
             updateDataCounts();
