@@ -2540,11 +2540,31 @@
         // Global storage manager instance
         let storageManager;
 
+        // Initialize storage manager
+        function initializeStorageManager() {
+            try {
+                storageManager = new AdvancedStorageManager();
+                addDebugEntry('storage', 'success', 'Advanced Storage Manager initialized');
+                return true;
+            } catch (error) {
+                console.error('Failed to initialize storage manager:', error);
+                addDebugEntry('storage', 'error', 'Storage manager initialization failed', { error: error.message });
+                return false;
+            }
+        }
+
         // Updated save/load functions that use the advanced storage manager
         function saveGameState(trigger = 'manual') {
             if (!storageManager) {
-                console.error('Storage manager not initialized');
-                return { success: false, error: 'Storage manager not available' };
+                // Fallback to simple localStorage
+                try {
+                    localStorage.setItem('lifeQuestAI', JSON.stringify(gameState));
+                    addDebugEntry('storage', 'warn', 'Using fallback localStorage save', { trigger });
+                    return { success: true, method: 'fallback' };
+                } catch (error) {
+                    addDebugEntry('storage', 'error', 'Fallback save failed', { error: error.message });
+                    return { success: false, error: error.message };
+                }
             }
             
             return storageManager.save(trigger);
@@ -2552,8 +2572,24 @@
 
         function loadGameState() {
             if (!storageManager) {
-                console.error('Storage manager not initialized');
-                return { success: false, error: 'Storage manager not available' };
+                // Fallback to simple localStorage
+                try {
+                    const data = localStorage.getItem('lifeQuestAI');
+                    if (data) {
+                        const parsed = JSON.parse(data);
+                        Object.assign(gameState, parsed);
+                        addDebugEntry('storage', 'warn', 'Using fallback localStorage load');
+                    }
+                } catch (error) {
+                    addDebugEntry('storage', 'error', 'Fallback load failed', { error: error.message });
+                }
+                
+                // Update UI to show client ID status after loading
+                setTimeout(() => {
+                    updateSpotifyClientIdStatus();
+                }, 100);
+                
+                return { success: true, method: 'fallback' };
             }
             
             const result = storageManager.load();
@@ -4412,25 +4448,79 @@
         async function spotifyApiRequest(endpoint, options = {}) {
             await ensureValidToken();
             
+            const defaultHeaders = {
+                'Authorization': `Bearer ${spotifyAccessToken}`,
+                'Content-Type': 'application/json'
+            };
+            
+            // Handle different content types for API requests
+            const headers = { ...defaultHeaders, ...options.headers };
+            
             const response = await fetch(`https://api.spotify.com/v1${endpoint}`, {
                 ...options,
-                headers: {
-                    'Authorization': `Bearer ${spotifyAccessToken}`,
-                    'Content-Type': 'application/json',
-                    ...options.headers
-                }
+                headers: headers
             });
+
+            // Handle 204 No Content (common for Spotify player endpoints)
+            if (response.status === 204) {
+                return null;
+            }
+            
+            // Handle 202 Accepted
+            if (response.status === 202) {
+                return { status: 'accepted' };
+            }
 
             if (!response.ok) {
                 if (response.status === 401) {
-                    // Token might be invalid, try refreshing
-                    await refreshSpotifyToken();
-                    return spotifyApiRequest(endpoint, options);
+                    // Token might be invalid, try refreshing once
+                    try {
+                        await refreshSpotifyToken();
+                        // Retry the request with new token
+                        const retryHeaders = {
+                            ...defaultHeaders,
+                            'Authorization': `Bearer ${spotifyAccessToken}`,
+                            ...options.headers
+                        };
+                        
+                        const retryResponse = await fetch(`https://api.spotify.com/v1${endpoint}`, {
+                            ...options,
+                            headers: retryHeaders
+                        });
+                        
+                        if (retryResponse.status === 204) return null;
+                        if (retryResponse.status === 202) return { status: 'accepted' };
+                        if (!retryResponse.ok) {
+                            throw new Error(`Spotify API error after retry: ${retryResponse.status} ${retryResponse.statusText}`);
+                        }
+                        
+                        return retryResponse.json();
+                    } catch (refreshError) {
+                        throw new Error(`Token refresh failed: ${refreshError.message}`);
+                    }
                 }
-                throw new Error(`Spotify API error: ${response.status} ${response.statusText}`);
+                
+                // Try to get error details from response
+                let errorDetails = `${response.status} ${response.statusText}`;
+                try {
+                    const errorData = await response.json();
+                    if (errorData.error && errorData.error.message) {
+                        errorDetails = `${response.status}: ${errorData.error.message}`;
+                    }
+                } catch (parseError) {
+                    // Use default error details if JSON parsing fails
+                }
+                
+                throw new Error(`Spotify API error: ${errorDetails}`);
             }
 
-            return response.json();
+            // Return JSON for successful responses
+            try {
+                return await response.json();
+            } catch (jsonError) {
+                // Some endpoints might return empty responses
+                return null;
+            }
         }
 
         async function initializeSpotifyPlayer() {
@@ -4459,7 +4549,38 @@
 
         async function updateCurrentTrackFromAPI() {
             try {
-                const playbackState = await spotifyApiRequest('/me/player');
+                await ensureValidToken();
+                
+                const response = await fetch('https://api.spotify.com/v1/me/player', {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${spotifyAccessToken}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                // Handle 204 No Content (no active device)
+                if (response.status === 204) {
+                    addDebugEntry('spotify', 'info', 'No active Spotify device found');
+                    showNoActiveDeviceState();
+                    return;
+                }
+
+                // Handle 202 Accepted (command received, processing)
+                if (response.status === 202) {
+                    addDebugEntry('spotify', 'info', 'Spotify command accepted, processing');
+                    return;
+                }
+
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        await refreshSpotifyToken();
+                        return updateCurrentTrackFromAPI(); // Retry once
+                    }
+                    throw new Error(`Spotify API error: ${response.status} ${response.statusText}`);
+                }
+
+                const playbackState = await response.json();
                 
                 if (playbackState && playbackState.item) {
                     const track = playbackState.item;
@@ -4467,67 +4588,103 @@
                         name: track.name || 'Unknown Track',
                         artist: track.artists?.[0]?.name || 'Unknown Artist',
                         album: track.album?.name || 'Unknown Album',
-                        image: track.album?.images?.[0]?.url || track.album?.images?.[1]?.url || track.album?.images?.[2]?.url || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHZpZXdCb3g9IjAgMCA2NCA2NCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiBmaWxsPSIjMUI4M0ZGIi8+Cjx0ZXh0IHg9IjMyIiB5PSIzNiIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjEyIiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+U1A8L3RleHQ+Cjwvc3ZnPgo=',
+                        image: track.album?.images?.[0]?.url || track.album?.images?.[1]?.url || track.album?.images?.[2]?.url || getDefaultAlbumArt(),
                         duration: Math.floor((track.duration_ms || 0) / 1000),
                         position: Math.floor((playbackState.progress_ms || 0) / 1000),
                         isPlaying: playbackState.is_playing === true,
-                        device: playbackState.device?.name || 'Unknown Device'
+                        device: playbackState.device?.name || 'Unknown Device',
+                        deviceId: playbackState.device?.id || null
                     };
                     
-                    // Safely update UI elements
-                    const trackImage = document.getElementById('trackImage');
-                    const trackName = document.getElementById('trackName');
-                    const trackArtist = document.getElementById('trackArtist');
-                    const trackAlbum = document.getElementById('trackAlbum');
-                    const playPauseBtn = document.getElementById('playPauseBtn');
-                    
-                    if (trackImage) trackImage.src = currentPlaybackState.image;
-                    if (trackName) trackName.textContent = currentPlaybackState.name;
-                    if (trackArtist) trackArtist.textContent = currentPlaybackState.artist;
-                    if (trackAlbum) trackAlbum.textContent = currentPlaybackState.album;
-                    if (playPauseBtn) playPauseBtn.textContent = currentPlaybackState.isPlaying ? '⏸️' : '▶️';
-                    
-                    // Update progress display
+                    updateTrackUIElements();
                     updateProgressDisplay();
                     
-                    addDebugEntry('spotify', 'info', 'Track updated from API', {
+                    addDebugEntry('spotify', 'success', 'Track state updated successfully', {
                         track: currentPlaybackState.name,
+                        artist: currentPlaybackState.artist,
                         isPlaying: currentPlaybackState.isPlaying,
-                        device: currentPlaybackState.device
+                        device: currentPlaybackState.device,
+                        position: `${currentPlaybackState.position}/${currentPlaybackState.duration}s`
                     });
                     
                 } else {
-                    // No active playback - show placeholder
-                    currentPlaybackState = null;
-                    
-                    const trackImage = document.getElementById('trackImage');
-                    const trackName = document.getElementById('trackName');
-                    const trackArtist = document.getElementById('trackArtist');
-                    const trackAlbum = document.getElementById('trackAlbum');
-                    const playPauseBtn = document.getElementById('playPauseBtn');
-                    const trackProgress = document.getElementById('trackProgress');
-                    const progressBar = document.getElementById('progressBar');
-                    
-                    if (trackImage) trackImage.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHZpZXdCb3g9IjAgMCA2NCA2NCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiBmaWxsPSIjNjY2NjY2Ii8+Cjx0ZXh0IHg9IjMyIiB5PSIzNiIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjEwIiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+Tm8gU29uZzwvdGV4dD4KPC9zdmc+Cg==';
-                    if (trackName) trackName.textContent = 'No track playing';
-                    if (trackArtist) trackArtist.textContent = 'Open Spotify and start playing music';
-                    if (trackAlbum) trackAlbum.textContent = '-';
-                    if (playPauseBtn) playPauseBtn.textContent = '▶️';
-                    if (trackProgress) trackProgress.textContent = '0:00 / 0:00';
-                    if (progressBar) progressBar.style.width = '0%';
-                    
-                    addDebugEntry('spotify', 'info', 'No active playback detected');
+                    addDebugEntry('spotify', 'info', 'No active playback - showing placeholder');
+                    showNoActiveDeviceState();
                 }
             } catch (error) {
-                addDebugEntry('spotify', 'error', 'Failed to get current track from API', {
+                addDebugEntry('spotify', 'error', 'API request failed', {
                     error: error.message,
-                    status: error.status || 'unknown'
+                    hasToken: !!spotifyAccessToken,
+                    tokenExpiry: tokenExpiryTime ? new Date(tokenExpiryTime).toISOString() : 'unknown'
                 });
                 
-                // Only fall back to simulated track if we don't have any current state
+                // Fallback to simulated state if no current state exists
                 if (!currentPlaybackState) {
                     updateCurrentTrack();
                 }
+            }
+        }
+
+        function getDefaultAlbumArt() {
+            return 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHZpZXdCb3g9IjAgMCA2NCA2NCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiBmaWxsPSIjMUI4M0ZGIi8+Cjx0ZXh0IHg9IjMyIiB5PSIzNiIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjEyIiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+U1A8L3RleHQ+Cjwvc3ZnPgo=';
+        }
+
+        function updateTrackUIElements() {
+            if (!currentPlaybackState) return;
+            
+            const trackImage = document.getElementById('trackImage');
+            const trackName = document.getElementById('trackName');
+            const trackArtist = document.getElementById('trackArtist');
+            const trackAlbum = document.getElementById('trackAlbum');
+            const playPauseBtn = document.getElementById('playPauseBtn');
+            
+            if (trackImage) trackImage.src = currentPlaybackState.image;
+            if (trackName) trackName.textContent = currentPlaybackState.name;
+            if (trackArtist) trackArtist.textContent = currentPlaybackState.artist;
+            if (trackAlbum) trackAlbum.textContent = currentPlaybackState.album;
+            if (playPauseBtn) playPauseBtn.textContent = currentPlaybackState.isPlaying ? '⏸️' : '▶️';
+        }
+
+        function showNoActiveDeviceState() {
+            currentPlaybackState = null;
+            
+            const trackImage = document.getElementById('trackImage');
+            const trackName = document.getElementById('trackName');
+            const trackArtist = document.getElementById('trackArtist');
+            const trackAlbum = document.getElementById('trackAlbum');
+            const playPauseBtn = document.getElementById('playPauseBtn');
+            const trackProgress = document.getElementById('trackProgress');
+            const progressBar = document.getElementById('progressBar');
+            
+            if (trackImage) trackImage.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHZpZXdCb3g9IjAgMCA2NCA2NCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiBmaWxsPSIjNjY2NjY2Ii8+Cjx0ZXh0IHg9IjMyIiB5PSIzNiIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjEwIiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+Tm8gRGV2aWNlPC90ZXh0Pgo8L3N2Zz4K';
+            if (trackName) trackName.textContent = 'No active device';
+            if (trackArtist) trackArtist.textContent = 'Open Spotify app and start playing music';
+            if (trackAlbum) trackAlbum.textContent = 'Then refresh this page';
+            if (playPauseBtn) playPauseBtn.textContent = '▶️';
+            if (trackProgress) trackProgress.textContent = '0:00 / 0:00';
+            if (progressBar) progressBar.style.width = '0%';
+        }
+
+        function updateProgressDisplay() {
+            if (!currentPlaybackState || !currentPlaybackState.duration) return;
+            
+            const progress = (currentPlaybackState.position / currentPlaybackState.duration) * 100;
+            const progressBar = document.getElementById('progressBar');
+            const trackProgress = document.getElementById('trackProgress');
+            
+            if (progressBar) {
+                progressBar.style.width = `${Math.min(100, Math.max(0, progress))}%`;
+            }
+            
+            if (trackProgress) {
+                const formatTime = (seconds) => {
+                    const mins = Math.floor(seconds / 60);
+                    const secs = seconds % 60;
+                    return `${mins}:${secs.toString().padStart(2, '0')}`;
+                };
+                
+                trackProgress.textContent = 
+                    `${formatTime(currentPlaybackState.position)} / ${formatTime(currentPlaybackState.duration)}`;
             }
         }
 
@@ -4787,40 +4944,159 @@
             }
 
             try {
-                // Get available devices first
-                const devices = await spotifyApiRequest('/me/player/devices');
+                addDebugEntry('spotify', 'info', 'Starting web player transfer process');
                 
-                // Look for web player device
-                const webPlayerDevice = devices.devices?.find(device => 
-                    device.type.toLowerCase().includes('computer') || 
-                    device.name.toLowerCase().includes('web')
+                // Get available devices using proper API call
+                const devicesResponse = await spotifyApiRequest('/me/player/devices');
+                
+                if (!devicesResponse || !devicesResponse.devices) {
+                    throw new Error('No devices response from Spotify API');
+                }
+                
+                addDebugEntry('spotify', 'info', 'Retrieved device list', {
+                    deviceCount: devicesResponse.devices.length,
+                    devices: devicesResponse.devices.map(d => ({
+                        id: d.id.substring(0, 8) + '...',
+                        name: d.name,
+                        type: d.type,
+                        is_active: d.is_active,
+                        is_private_session: d.is_private_session
+                    }))
+                });
+                
+                // Look for web player devices (according to Spotify Web Playback SDK docs)
+                // Web players typically have type "Computer" and specific naming patterns
+                const webPlayerDevice = devicesResponse.devices.find(device => 
+                    !device.is_private_session && // Don't transfer to private sessions
+                    (
+                        device.type === 'Computer' || // Most common for web players
+                        device.name.toLowerCase().includes('web player') ||
+                        device.name.toLowerCase().includes('browser') ||
+                        device.name.toLowerCase().includes('chrome') ||
+                        device.name.toLowerCase().includes('firefox') ||
+                        device.name.toLowerCase().includes('safari') ||
+                        device.name.toLowerCase().includes('edge')
+                    )
                 );
                 
                 if (webPlayerDevice) {
-                    await spotifyApiRequest('/me/player', {
+                    addDebugEntry('spotify', 'info', 'Found suitable web player device', {
+                        deviceId: webPlayerDevice.id.substring(0, 8) + '...',
+                        deviceName: webPlayerDevice.name,
+                        deviceType: webPlayerDevice.type,
+                        isActive: webPlayerDevice.is_active
+                    });
+                    
+                    // Use the official Spotify Web API transfer endpoint
+                    // PUT /v1/me/player with device_ids array
+                    const transferResponse = await fetch('https://api.spotify.com/v1/me/player', {
                         method: 'PUT',
+                        headers: {
+                            'Authorization': `Bearer ${spotifyAccessToken}`,
+                            'Content-Type': 'application/json'
+                        },
                         body: JSON.stringify({
                             device_ids: [webPlayerDevice.id],
-                            play: currentPlaybackState?.isPlaying || false
+                            // Only include play parameter if we have current playback state
+                            ...(currentPlaybackState && typeof currentPlaybackState.isPlaying === 'boolean' 
+                                ? { play: currentPlaybackState.isPlaying } 
+                                : {})
                         })
                     });
                     
-                    showFloatingNotification('📱 Spotify', `Transferred to ${webPlayerDevice.name}`);
-                    addDebugEntry('spotify', 'success', 'Playback transferred to web player', {
-                        deviceName: webPlayerDevice.name,
-                        deviceId: webPlayerDevice.id
-                    });
+                    // Handle different response codes according to Spotify API docs
+                    if (transferResponse.status === 204) {
+                        // Success - No Content (normal response for transfer)
+                        showFloatingNotification('📱 Spotify', `Transferred to ${webPlayerDevice.name}`);
+                        addDebugEntry('spotify', 'success', 'Playback transferred successfully', {
+                            deviceName: webPlayerDevice.name,
+                            deviceId: webPlayerDevice.id.substring(0, 8) + '...',
+                            responseStatus: 204
+                        });
+                        
+                        // Update current playback state after successful transfer
+                        setTimeout(() => {
+                            updateCurrentTrackFromAPI();
+                            updateDeviceListFromAPI();
+                        }, 1000);
+                        
+                    } else if (transferResponse.status === 202) {
+                        // Accepted - Transfer is being processed
+                        showFloatingNotification('📱 Spotify', 'Transfer request accepted, processing...');
+                        addDebugEntry('spotify', 'info', 'Transfer request accepted by Spotify', {
+                            deviceName: webPlayerDevice.name,
+                            responseStatus: 202
+                        });
+                        
+                        // Check transfer status after delay
+                        setTimeout(() => {
+                            updateCurrentTrackFromAPI();
+                            updateDeviceListFromAPI();
+                        }, 2000);
+                        
+                    } else if (transferResponse.status === 403) {
+                        // Forbidden - Premium required or device not available
+                        const errorText = await transferResponse.text();
+                        let errorMessage = 'Transfer failed: Premium account required or device unavailable';
+                        
+                        try {
+                            const errorData = JSON.parse(errorText);
+                            if (errorData.error && errorData.error.message) {
+                                errorMessage = `Transfer failed: ${errorData.error.message}`;
+                            }
+                        } catch (parseError) {
+                            // Use default message
+                        }
+                        
+                        throw new Error(errorMessage);
+                        
+                    } else if (transferResponse.status === 404) {
+                        // Not Found - Device not found
+                        throw new Error('Transfer failed: Selected device is no longer available');
+                        
+                    } else if (!transferResponse.ok) {
+                        // Other error codes
+                        const errorText = await transferResponse.text();
+                        let errorMessage = `Transfer failed: ${transferResponse.status} ${transferResponse.statusText}`;
+                        
+                        try {
+                            const errorData = JSON.parse(errorText);
+                            if (errorData.error && errorData.error.message) {
+                                errorMessage = `Transfer failed: ${errorData.error.message}`;
+                            }
+                        } catch (parseError) {
+                            // Use default message
+                        }
+                        
+                        throw new Error(errorMessage);
+                    }
+                    
                 } else {
-                    showFloatingNotification('📱 No Web Player', 'No web player device found. Open Spotify in a browser first.');
-                    addDebugEntry('spotify', 'warn', 'No web player device available for transfer');
+                    // No suitable web player found
+                    const availableDevices = devicesResponse.devices.map(d => `${d.name} (${d.type})`).join(', ');
+                    
+                    showFloatingNotification('📱 No Web Player', 'No web player device found. Open Spotify in a browser and start playing music first.');
+                    addDebugEntry('spotify', 'warn', 'No suitable web player device found', {
+                        totalDevices: devicesResponse.devices.length,
+                        availableDevices: availableDevices,
+                        searchCriteria: 'type=Computer OR name contains web player keywords'
+                    });
+                    
+                    // Show available devices for debugging
+                    if (devicesResponse.devices.length > 0) {
+                        const deviceList = devicesResponse.devices.map(d => `• ${d.name} (${d.type})`).join('\n');
+                        console.log('Available Spotify devices:\n' + deviceList);
+                    }
                 }
                 
-                // Update device list after transfer
-                setTimeout(updateDeviceListFromAPI, 2000);
-                
             } catch (error) {
-                addDebugEntry('spotify', 'error', 'Web player transfer failed', { error: error.message });
-                showFloatingNotification('❌ Transfer Failed', 'Unable to transfer to web player');
+                addDebugEntry('spotify', 'error', 'Web player transfer failed', { 
+                    error: error.message,
+                    hasToken: !!spotifyAccessToken,
+                    tokenValid: tokenExpiryTime ? Date.now() < tokenExpiryTime : 'unknown'
+                });
+                
+                showFloatingNotification('❌ Transfer Failed', error.message || 'Unable to transfer to web player');
             }
         }
 
