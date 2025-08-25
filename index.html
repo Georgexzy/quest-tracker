@@ -174,6 +174,9 @@
                             <button onclick="aiQuickSuggestion()" class="glass-effect px-3 py-1 rounded-lg text-sm hover:bg-white/20 transition-all">
                                 🧠 AI Tip
                             </button>
+                            <button onclick="showDebugConsole()" class="glass-effect px-3 py-1 rounded-lg text-sm hover:bg-white/20 transition-all" title="Advanced Debug Console">
+                                🔍 Debug
+                            </button>
                             <button onclick="switchTab('settings')" class="glass-effect px-3 py-1 rounded-lg text-sm hover:bg-white/20 transition-all">
                                 ⚙️ Settings
                             </button>
@@ -4063,15 +4066,57 @@
             const clientId = document.getElementById('spotifyClientId').value.trim();
             const redirectUri = document.getElementById('spotifyRedirectUri').value.trim();
             
+            addDebugEntry('storage', 'info', 'Attempting to save Spotify config', { 
+                clientId: clientId ? `${clientId.substring(0, 8)}...` : 'EMPTY',
+                redirectUri: redirectUri || 'auto-detected'
+            });
+            
             if (!clientId) {
+                addDebugEntry('storage', 'error', 'Save failed: Missing Client ID');
                 showFloatingNotification('⚠️ Missing Client ID', 'Please enter your Spotify client ID');
                 return;
             }
             
+            // Store in multiple places for redundancy
             gameState.settings.spotifyClientId = clientId;
             gameState.settings.spotifyRedirectUri = redirectUri || '';
             
-            saveGameState();
+            // Direct localStorage backup (redundant storage)
+            try {
+                localStorage.setItem('spotify_client_id_backup', clientId);
+                localStorage.setItem('spotify_redirect_uri_backup', redirectUri || '');
+                addDebugEntry('storage', 'success', 'Backup storage successful');
+            } catch (error) {
+                addDebugEntry('storage', 'error', 'Backup storage failed', error);
+            }
+            
+            // Save main game state
+            const saveResult = saveGameState();
+            
+            // Verify the save worked
+            setTimeout(() => {
+                const verification = localStorage.getItem('lifeQuestAI');
+                if (verification) {
+                    try {
+                        const parsed = JSON.parse(verification);
+                        const savedClientId = parsed.settings?.spotifyClientId;
+                        if (savedClientId === clientId) {
+                            addDebugEntry('storage', 'success', 'Spotify config save verified', { 
+                                savedClientId: `${savedClientId.substring(0, 8)}...`
+                            });
+                        } else {
+                            addDebugEntry('storage', 'error', 'Save verification failed', { 
+                                expected: `${clientId.substring(0, 8)}...`,
+                                actual: savedClientId ? `${savedClientId.substring(0, 8)}...` : 'MISSING'
+                            });
+                        }
+                    } catch (parseError) {
+                        addDebugEntry('storage', 'error', 'Save verification parse error', parseError);
+                    }
+                } else {
+                    addDebugEntry('storage', 'error', 'No localStorage data found after save');
+                }
+            }, 100);
             
             // Update the display of current redirect URI
             updateRedirectUriDisplay();
