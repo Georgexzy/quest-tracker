@@ -3063,7 +3063,32 @@
             updateStatsUI();
             updateWaterVisualization();
             
-            showFloatingNotification('💧 Water Logged!', `Glass ${gameState.dailyStats.waterGlasses}/8`);
+            // Play a relaxing water-themed track
+            if (spotifyAccessToken) {
+                playAIRecommendation('wellness');
+            } else {
+                // Simulate wellness music
+                updateCurrentTrack();
+                if (currentPlaybackState) {
+                    currentPlaybackState.name = "Calming Waters";
+                    currentPlaybackState.artist = "Nature Sounds";
+                    currentPlaybackState.isPlaying = true;
+                    
+                    const trackName = document.getElementById('trackName');
+                    const trackArtist = document.getElementById('trackArtist');
+                    const playPauseBtn = document.getElementById('playPauseBtn');
+                    
+                    if (trackName) trackName.textContent = currentPlaybackState.name;
+                    if (trackArtist) trackArtist.textContent = currentPlaybackState.artist;
+                    if (playPauseBtn) playPauseBtn.textContent = '⏸️';
+                }
+            }
+            
+            showFloatingNotification('💧 Water Logged!', `Glass ${gameState.dailyStats.waterGlasses}/8 + Calming Music`);
+            addDebugEntry('music', 'info', 'Water logged with wellness music', { 
+                waterGlasses: gameState.dailyStats.waterGlasses,
+                musicType: 'wellness' 
+            });
             
             // Check hydration achievements
             if (gameState.dailyStats.waterGlasses === 8) {
@@ -4436,35 +4461,70 @@
                 if (playbackState && playbackState.item) {
                     const track = playbackState.item;
                     currentPlaybackState = {
-                        name: track.name,
-                        artist: track.artists[0]?.name || 'Unknown Artist',
+                        name: track.name || 'Unknown Track',
+                        artist: track.artists?.[0]?.name || 'Unknown Artist',
                         album: track.album?.name || 'Unknown Album',
-                        image: track.album?.images[0]?.url || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHZpZXdCb3g9IjAgMCA2NCA2NCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiBmaWxsPSIjMUI4M0ZGIi8+Cjx0ZXh0IHg9IjMyIiB5PSIzNiIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjEyIiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+U1A8L3RleHQ+Cjwvc3ZnPgo=',
-                        duration: Math.floor(track.duration_ms / 1000),
-                        position: Math.floor(playbackState.progress_ms / 1000),
-                        isPlaying: playbackState.is_playing
+                        image: track.album?.images?.[0]?.url || track.album?.images?.[1]?.url || track.album?.images?.[2]?.url || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHZpZXdCb3g9IjAgMCA2NCA2NCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiBmaWxsPSIjMUI4M0ZGIi8+Cjx0ZXh0IHg9IjMyIiB5PSIzNiIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjEyIiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+U1A8L3RleHQ+Cjwvc3ZnPgo=',
+                        duration: Math.floor((track.duration_ms || 0) / 1000),
+                        position: Math.floor((playbackState.progress_ms || 0) / 1000),
+                        isPlaying: playbackState.is_playing === true,
+                        device: playbackState.device?.name || 'Unknown Device'
                     };
                     
-                    document.getElementById('trackImage').src = currentPlaybackState.image;
-                    document.getElementById('trackName').textContent = currentPlaybackState.name;
-                    document.getElementById('trackArtist').textContent = currentPlaybackState.artist;
-                    document.getElementById('trackAlbum').textContent = currentPlaybackState.album;
-                    
+                    // Safely update UI elements
+                    const trackImage = document.getElementById('trackImage');
+                    const trackName = document.getElementById('trackName');
+                    const trackArtist = document.getElementById('trackArtist');
+                    const trackAlbum = document.getElementById('trackAlbum');
                     const playPauseBtn = document.getElementById('playPauseBtn');
-                    playPauseBtn.textContent = currentPlaybackState.isPlaying ? '⏸️' : '▶️';
+                    
+                    if (trackImage) trackImage.src = currentPlaybackState.image;
+                    if (trackName) trackName.textContent = currentPlaybackState.name;
+                    if (trackArtist) trackArtist.textContent = currentPlaybackState.artist;
+                    if (trackAlbum) trackAlbum.textContent = currentPlaybackState.album;
+                    if (playPauseBtn) playPauseBtn.textContent = currentPlaybackState.isPlaying ? '⏸️' : '▶️';
+                    
+                    // Update progress display
+                    updateProgressDisplay();
+                    
+                    addDebugEntry('spotify', 'info', 'Track updated from API', {
+                        track: currentPlaybackState.name,
+                        isPlaying: currentPlaybackState.isPlaying,
+                        device: currentPlaybackState.device
+                    });
                     
                 } else {
                     // No active playback - show placeholder
                     currentPlaybackState = null;
-                    document.getElementById('trackName').textContent = 'No track playing';
-                    document.getElementById('trackArtist').textContent = 'Open Spotify and start playing music';
-                    document.getElementById('trackAlbum').textContent = '-';
-                    document.getElementById('playPauseBtn').textContent = '▶️';
+                    
+                    const trackImage = document.getElementById('trackImage');
+                    const trackName = document.getElementById('trackName');
+                    const trackArtist = document.getElementById('trackArtist');
+                    const trackAlbum = document.getElementById('trackAlbum');
+                    const playPauseBtn = document.getElementById('playPauseBtn');
+                    const trackProgress = document.getElementById('trackProgress');
+                    const progressBar = document.getElementById('progressBar');
+                    
+                    if (trackImage) trackImage.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHZpZXdCb3g9IjAgMCA2NCA2NCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiBmaWxsPSIjNjY2NjY2Ii8+Cjx0ZXh0IHg9IjMyIiB5PSIzNiIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjEwIiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+Tm8gU29uZzwvdGV4dD4KPC9zdmc+Cg==';
+                    if (trackName) trackName.textContent = 'No track playing';
+                    if (trackArtist) trackArtist.textContent = 'Open Spotify and start playing music';
+                    if (trackAlbum) trackAlbum.textContent = '-';
+                    if (playPauseBtn) playPauseBtn.textContent = '▶️';
+                    if (trackProgress) trackProgress.textContent = '0:00 / 0:00';
+                    if (progressBar) progressBar.style.width = '0%';
+                    
+                    addDebugEntry('spotify', 'info', 'No active playback detected');
                 }
             } catch (error) {
-                console.error('Error getting current track:', error);
-                // Fall back to simulated track
-                updateCurrentTrack();
+                addDebugEntry('spotify', 'error', 'Failed to get current track from API', {
+                    error: error.message,
+                    status: error.status || 'unknown'
+                });
+                
+                // Only fall back to simulated track if we don't have any current state
+                if (!currentPlaybackState) {
+                    updateCurrentTrack();
+                }
             }
         }
 
@@ -4568,29 +4628,50 @@
                 if (!currentPlaybackState) return;
                 currentPlaybackState.isPlaying = !currentPlaybackState.isPlaying;
                 const playPauseBtn = document.getElementById('playPauseBtn');
-                playPauseBtn.textContent = currentPlaybackState.isPlaying ? '⏸️' : '▶️';
+                if (playPauseBtn) playPauseBtn.textContent = currentPlaybackState.isPlaying ? '⏸️' : '▶️';
                 const action = currentPlaybackState.isPlaying ? 'resumed' : 'paused';
                 showFloatingNotification('🎵 Playback', `Music ${action} (simulated)`);
+                addDebugEntry('spotify', 'info', `Simulated playback ${action}`, { 
+                    isPlaying: currentPlaybackState.isPlaying 
+                });
                 return;
             }
 
             try {
+                addDebugEntry('spotify', 'info', 'Toggle play requested', { 
+                    currentState: currentPlaybackState?.isPlaying || false 
+                });
+                
                 const isPlaying = currentPlaybackState?.isPlaying;
                 const endpoint = isPlaying ? '/me/player/pause' : '/me/player/play';
                 
                 await spotifyApiRequest(endpoint, { method: 'PUT' });
                 
-                // Update UI immediately
+                // Update UI immediately for better responsiveness
                 if (currentPlaybackState) {
                     currentPlaybackState.isPlaying = !isPlaying;
                     const playPauseBtn = document.getElementById('playPauseBtn');
-                    playPauseBtn.textContent = currentPlaybackState.isPlaying ? '⏸️' : '▶️';
+                    if (playPauseBtn) playPauseBtn.textContent = currentPlaybackState.isPlaying ? '⏸️' : '▶️';
                 }
                 
                 const action = !isPlaying ? 'resumed' : 'paused';
                 showFloatingNotification('🎵 Spotify', `Music ${action}`);
+                
+                addDebugEntry('spotify', 'success', `Playback ${action} successfully`, {
+                    endpoint: endpoint,
+                    newState: !isPlaying
+                });
+                
+                // Refresh playback state after a short delay
+                setTimeout(updateCurrentTrackFromAPI, 1000);
+                
             } catch (error) {
-                console.error('Spotify toggle play error:', error);
+                addDebugEntry('spotify', 'error', 'Toggle play failed', {
+                    error: error.message,
+                    currentState: currentPlaybackState?.isPlaying || false,
+                    hasToken: !!spotifyAccessToken
+                });
+                
                 showFloatingNotification('❌ Spotify Error', 'Unable to control playback. Make sure Spotify is active on a device.');
             }
         }
@@ -4696,36 +4777,143 @@
             }
         }
 
-        function transferToWebPlayer() {
-            showFloatingNotification('📱 Transfer', 'Transferring playback to Spotify Web Player');
+        async function transferToWebPlayer() {
+            if (!spotifyAccessToken) {
+                showFloatingNotification('📱 Transfer', 'Transferring playback to Spotify Web Player (simulated)');
+                return;
+            }
+
+            try {
+                // Get available devices first
+                const devices = await spotifyApiRequest('/me/player/devices');
+                
+                // Look for web player device
+                const webPlayerDevice = devices.devices?.find(device => 
+                    device.type.toLowerCase().includes('computer') || 
+                    device.name.toLowerCase().includes('web')
+                );
+                
+                if (webPlayerDevice) {
+                    await spotifyApiRequest('/me/player', {
+                        method: 'PUT',
+                        body: JSON.stringify({
+                            device_ids: [webPlayerDevice.id],
+                            play: currentPlaybackState?.isPlaying || false
+                        })
+                    });
+                    
+                    showFloatingNotification('📱 Spotify', `Transferred to ${webPlayerDevice.name}`);
+                    addDebugEntry('spotify', 'success', 'Playback transferred to web player', {
+                        deviceName: webPlayerDevice.name,
+                        deviceId: webPlayerDevice.id
+                    });
+                } else {
+                    showFloatingNotification('📱 No Web Player', 'No web player device found. Open Spotify in a browser first.');
+                    addDebugEntry('spotify', 'warn', 'No web player device available for transfer');
+                }
+                
+                // Update device list after transfer
+                setTimeout(updateDeviceListFromAPI, 2000);
+                
+            } catch (error) {
+                addDebugEntry('spotify', 'error', 'Web player transfer failed', { error: error.message });
+                showFloatingNotification('❌ Transfer Failed', 'Unable to transfer to web player');
+            }
         }
 
         // AI Music Features
-        function playAIRecommendation(type) {
-            const recommendations = {
-                energy: {
-                    name: "High Energy Mix",
-                    artist: "AI Curated",
-                    genre: "Electronic/Pop"
-                },
-                wellness: {
-                    name: "Calm & Focus",
-                    artist: "Meditation Sounds",
-                    genre: "Ambient"
-                },
-                workout: {
-                    name: "Pump Up Beats",
-                    artist: "Fitness Mix",
-                    genre: "Rock/Electronic"
+        async function playAIRecommendation(type) {
+            if (!spotifyAccessToken) {
+                // Fall back to simulated behavior
+                const recommendations = {
+                    energy: {
+                        name: "High Energy Mix",
+                        artist: "AI Curated",
+                        genre: "Electronic/Pop"
+                    },
+                    wellness: {
+                        name: "Calm & Focus",
+                        artist: "Meditation Sounds",
+                        genre: "Ambient"
+                    },
+                    workout: {
+                        name: "Pump Up Beats",
+                        artist: "Fitness Mix",
+                        genre: "Rock/Electronic"
+                    }
+                };
+                
+                const rec = recommendations[type];
+                if (rec) {
+                    updateCurrentTrack();
+                    if (currentPlaybackState) {
+                        currentPlaybackState.name = rec.name;
+                        currentPlaybackState.artist = rec.artist;
+                        currentPlaybackState.isPlaying = true;
+                        
+                        const trackName = document.getElementById('trackName');
+                        const trackArtist = document.getElementById('trackArtist');
+                        const playPauseBtn = document.getElementById('playPauseBtn');
+                        
+                        if (trackName) trackName.textContent = rec.name;
+                        if (trackArtist) trackArtist.textContent = rec.artist;
+                        if (playPauseBtn) playPauseBtn.textContent = '⏸️';
+                    }
+                    showFloatingNotification('🎵 AI Recommendation', `Playing ${rec.name} (simulated)`);
+                    addDebugEntry('music', 'info', `AI recommendation played (simulated): ${type}`, rec);
                 }
-            };
-            
-            const rec = recommendations[type];
-            if (rec) {
-                updateCurrentTrack();
-                currentPlaybackState.isPlaying = true;
-                document.getElementById('playPauseBtn').textContent = '⏸️';
-                showFloatingNotification('🎵 AI Recommendation', `Playing ${rec.name}`);
+                return;
+            }
+
+            try {
+                addDebugEntry('music', 'info', `Playing AI recommendation for ${type}`, { hasToken: !!spotifyAccessToken });
+                
+                // Search for music based on type using Spotify API
+                const searchQueries = {
+                    energy: 'genre:electronic energy boost high tempo',
+                    wellness: 'genre:ambient meditation calm relaxing',
+                    workout: 'genre:rock workout pump up energetic'
+                };
+                
+                const query = searchQueries[type] || searchQueries.energy;
+                const searchResponse = await spotifyApiRequest(`/search?q=${encodeURIComponent(query)}&type=track&limit=20`);
+                
+                if (searchResponse.tracks && searchResponse.tracks.items.length > 0) {
+                    // Pick a random track from the results
+                    const randomTrack = searchResponse.tracks.items[Math.floor(Math.random() * searchResponse.tracks.items.length)];
+                    
+                    // Try to play the track
+                    await spotifyApiRequest('/me/player/play', {
+                        method: 'PUT',
+                        body: JSON.stringify({
+                            uris: [randomTrack.uri]
+                        })
+                    });
+                    
+                    showFloatingNotification('🎵 AI Recommendation', `Playing "${randomTrack.name}" by ${randomTrack.artists[0].name}`);
+                    addDebugEntry('music', 'success', 'AI recommendation played successfully', {
+                        type: type,
+                        track: randomTrack.name,
+                        artist: randomTrack.artists[0].name,
+                        uri: randomTrack.uri
+                    });
+                    
+                    // Update track info after a brief delay
+                    setTimeout(updateCurrentTrackFromAPI, 1000);
+                    
+                } else {
+                    showFloatingNotification('🎵 No Results', `No ${type} music found. Make sure Spotify is active.`);
+                    addDebugEntry('music', 'warn', `No search results for AI recommendation: ${type}`, { query });
+                }
+                
+            } catch (error) {
+                addDebugEntry('music', 'error', 'AI recommendation playback failed', {
+                    type: type,
+                    error: error.message,
+                    hasToken: !!spotifyAccessToken
+                });
+                
+                showFloatingNotification('❌ Playback Error', 'Unable to play AI recommendation. Make sure Spotify is active on a device.');
             }
         }
 
