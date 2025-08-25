@@ -3923,7 +3923,6 @@
                     console.log('🎵 Using web player for play/pause');
                     webPlayerInstance.togglePlay().then(() => {
                         console.log('✅ Web player toggle successful');
-                        awardXP(5, 'Playback toggled! 🎵');
                         // Update state immediately
                         setTimeout(() => {
                             webPlayerInstance.getCurrentState().then(state => {
@@ -3971,7 +3970,6 @@
                     console.log('🎵 Using web player for next track');
                     webPlayerInstance.nextTrack().then(() => {
                         console.log('✅ Web player next track successful');
-                        awardXP(5, 'Track skipped! 🎵');
                         showFloatingNotification('⏭️ Next Track', 'Skipped to next track');
                         // Update state after a short delay
                         setTimeout(() => {
@@ -4015,7 +4013,6 @@
                     console.log('🎵 Using web player for previous track');
                     webPlayerInstance.previousTrack().then(() => {
                         console.log('✅ Web player previous track successful');
-                        awardXP(5, 'Previous track! 🎵');
                         showFloatingNotification('⏮️ Previous Track', 'Went to previous track');
                         // Update state after a short delay
                         setTimeout(() => {
