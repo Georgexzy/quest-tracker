@@ -3722,6 +3722,24 @@
                 // Update music achievements
                 checkMusicAchievements();
                 
+                // Initialize web player after successful data load
+                console.log('🎵 Initializing web player after data load...');
+                if (window.Spotify && !webPlayerInstance) {
+                    initializeWebPlayer();
+                } else if (webPlayerInstance) {
+                    console.log('🎵 Web player already exists, ensuring it\'s connected...');
+                    // Reconnect if needed
+                    webPlayerInstance.connect().then(success => {
+                        if (success) {
+                            console.log('✅ Web player reconnected successfully');
+                        } else {
+                            console.log('🔄 Reinitializing web player...');
+                            webPlayerInstance = null;
+                            initializeWebPlayer();
+                        }
+                    });
+                }
+                
                 showFloatingNotification('🎵 Data Loaded!', 'Your Spotify music profile has been analyzed');
                 
             } catch (error) {
