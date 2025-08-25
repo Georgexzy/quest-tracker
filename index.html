@@ -124,6 +124,32 @@
             backdrop-filter: blur(8px);
             background: rgba(0, 0, 0, 0.4);
         }
+        .debug-filter-btn {
+            font-size: 0.75rem;
+            padding: 0.25rem 0.75rem;
+            border-radius: 0.375rem;
+            background-color: #e5e7eb;
+            color: #374151;
+            transition: all 0.15s ease-in-out;
+        }
+        
+        .dark .debug-filter-btn {
+            background-color: #4b5563;
+            color: #d1d5db;
+        }
+        
+        .debug-filter-btn:hover {
+            background-color: #d1d5db;
+        }
+        
+        .dark .debug-filter-btn:hover {
+            background-color: #6b7280;
+        }
+        
+        .debug-filter-btn.active {
+            background-color: #5D5CDE;
+            color: white;
+        }
     </style>
 </head>
 <body class="bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white transition-colors duration-300">
@@ -2573,7 +2599,7 @@
                             <span>Advanced AI Analysis</span>
                             <div class="pattern-learning-indicator w-4 h-4 rounded-full"></div>
                         </h3>
-                        <button onclick="this.closest('.modal-overlay').remove()" class="text-gray-400 hover:text-gray-600 text-xl">×</button>
+                        <button onclick="closeAdvancedAI()" class="text-gray-400 hover:text-gray-600 text-xl" title="Close Advanced AI">×</button>
                     </div>
                     
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -2653,13 +2679,25 @@
                         <button onclick="exportAIData()" class="flex-1 bg-green-500 text-white py-2 rounded hover:bg-green-600 transition-all">
                             📊 Export Data
                         </button>
-                        <button onclick="this.closest('.modal-overlay').remove()" class="flex-1 bg-gray-500 text-white py-2 rounded hover:bg-gray-600 transition-all">
+                        <button onclick="showDebugConsole()" class="flex-1 bg-blue-500 text-white py-2 rounded hover:bg-blue-600 transition-all">
+                            🔍 Debug Console
+                        </button>
+                        <button onclick="closeAdvancedAI()" class="flex-1 bg-gray-500 text-white py-2 rounded hover:bg-gray-600 transition-all">
                             Close
                         </button>
                     </div>
                 </div>
             `;
             document.body.appendChild(modal);
+            addDebugEntry('ui', 'info', 'Advanced AI modal opened');
+        }
+
+        function closeAdvancedAI() {
+            const modal = document.querySelector('.modal-overlay');
+            if (modal) {
+                modal.remove();
+                addDebugEntry('ui', 'info', 'Advanced AI modal closed');
+            }
         }
 
         function showAllAIInsights() {
