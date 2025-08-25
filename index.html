@@ -4081,27 +4081,31 @@
             }, 3000);
         }
 
-        // 🎵 SPOTIFY INTEGRATION WITH PROPER PKCE
+        // 🎵 SPOTIFY INTEGRATION WITH COMPLETE API COMPLIANCE
         let spotifyPlayer = null;
         let spotifyAccessToken = null;
         let currentPlaybackState = null;
         let refreshToken = null;
         let tokenExpiryTime = null;
+        let playerUpdateInterval = null;
+        let isPlayerInitialized = false;
+        let lastPlayerUpdate = 0;
+        let retryCount = 0;
+        const MAX_RETRIES = 3;
 
-        // Spotify API Configuration
+        // Spotify API Configuration - Following official documentation
         function getSpotifyRedirectURI() {
             return gameState.settings.spotifyRedirectUri || (window.location.origin + window.location.pathname);
         }
         
+        // Required scopes per Spotify Web API documentation
         const SPOTIFY_SCOPES = [
-            'streaming',
-            'user-read-email',
-            'user-read-private',
-            'user-read-playback-state',
-            'user-modify-playback-state',
-            'user-read-currently-playing',
-            'playlist-read-private',
-            'playlist-read-collaborative'
+            'user-read-playback-state',    // Required for reading playback state
+            'user-modify-playback-state',  // Required for controlling playback
+            'user-read-currently-playing', // Required for current track info
+            'streaming',                   // Required for Web Playbook SDK (if needed)
+            'user-read-email',            // Required for user profile
+            'user-read-private'           // Required for user profile
         ].join(' ');
 
         // PKCE Helper Functions
@@ -4446,81 +4450,240 @@
         }
 
         async function spotifyApiRequest(endpoint, options = {}) {
-            await ensureValidToken();
+            const requestId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+            const startTime = performance.now();
             
-            const defaultHeaders = {
-                'Authorization': `Bearer ${spotifyAccessToken}`,
-                'Content-Type': 'application/json'
-            };
-            
-            // Handle different content types for API requests
-            const headers = { ...defaultHeaders, ...options.headers };
-            
-            const response = await fetch(`https://api.spotify.com/v1${endpoint}`, {
-                ...options,
-                headers: headers
-            });
+            try {
+                addDebugEntry('spotify', 'info', `API request started: ${endpoint}`, {
+                    requestId,
+                    method: options.method || 'GET',
+                    hasBody: !!options.body,
+                    endpoint
+                });
+                
+                // Ensure we have a valid token before making the request
+                await ensureValidToken();
+                
+                const defaultHeaders = {
+                    'Authorization': `Bearer ${spotifyAccessToken}`,
+                    'Content-Type': 'application/json'
+                };
+                
+                const headers = { ...defaultHeaders, ...options.headers };
+                const requestOptions = {
+                    ...options,
+                    headers: headers
+                };
+                
+                // Make the initial request
+                const response = await fetch(`https://api.spotify.com/v1${endpoint}`, requestOptions);
+                const duration = performance.now() - startTime;
+                
+                addDebugEntry('spotify', 'info', `API response received: ${response.status}`, {
+                    requestId,
+                    status: response.status,
+                    statusText: response.statusText,
+                    duration: `${duration.toFixed(2)}ms`,
+                    headers: Object.fromEntries(response.headers.entries())
+                });
 
-            // Handle 204 No Content (common for Spotify player endpoints)
-            if (response.status === 204) {
-                return null;
-            }
-            
-            // Handle 202 Accepted
-            if (response.status === 202) {
-                return { status: 'accepted' };
-            }
+                // Handle successful responses with no content
+                if (response.status === 204) {
+                    addDebugEntry('spotify', 'success', 'API request completed successfully (no content)', {
+                        requestId,
+                        endpoint,
+                        duration: `${duration.toFixed(2)}ms`
+                    });
+                    return null;
+                }
+                
+                // Handle accepted responses (command queued for processing)
+                if (response.status === 202) {
+                    addDebugEntry('spotify', 'success', 'API request accepted for processing', {
+                        requestId,
+                        endpoint,
+                        duration: `${duration.toFixed(2)}ms`
+                    });
+                    return { status: 'accepted' };
+                }
 
-            if (!response.ok) {
-                if (response.status === 401) {
-                    // Token might be invalid, try refreshing once
-                    try {
-                        await refreshSpotifyToken();
-                        // Retry the request with new token
-                        const retryHeaders = {
-                            ...defaultHeaders,
-                            'Authorization': `Bearer ${spotifyAccessToken}`,
-                            ...options.headers
-                        };
-                        
-                        const retryResponse = await fetch(`https://api.spotify.com/v1${endpoint}`, {
-                            ...options,
-                            headers: retryHeaders
+                // Handle error responses
+                if (!response.ok) {
+                    // Special handling for 401 Unauthorized - token might be expired
+                    if (response.status === 401) {
+                        addDebugEntry('spotify', 'warn', 'Token expired, attempting refresh and retry', {
+                            requestId,
+                            originalStatus: response.status
                         });
                         
-                        if (retryResponse.status === 204) return null;
-                        if (retryResponse.status === 202) return { status: 'accepted' };
-                        if (!retryResponse.ok) {
-                            throw new Error(`Spotify API error after retry: ${retryResponse.status} ${retryResponse.statusText}`);
+                        try {
+                            await refreshSpotifyToken();
+                            addDebugEntry('spotify', 'success', 'Token refreshed successfully, retrying request', {
+                                requestId
+                            });
+                            
+                            // Retry the request with fresh token
+                            const retryHeaders = {
+                                ...defaultHeaders,
+                                'Authorization': `Bearer ${spotifyAccessToken}`,
+                                ...options.headers
+                            };
+                            
+                            const retryResponse = await fetch(`https://api.spotify.com/v1${endpoint}`, {
+                                ...options,
+                                headers: retryHeaders
+                            });
+                            
+                            const retryDuration = performance.now() - startTime;
+                            
+                            addDebugEntry('spotify', 'info', `Retry response: ${retryResponse.status}`, {
+                                requestId,
+                                retryStatus: retryResponse.status,
+                                totalDuration: `${retryDuration.toFixed(2)}ms`
+                            });
+                            
+                            if (retryResponse.status === 204) return null;
+                            if (retryResponse.status === 202) return { status: 'accepted' };
+                            
+                            if (!retryResponse.ok) {
+                                const retryErrorData = await this.extractErrorData(retryResponse);
+                                addDebugEntry('spotify', 'error', 'Retry request also failed', {
+                                    requestId,
+                                    retryStatus: retryResponse.status,
+                                    retryError: retryErrorData
+                                });
+                                throw new Error(`Spotify API error after token refresh: ${retryResponse.status} ${retryErrorData.message || retryResponse.statusText}`);
+                            }
+                            
+                            addDebugEntry('spotify', 'success', 'Retry request successful', {
+                                requestId,
+                                totalDuration: `${retryDuration.toFixed(2)}ms`
+                            });
+                            
+                            return await retryResponse.json();
+                            
+                        } catch (refreshError) {
+                            addDebugEntry('spotify', 'error', 'Token refresh failed', {
+                                requestId,
+                                refreshError: refreshError.message
+                            });
+                            throw new Error(`Token refresh failed: ${refreshError.message}`);
                         }
-                        
-                        return retryResponse.json();
-                    } catch (refreshError) {
-                        throw new Error(`Token refresh failed: ${refreshError.message}`);
                     }
+                    
+                    // Handle other error statuses with detailed error extraction
+                    const errorData = await this.extractErrorData(response);
+                    const errorMessage = this.formatSpotifyError(response.status, errorData);
+                    
+                    addDebugEntry('spotify', 'error', 'API request failed', {
+                        requestId,
+                        status: response.status,
+                        error: errorData,
+                        endpoint,
+                        duration: `${duration.toFixed(2)}ms`
+                    });
+                    
+                    throw new Error(errorMessage);
                 }
-                
-                // Try to get error details from response
-                let errorDetails = `${response.status} ${response.statusText}`;
-                try {
-                    const errorData = await response.json();
-                    if (errorData.error && errorData.error.message) {
-                        errorDetails = `${response.status}: ${errorData.error.message}`;
-                    }
-                } catch (parseError) {
-                    // Use default error details if JSON parsing fails
-                }
-                
-                throw new Error(`Spotify API error: ${errorDetails}`);
-            }
 
-            // Return JSON for successful responses
-            try {
-                return await response.json();
-            } catch (jsonError) {
-                // Some endpoints might return empty responses
-                return null;
+                // Handle successful responses with content
+                try {
+                    const responseData = await response.json();
+                    addDebugEntry('spotify', 'success', 'API request completed successfully', {
+                        requestId,
+                        status: response.status,
+                        endpoint,
+                        duration: `${duration.toFixed(2)}ms`,
+                        dataReceived: !!responseData
+                    });
+                    return responseData;
+                } catch (jsonError) {
+                    // Some endpoints return empty responses even with 200 status
+                    addDebugEntry('spotify', 'info', 'Successful response with no JSON content', {
+                        requestId,
+                        status: response.status,
+                        endpoint,
+                        duration: `${duration.toFixed(2)}ms`
+                    });
+                    return null;
+                }
+                
+            } catch (networkError) {
+                const duration = performance.now() - startTime;
+                addDebugEntry('spotify', 'error', 'Network error during API request', {
+                    requestId,
+                    endpoint,
+                    error: networkError.message,
+                    duration: `${duration.toFixed(2)}ms`,
+                    hasToken: !!spotifyAccessToken,
+                    tokenExpiry: tokenExpiryTime ? new Date(tokenExpiryTime).toISOString() : 'unknown'
+                });
+                
+                // Re-throw with additional context
+                throw new Error(`Spotify API network error: ${networkError.message}`);
             }
+        }
+
+        // Helper function to extract detailed error information from Spotify API responses
+        async function extractErrorData(response) {
+            try {
+                const errorText = await response.text();
+                try {
+                    const errorJson = JSON.parse(errorText);
+                    return {
+                        error: errorJson.error,
+                        message: errorJson.error?.message || errorJson.message || 'Unknown error',
+                        details: errorJson
+                    };
+                } catch (parseError) {
+                    return {
+                        error: 'parse_error',
+                        message: errorText || 'Empty error response',
+                        details: { originalText: errorText }
+                    };
+                }
+            } catch (readError) {
+                return {
+                    error: 'read_error',
+                    message: 'Could not read error response',
+                    details: { readError: readError.message }
+                };
+            }
+        }
+
+        // Helper function to format user-friendly error messages
+        function formatSpotifyError(status, errorData) {
+            const baseMessage = `Spotify API error (${status})`;
+            
+            // Handle specific error types with user-friendly messages
+            if (errorData.error && typeof errorData.error === 'object') {
+                const errorType = errorData.error.reason || errorData.error.message;
+                
+                switch (status) {
+                    case 400:
+                        return `${baseMessage}: Invalid request - ${errorData.message}`;
+                    case 401:
+                        return `${baseMessage}: Authentication required - please reconnect to Spotify`;
+                    case 403:
+                        if (errorType === 'PREMIUM_REQUIRED') {
+                            return `${baseMessage}: Premium account required for this feature`;
+                        }
+                        return `${baseMessage}: Access forbidden - ${errorData.message}`;
+                    case 404:
+                        return `${baseMessage}: Resource not found - ${errorData.message}`;
+                    case 429:
+                        return `${baseMessage}: Rate limit exceeded - please wait a moment and try again`;
+                    case 500:
+                        return `${baseMessage}: Spotify server error - please try again later`;
+                    case 502:
+                    case 503:
+                        return `${baseMessage}: Spotify service temporarily unavailable`;
+                    default:
+                        return `${baseMessage}: ${errorData.message}`;
+                }
+            }
+            
+            return `${baseMessage}: ${errorData.message || 'Unknown error occurred'}`;
         }
 
         async function initializeSpotifyPlayer() {
