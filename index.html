@@ -982,7 +982,7 @@
                         <div class="space-y-3 text-sm">
                             <div class="flex justify-between">
                                 <span>Version:</span>
-                                <span class="font-mono">2.1.0</span>
+                                <span class="font-mono bg-green-100 dark:bg-green-900 px-2 py-1 rounded">v2.2.1</span>
                             </div>
                             <div class="flex justify-between">
                                 <span>AI Engine:</span>
@@ -990,11 +990,15 @@
                             </div>
                             <div class="flex justify-between">
                                 <span>Features:</span>
-                                <span>Spotify, ML Analytics</span>
+                                <span>Real Spotify API, PKCE Auth</span>
                             </div>
                             <div class="flex justify-between">
                                 <span>Last Updated:</span>
                                 <span id="lastUpdateTime">Just now</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span>Spotify Status:</span>
+                                <span id="aboutSpotifyStatus" class="text-gray-600 dark:text-gray-400">Not Connected</span>
                             </div>
                         </div>
                         
@@ -1002,6 +1006,13 @@
                             <div class="text-xs text-gray-600 dark:text-gray-400">
                                 Life Quest RPG - Ultimate AI Edition combines gamification with advanced machine learning 
                                 to create a personalized productivity and wellness experience. Your data never leaves your device.
+                            </div>
+                        </div>
+                        
+                        <div class="mt-4 text-center">
+                            <div class="inline-block bg-gray-100 dark:bg-gray-700 px-3 py-1 rounded-full">
+                                <span class="text-xs text-gray-500 dark:text-gray-400">Build Version: </span>
+                                <span class="text-xs font-mono font-bold text-primary">v2.2.1-fix2</span>
                             </div>
                         </div>
                     </div>
@@ -3119,30 +3130,94 @@
                 `${formatTime(currentPlaybackState.position)} / ${formatTime(currentPlaybackState.duration)}`;
         }
 
-        function spotifyTogglePlay() {
-            if (!currentPlaybackState) return;
-            
-            currentPlaybackState.isPlaying = !currentPlaybackState.isPlaying;
-            const playPauseBtn = document.getElementById('playPauseBtn');
-            playPauseBtn.textContent = currentPlaybackState.isPlaying ? '⏸️' : '▶️';
-            
-            const action = currentPlaybackState.isPlaying ? 'resumed' : 'paused';
-            showFloatingNotification('🎵 Playback', `Music ${action}`);
+        async function spotifyTogglePlay() {
+            if (!spotifyAccessToken) {
+                // Fall back to simulated behavior
+                if (!currentPlaybackState) return;
+                currentPlaybackState.isPlaying = !currentPlaybackState.isPlaying;
+                const playPauseBtn = document.getElementById('playPauseBtn');
+                playPauseBtn.textContent = currentPlaybackState.isPlaying ? '⏸️' : '▶️';
+                const action = currentPlaybackState.isPlaying ? 'resumed' : 'paused';
+                showFloatingNotification('🎵 Playback', `Music ${action} (simulated)`);
+                return;
+            }
+
+            try {
+                const isPlaying = currentPlaybackState?.isPlaying;
+                const endpoint = isPlaying ? '/me/player/pause' : '/me/player/play';
+                
+                await spotifyApiRequest(endpoint, { method: 'PUT' });
+                
+                // Update UI immediately
+                if (currentPlaybackState) {
+                    currentPlaybackState.isPlaying = !isPlaying;
+                    const playPauseBtn = document.getElementById('playPauseBtn');
+                    playPauseBtn.textContent = currentPlaybackState.isPlaying ? '⏸️' : '▶️';
+                }
+                
+                const action = !isPlaying ? 'resumed' : 'paused';
+                showFloatingNotification('🎵 Spotify', `Music ${action}`);
+            } catch (error) {
+                console.error('Spotify toggle play error:', error);
+                showFloatingNotification('❌ Spotify Error', 'Unable to control playback. Make sure Spotify is active on a device.');
+            }
         }
 
-        function spotifyPrevious() {
-            updateCurrentTrack();
-            showFloatingNotification('⏮️ Previous', 'Switched to previous track');
+        async function spotifyPrevious() {
+            if (!spotifyAccessToken) {
+                // Fall back to simulated behavior
+                updateCurrentTrack();
+                showFloatingNotification('⏮️ Previous', 'Switched to previous track (simulated)');
+                return;
+            }
+
+            try {
+                await spotifyApiRequest('/me/player/previous', { method: 'POST' });
+                showFloatingNotification('⏮️ Spotify', 'Previous track');
+                
+                // Update track info after a brief delay
+                setTimeout(updateCurrentTrackFromAPI, 1000);
+            } catch (error) {
+                console.error('Spotify previous error:', error);
+                showFloatingNotification('❌ Spotify Error', 'Unable to skip to previous track. Make sure Spotify is active.');
+            }
         }
 
-        function spotifyNext() {
-            updateCurrentTrack();
-            showFloatingNotification('⏭️ Next', 'Switched to next track');
+        async function spotifyNext() {
+            if (!spotifyAccessToken) {
+                // Fall back to simulated behavior
+                updateCurrentTrack();
+                showFloatingNotification('⏭️ Next', 'Switched to next track (simulated)');
+                return;
+            }
+
+            try {
+                await spotifyApiRequest('/me/player/next', { method: 'POST' });
+                showFloatingNotification('⏭️ Spotify', 'Next track');
+                
+                // Update track info after a brief delay
+                setTimeout(updateCurrentTrackFromAPI, 1000);
+            } catch (error) {
+                console.error('Spotify next error:', error);
+                showFloatingNotification('❌ Spotify Error', 'Unable to skip to next track. Make sure Spotify is active.');
+            }
         }
 
-        function setSpotifyVolume(volume) {
+        async function setSpotifyVolume(volume) {
             document.getElementById('volumeDisplay').textContent = `${volume}%`;
-            showFloatingNotification('🔊 Volume', `Set to ${volume}%`);
+            
+            if (!spotifyAccessToken) {
+                showFloatingNotification('🔊 Volume', `Set to ${volume}% (simulated)`);
+                return;
+            }
+
+            try {
+                await spotifyApiRequest(`/me/player/volume?volume_percent=${volume}`, { method: 'PUT' });
+                showFloatingNotification('🔊 Spotify', `Volume set to ${volume}%`);
+            } catch (error) {
+                console.error('Spotify volume error:', error);
+                showFloatingNotification('❌ Spotify Error', 'Unable to set volume. Make sure Spotify is active.');
+            }
         }
 
         function populateDeviceList() {
