@@ -6,6 +6,7 @@
     <title>🏆 Life Quest RPG</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/4.3.0/marked.min.js"></script>
+    <script src="https://sdk.scdn.co/spotify-player.js"></script>
     <script>
         tailwind.config = {
             theme: {
@@ -115,6 +116,9 @@
                     </button>
                     <button onclick="switchTab('exercise')" class="tab-button px-4 py-3 text-white/80 hover:text-white font-medium whitespace-nowrap">
                         💪 Exercise
+                    </button>
+                    <button onclick="switchTab('nutrition')" class="tab-button px-4 py-3 text-white/80 hover:text-white font-medium whitespace-nowrap">
+                        🥗 Nutrition
                     </button>
                     <button onclick="switchTab('health')" class="tab-button px-4 py-3 text-white/80 hover:text-white font-medium whitespace-nowrap">
                         🏃‍♂️ Health
@@ -427,6 +431,229 @@
                 </div>
             </div>
 
+            <!-- Nutrition Tab -->
+            <div id="nutrition-tab" class="tab-content">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="space-y-6">
+                        <!-- Daily Nutrition Tracker -->
+                        <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg">
+                            <h3 class="text-xl font-bold mb-4 text-nutrition">🥗 Daily Nutrition</h3>
+                            
+                            <div class="mb-4">
+                                <div class="flex items-center justify-between mb-3">
+                                    <div>
+                                        <div class="text-3xl font-bold text-nutrition" id="nutritionCalories">0</div>
+                                        <div class="text-sm text-gray-500">Today's Calories</div>
+                                    </div>
+                                    <div class="text-right">
+                                        <div class="text-lg font-bold text-gray-700 dark:text-gray-300" id="calorieTarget">2000</div>
+                                        <div class="text-xs text-gray-500">Daily Target</div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Calories Progress Bar -->
+                                <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 mb-3">
+                                    <div id="caloriesProgress" class="bg-nutrition h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+                                </div>
+                                
+                                <div class="text-xs text-center text-gray-600 dark:text-gray-400" id="caloriesStatus">
+                                    Start tracking meals to reach your goal!
+                                </div>
+                            </div>
+                            
+                            <!-- Macro Breakdown -->
+                            <div class="grid grid-cols-3 gap-3 mb-4">
+                                <div class="text-center p-3 bg-red-50 dark:bg-red-900/30 rounded-lg">
+                                    <div class="text-xl font-bold text-red-600" id="proteinCount">0g</div>
+                                    <div class="text-xs text-red-500">Protein</div>
+                                    <div class="text-xs text-gray-500" id="proteinTarget">25%</div>
+                                </div>
+                                <div class="text-center p-3 bg-yellow-50 dark:bg-yellow-900/30 rounded-lg">
+                                    <div class="text-xl font-bold text-yellow-600" id="carbsCount">0g</div>
+                                    <div class="text-xs text-yellow-500">Carbs</div>
+                                    <div class="text-xs text-gray-500" id="carbsTarget">50%</div>
+                                </div>
+                                <div class="text-center p-3 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
+                                    <div class="text-xl font-bold text-blue-600" id="fatCount">0g</div>
+                                    <div class="text-xs text-blue-500">Fat</div>
+                                    <div class="text-xs text-gray-500" id="fatTarget">25%</div>
+                                </div>
+                            </div>
+                            
+                            <div class="grid grid-cols-2 gap-3">
+                                <button onclick="quickLogMeal()" class="bg-nutrition text-white py-3 px-4 rounded-lg hover:bg-green-600 font-medium">
+                                    📝 Log Meal
+                                </button>
+                                <button onclick="adjustNutritionGoals()" class="bg-gray-500 text-white py-3 px-4 rounded-lg hover:bg-gray-600 font-medium">
+                                    🎯 Set Goals
+                                </button>
+                            </div>
+                            
+                            <div class="mt-4 text-center">
+                                <div class="text-xs text-purple-600 dark:text-purple-400" id="nutritionInsight">
+                                    <!-- AI insight about nutrition will appear here -->
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Today's Meals Progress -->
+                        <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg">
+                            <h3 class="text-xl font-bold mb-4 text-nutrition">🍽️ Today's Meals</h3>
+                            
+                            <div class="grid grid-cols-3 gap-4 mb-6">
+                                <div class="text-center">
+                                    <div class="text-2xl font-bold text-nutrition" id="mealsCount">0</div>
+                                    <div class="text-sm text-gray-500">Meals</div>
+                                </div>
+                                <div class="text-center">
+                                    <div class="text-2xl font-bold text-blue-500" id="waterDaily">0</div>
+                                    <div class="text-sm text-gray-500">Water</div>
+                                </div>
+                                <div class="text-center">
+                                    <div class="text-2xl font-bold text-orange-500" id="snacksCount">0</div>
+                                    <div class="text-sm text-gray-500">Snacks</div>
+                                </div>
+                            </div>
+
+                            <div class="space-y-3">
+                                <button onclick="quickAddMeal('breakfast')" class="w-full text-left px-4 py-3 bg-yellow-50 dark:bg-yellow-900/30 rounded-lg hover:bg-yellow-100 dark:hover:bg-yellow-900/50 border border-yellow-200 dark:border-yellow-800">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center space-x-3">
+                                            <span class="text-2xl">🌅</span>
+                                            <div>
+                                                <div class="font-medium">Breakfast</div>
+                                                <div class="text-sm text-gray-600 dark:text-gray-400">Start your day right</div>
+                                            </div>
+                                        </div>
+                                        <div class="text-yellow-600 font-bold">ADD</div>
+                                    </div>
+                                </button>
+                                
+                                <button onclick="quickAddMeal('lunch')" class="w-full text-left px-4 py-3 bg-green-50 dark:bg-green-900/30 rounded-lg hover:bg-green-100 dark:hover:bg-green-900/50 border border-green-200 dark:border-green-800">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center space-x-3">
+                                            <span class="text-2xl">🥙</span>
+                                            <div>
+                                                <div class="font-medium">Lunch</div>
+                                                <div class="text-sm text-gray-600 dark:text-gray-400">Midday fuel</div>
+                                            </div>
+                                        </div>
+                                        <div class="text-green-600 font-bold">ADD</div>
+                                    </div>
+                                </button>
+                                
+                                <button onclick="quickAddMeal('dinner')" class="w-full text-left px-4 py-3 bg-blue-50 dark:bg-blue-900/30 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/50 border border-blue-200 dark:border-blue-800">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center space-x-3">
+                                            <span class="text-2xl">🍽️</span>
+                                            <div>
+                                                <div class="font-medium">Dinner</div>
+                                                <div class="text-sm text-gray-600 dark:text-gray-400">Evening nourishment</div>
+                                            </div>
+                                        </div>
+                                        <div class="text-blue-600 font-bold">ADD</div>
+                                    </div>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Food Library -->
+                        <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg">
+                            <h3 class="text-xl font-bold mb-4">📚 Food Library</h3>
+                            <div class="grid grid-cols-2 gap-3">
+                                <button onclick="showFoodCategory('proteins')" class="bg-red-500 text-white p-3 rounded-lg hover:bg-red-600 text-sm">
+                                    🍖 Proteins
+                                </button>
+                                <button onclick="showFoodCategory('grains')" class="bg-yellow-600 text-white p-3 rounded-lg hover:bg-yellow-700 text-sm">
+                                    🌾 Grains
+                                </button>
+                                <button onclick="showFoodCategory('vegetables')" class="bg-green-500 text-white p-3 rounded-lg hover:bg-green-600 text-sm">
+                                    🥬 Vegetables
+                                </button>
+                                <button onclick="showFoodCategory('fruits')" class="bg-orange-500 text-white p-3 rounded-lg hover:bg-orange-600 text-sm">
+                                    🍎 Fruits
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="space-y-6">
+                        <!-- Weekly Meal Plan -->
+                        <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg">
+                            <h3 class="text-xl font-bold mb-4">📅 Weekly Meal Plan</h3>
+                            <div id="weeklyMealPlan" class="space-y-3">
+                                <!-- Weekly meal plan will be populated here -->
+                            </div>
+                            <button onclick="generateWeeklyMealPlan()" class="w-full mt-4 bg-primary text-white py-2 rounded hover:bg-purple-600">
+                                🔄 Generate AI Meal Plan
+                            </button>
+                        </div>
+
+                        <!-- Nutrition Streaks & Goals -->
+                        <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg">
+                            <h3 class="text-xl font-bold mb-4">🔥 Nutrition Tracking</h3>
+                            <div class="space-y-4">
+                                <div class="flex items-center justify-between p-3 bg-green-50 dark:bg-green-900/30 rounded-lg">
+                                    <div class="flex items-center space-x-3">
+                                        <span class="text-xl">🔥</span>
+                                        <div>
+                                            <div class="font-medium">Meal Streak</div>
+                                            <div class="text-sm text-gray-600 dark:text-gray-400">Daily tracking</div>
+                                        </div>
+                                    </div>
+                                    <div class="text-right">
+                                        <div class="text-xl font-bold text-green-600" id="mealStreak">0</div>
+                                        <div class="text-xs text-green-500">days</div>
+                                    </div>
+                                </div>
+                                
+                                <div class="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
+                                    <div class="flex items-center space-x-3">
+                                        <span class="text-xl">💧</span>
+                                        <div>
+                                            <div class="font-medium">Hydration Goal</div>
+                                            <div class="text-sm text-gray-600 dark:text-gray-400">Glasses today</div>
+                                        </div>
+                                    </div>
+                                    <div class="text-right">
+                                        <div class="text-xl font-bold text-blue-600" id="hydrationProgress">0/8</div>
+                                        <div class="text-xs text-blue-500">goal</div>
+                                    </div>
+                                </div>
+                                
+                                <div class="flex items-center justify-between p-3 bg-purple-50 dark:bg-purple-900/30 rounded-lg">
+                                    <div class="flex items-center space-x-3">
+                                        <span class="text-xl">⚖️</span>
+                                        <div>
+                                            <div class="font-medium">Macro Balance</div>
+                                            <div class="text-sm text-gray-600 dark:text-gray-400">Protein-Carbs-Fat</div>
+                                        </div>
+                                    </div>
+                                    <div class="text-right">
+                                        <div class="text-xl font-bold text-purple-600" id="macroBalance">25-50-25</div>
+                                        <div class="text-xs text-purple-500">ratio</div>
+                                    </div>
+                                </div>
+
+                                <div class="flex items-center justify-between p-3 bg-orange-50 dark:bg-orange-900/30 rounded-lg">
+                                    <div class="flex items-center space-x-3">
+                                        <span class="text-xl">📊</span>
+                                        <div>
+                                            <div class="font-medium">Weekly Average</div>
+                                            <div class="text-sm text-gray-600 dark:text-gray-400">Daily calories</div>
+                                        </div>
+                                    </div>
+                                    <div class="text-right">
+                                        <div class="text-xl font-bold text-orange-600" id="weeklyAverage">0</div>
+                                        <div class="text-xs text-orange-500">cal/day</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Health Tab -->
             <div id="health-tab" class="tab-content">
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -704,8 +931,14 @@
                                 </button>
                             </div>
                             
-                            <div class="text-center mt-4">
+                            <div class="text-center mt-4 space-y-2">
                                 <div class="text-xs text-gray-500">Connect Spotify for full playback control</div>
+                                <button onclick="transferToWebPlayer()" class="w-full bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 text-sm" id="transferButton" style="display: none;">
+                                    📱➡️💻 Transfer to Web Player
+                                </button>
+                                <div class="text-xs text-blue-600" id="webPlayerStatus" style="display: none;">
+                                    Web player ready - you can now control music here!
+                                </div>
                             </div>
                         </div>
 
@@ -4046,11 +4279,474 @@
             showFloatingNotification('🚫 Spotify Disconnected', 'Your Spotify account has been disconnected');
         }
 
+        // 📱➡️💻 WEB PLAYBACK TRANSFER SYSTEM
+        let webPlayerInstance = null;
+        let deviceId = null;
+
+        window.onSpotifyWebPlaybackSDKReady = () => {
+            if (spotifyState.isConnected) {
+                initializeWebPlayer();
+            }
+        };
+
+        function initializeWebPlayer() {
+            if (!spotifyState.accessToken || webPlayerInstance) return;
+            
+            webPlayerInstance = new Spotify.Player({
+                name: 'Life Quest RPG Web Player',
+                getOAuthToken: cb => { cb(spotifyState.accessToken); },
+                volume: 0.5
+            });
+
+            // Error handling
+            webPlayerInstance.addListener('initialization_error', ({ message }) => {
+                console.error('Failed to initialize:', message);
+            });
+
+            webPlayerInstance.addListener('authentication_error', ({ message }) => {
+                console.error('Failed to authenticate:', message);
+            });
+
+            webPlayerInstance.addListener('account_error', ({ message }) => {
+                console.error('Failed to validate Spotify account:', message);
+            });
+
+            webPlayerInstance.addListener('playback_error', ({ message }) => {
+                console.error('Failed to perform playback:', message);
+            });
+
+            // Playback status updates
+            webPlayerInstance.addListener('player_state_changed', (state) => {
+                if (!state) return;
+                
+                updatePlayerUI({
+                    item: state.track_window.current_track,
+                    is_playing: !state.paused,
+                    progress_ms: state.position,
+                    duration_ms: state.track_window.current_track.duration_ms
+                });
+            });
+
+            // Ready
+            webPlayerInstance.addListener('ready', ({ device_id }) => {
+                console.log('Ready with Device ID', device_id);
+                deviceId = device_id;
+                showTransferButton();
+            });
+
+            // Not Ready
+            webPlayerInstance.addListener('not_ready', ({ device_id }) => {
+                console.log('Device ID has gone offline', device_id);
+            });
+
+            // Connect to the player!
+            webPlayerInstance.connect();
+        }
+
+        function showTransferButton() {
+            const transferButton = document.getElementById('transferButton');
+            const webPlayerStatus = document.getElementById('webPlayerStatus');
+            
+            if (transferButton) {
+                transferButton.style.display = 'block';
+            }
+        }
+
+        async function transferToWebPlayer() {
+            if (!deviceId) {
+                showFloatingNotification('❌ Web Player Error', 'Web player not initialized');
+                return;
+            }
+
+            try {
+                await makeSpotifyRequest('https://api.spotify.com/v1/me/player', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        device_ids: [deviceId],
+                        play: false
+                    })
+                });
+
+                const webPlayerStatus = document.getElementById('webPlayerStatus');
+                const transferButton = document.getElementById('transferButton');
+                
+                if (webPlayerStatus) {
+                    webPlayerStatus.style.display = 'block';
+                    webPlayerStatus.textContent = 'Web player active - control music directly in the app!';
+                }
+                
+                if (transferButton) {
+                    transferButton.style.display = 'none';
+                }
+
+                showFloatingNotification('📱➡️💻 Transfer Complete!', 'Spotify playback transferred to web player');
+                awardXP(25, 'Spotify web player activated! 🎵');
+                
+                // Refresh current track info
+                setTimeout(getCurrentlyPlaying, 1000);
+
+            } catch (error) {
+                console.error('Error transferring playback:', error);
+                showFloatingNotification('❌ Transfer Failed', 'Unable to transfer playback to web player');
+            }
+        }
+
+        // 🥗 NUTRITION SYSTEM EXPANSIONS
+        function quickLogMeal() {
+            logMeal(); // Use existing function
+        }
+
+        function quickAddMeal(mealType) {
+            const mealSuggestions = {
+                breakfast: [
+                    { name: 'Oatmeal with berries', calories: 300, protein: 8, carbs: 45, fat: 8 },
+                    { name: 'Greek yogurt parfait', calories: 250, protein: 15, carbs: 30, fat: 6 },
+                    { name: 'Avocado toast', calories: 350, protein: 10, carbs: 35, fat: 18 },
+                    { name: 'Protein smoothie', calories: 280, protein: 25, carbs: 20, fat: 8 }
+                ],
+                lunch: [
+                    { name: 'Grilled chicken salad', calories: 400, protein: 30, carbs: 15, fat: 20 },
+                    { name: 'Quinoa bowl', calories: 450, protein: 18, carbs: 55, fat: 15 },
+                    { name: 'Turkey sandwich', calories: 380, protein: 25, carbs: 40, fat: 12 },
+                    { name: 'Soup and salad', calories: 320, protein: 12, carbs: 35, fat: 10 }
+                ],
+                dinner: [
+                    { name: 'Salmon with vegetables', calories: 420, protein: 35, carbs: 20, fat: 22 },
+                    { name: 'Chicken stir-fry', calories: 380, protein: 28, carbs: 35, fat: 15 },
+                    { name: 'Lean beef with sweet potato', calories: 450, protein: 32, carbs: 40, fat: 18 },
+                    { name: 'Vegetarian curry', calories: 350, protein: 15, carbs: 45, fat: 12 }
+                ]
+            };
+
+            const suggestions = mealSuggestions[mealType] || [];
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+            modal.innerHTML = `
+                <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-xl max-w-md w-full mx-4">
+                    <h3 class="text-xl font-bold mb-4 capitalize">🍽️ ${mealType} Options</h3>
+                    <div class="space-y-3 mb-6">
+                        ${suggestions.map((meal, index) => `
+                            <button onclick="addQuickMeal('${mealType}', ${index})" class="w-full text-left p-3 border border-gray-200 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700">
+                                <div class="font-medium">${meal.name}</div>
+                                <div class="text-sm text-gray-600 dark:text-gray-400">
+                                    ${meal.calories} cal • ${meal.protein}g protein • ${meal.carbs}g carbs • ${meal.fat}g fat
+                                </div>
+                            </button>
+                        `).join('')}
+                    </div>
+                    <div class="flex space-x-3">
+                        <button onclick="this.closest('.fixed').remove(); quickLogMeal()" class="flex-1 bg-green-600 text-white py-2 rounded hover:bg-green-700">
+                            Custom Entry
+                        </button>
+                        <button onclick="this.closest('.fixed').remove()" class="flex-1 bg-gray-500 text-white py-2 rounded hover:bg-gray-600">
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+
+        function addQuickMeal(mealType, mealIndex) {
+            const mealSuggestions = {
+                breakfast: [
+                    { name: 'Oatmeal with berries', calories: 300, protein: 8, carbs: 45, fat: 8 },
+                    { name: 'Greek yogurt parfait', calories: 250, protein: 15, carbs: 30, fat: 6 },
+                    { name: 'Avocado toast', calories: 350, protein: 10, carbs: 35, fat: 18 },
+                    { name: 'Protein smoothie', calories: 280, protein: 25, carbs: 20, fat: 8 }
+                ],
+                lunch: [
+                    { name: 'Grilled chicken salad', calories: 400, protein: 30, carbs: 15, fat: 20 },
+                    { name: 'Quinoa bowl', calories: 450, protein: 18, carbs: 55, fat: 15 },
+                    { name: 'Turkey sandwich', calories: 380, protein: 25, carbs: 40, fat: 12 },
+                    { name: 'Soup and salad', calories: 320, protein: 12, carbs: 35, fat: 10 }
+                ],
+                dinner: [
+                    { name: 'Salmon with vegetables', calories: 420, protein: 35, carbs: 20, fat: 22 },
+                    { name: 'Chicken stir-fry', calories: 380, protein: 28, carbs: 35, fat: 15 },
+                    { name: 'Lean beef with sweet potato', calories: 450, protein: 32, carbs: 40, fat: 18 },
+                    { name: 'Vegetarian curry', calories: 350, protein: 15, carbs: 45, fat: 12 }
+                ]
+            };
+
+            const meal = mealSuggestions[mealType][mealIndex];
+            if (meal) {
+                gameState.dailyStats.calories += meal.calories;
+                gameState.dailyStats.protein = (gameState.dailyStats.protein || 0) + meal.protein;
+                gameState.dailyStats.carbs = (gameState.dailyStats.carbs || 0) + meal.carbs;
+                gameState.dailyStats.fat = (gameState.dailyStats.fat || 0) + meal.fat;
+                gameState.dailyStats.meals++;
+
+                updateAllUI();
+                updateNutritionDisplay();
+                saveGameState();
+                awardXP(20, `${meal.name} logged! 🥗`);
+
+                document.querySelector('.fixed').remove();
+                showFloatingNotification('🍽️ Meal Added!', `${meal.name} - ${meal.calories} calories`);
+            }
+        }
+
+        function adjustNutritionGoals() {
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+            modal.innerHTML = `
+                <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-xl max-w-md w-full mx-4">
+                    <h3 class="text-xl font-bold mb-4">🎯 Nutrition Goals</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Daily Calorie Target</label>
+                            <input type="number" id="calorieGoal" value="${gameState.profile.calorieTarget || 2000}" min="1200" max="4000" class="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-base">
+                        </div>
+                        <div class="grid grid-cols-3 gap-3">
+                            <div>
+                                <label class="block text-sm font-medium mb-2">Protein %</label>
+                                <input type="number" id="proteinPercent" value="${gameState.profile.proteinPercent || 25}" min="10" max="40" class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-base">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium mb-2">Carbs %</label>
+                                <input type="number" id="carbsPercent" value="${gameState.profile.carbsPercent || 50}" min="20" max="70" class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-base">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium mb-2">Fat %</label>
+                                <input type="number" id="fatPercent" value="${gameState.profile.fatPercent || 25}" min="15" max="40" class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-base">
+                            </div>
+                        </div>
+                        <div class="flex space-x-3">
+                            <button onclick="saveNutritionGoals()" class="flex-1 bg-green-600 text-white py-3 rounded-lg hover:bg-green-700">
+                                Save Goals
+                            </button>
+                            <button onclick="this.closest('.fixed').remove()" class="flex-1 bg-gray-500 text-white py-3 rounded-lg hover:bg-gray-600">
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+
+        function saveNutritionGoals() {
+            const calorieTarget = parseInt(document.getElementById('calorieGoal').value) || 2000;
+            const proteinPercent = parseInt(document.getElementById('proteinPercent').value) || 25;
+            const carbsPercent = parseInt(document.getElementById('carbsPercent').value) || 50;
+            const fatPercent = parseInt(document.getElementById('fatPercent').value) || 25;
+
+            gameState.profile.calorieTarget = calorieTarget;
+            gameState.profile.proteinPercent = proteinPercent;
+            gameState.profile.carbsPercent = carbsPercent;
+            gameState.profile.fatPercent = fatPercent;
+
+            updateNutritionDisplay();
+            saveGameState();
+            
+            document.querySelector('.fixed').remove();
+            showFloatingNotification('🎯 Goals Updated!', 'Nutrition targets have been set');
+            awardXP(15, 'Nutrition goals customized!');
+        }
+
+        function updateNutritionDisplay() {
+            const calories = gameState.dailyStats.calories || 0;
+            const protein = gameState.dailyStats.protein || 0;
+            const carbs = gameState.dailyStats.carbs || 0;
+            const fat = gameState.dailyStats.fat || 0;
+            const meals = gameState.dailyStats.meals || 0;
+            const water = gameState.dailyStats.waterGlasses || 0;
+            
+            const target = gameState.profile.calorieTarget || 2000;
+            const progress = Math.min(100, (calories / target) * 100);
+
+            // Update nutrition elements
+            const nutritionElements = {
+                'nutritionCalories': calories,
+                'calorieTarget': target,
+                'proteinCount': `${protein}g`,
+                'carbsCount': `${carbs}g`,
+                'fatCount': `${fat}g`,
+                'mealsCount': meals,
+                'waterDaily': water,
+                'snacksCount': 0, // Placeholder
+                'mealStreak': 0, // Placeholder
+                'hydrationProgress': `${water}/8`,
+                'weeklyAverage': Math.round(calories) // Simplified
+            };
+
+            Object.entries(nutritionElements).forEach(([id, value]) => {
+                const element = document.getElementById(id);
+                if (element) element.textContent = value;
+            });
+
+            // Update progress bar
+            const progressElement = document.getElementById('caloriesProgress');
+            if (progressElement) {
+                progressElement.style.width = `${progress}%`;
+            }
+
+            // Update status
+            const statusElement = document.getElementById('caloriesStatus');
+            if (statusElement) {
+                if (progress >= 100) {
+                    statusElement.textContent = `🎉 Daily goal achieved! ${calories - target} calories over target.`;
+                } else if (progress >= 75) {
+                    statusElement.textContent = `🔥 Almost there! ${target - calories} calories to go.`;
+                } else if (calories > 0) {
+                    statusElement.textContent = `💪 Good progress! ${target - calories} calories remaining.`;
+                } else {
+                    statusElement.textContent = 'Start tracking meals to reach your goal!';
+                }
+            }
+        }
+
+        function showFoodCategory(category) {
+            const foods = {
+                proteins: [
+                    { name: 'Chicken Breast', calories: 165, protein: 31, carbs: 0, fat: 3.6 },
+                    { name: 'Salmon Fillet', calories: 208, protein: 22, carbs: 0, fat: 12 },
+                    { name: 'Greek Yogurt', calories: 100, protein: 17, carbs: 6, fat: 0 },
+                    { name: 'Eggs (2 large)', calories: 140, protein: 12, carbs: 1, fat: 10 }
+                ],
+                grains: [
+                    { name: 'Brown Rice (1 cup)', calories: 216, protein: 5, carbs: 45, fat: 1.8 },
+                    { name: 'Quinoa (1 cup)', calories: 222, protein: 8, carbs: 39, fat: 3.6 },
+                    { name: 'Oatmeal (1 cup)', calories: 154, protein: 6, carbs: 28, fat: 3 },
+                    { name: 'Whole Wheat Bread (2 slices)', calories: 160, protein: 8, carbs: 28, fat: 2 }
+                ],
+                vegetables: [
+                    { name: 'Broccoli (1 cup)', calories: 25, protein: 3, carbs: 5, fat: 0.3 },
+                    { name: 'Spinach (2 cups)', calories: 14, protein: 2, carbs: 2, fat: 0.2 },
+                    { name: 'Sweet Potato (medium)', calories: 112, protein: 2, carbs: 26, fat: 0.1 },
+                    { name: 'Bell Peppers (1 cup)', calories: 30, protein: 1, carbs: 7, fat: 0.3 }
+                ],
+                fruits: [
+                    { name: 'Apple (medium)', calories: 95, protein: 0.5, carbs: 25, fat: 0.3 },
+                    { name: 'Banana (medium)', calories: 105, protein: 1.3, carbs: 27, fat: 0.4 },
+                    { name: 'Berries (1 cup)', calories: 84, protein: 1, carbs: 21, fat: 0.5 },
+                    { name: 'Orange (medium)', calories: 62, protein: 1.2, carbs: 15, fat: 0.2 }
+                ]
+            };
+
+            const categoryEmojis = {
+                proteins: '🍖',
+                grains: '🌾',
+                vegetables: '🥬',
+                fruits: '🍎'
+            };
+
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+            modal.innerHTML = `
+                <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+                    <h3 class="text-xl font-bold mb-6 text-center">${categoryEmojis[category]} ${category.charAt(0).toUpperCase() + category.slice(1)}</h3>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        ${foods[category].map((food, index) => `
+                            <div class="border rounded-lg p-4 hover:bg-gray-50 dark:hover:bg-gray-700">
+                                <div class="font-bold mb-2">${food.name}</div>
+                                <div class="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                                    ${food.calories} cal • ${food.protein}g protein • ${food.carbs}g carbs • ${food.fat}g fat
+                                </div>
+                                <button onclick="addFoodToMeal('${category}', ${index})" class="w-full bg-green-500 text-white py-2 rounded hover:bg-green-600 text-sm">
+                                    Add to Today's Meals
+                                </button>
+                            </div>
+                        `).join('')}
+                    </div>
+                    
+                    <div class="flex justify-center mt-6">
+                        <button onclick="this.closest('.fixed').remove()" class="px-6 py-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
+                            Close
+                        </button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+
+        function addFoodToMeal(category, foodIndex) {
+            const foods = {
+                proteins: [
+                    { name: 'Chicken Breast', calories: 165, protein: 31, carbs: 0, fat: 3.6 },
+                    { name: 'Salmon Fillet', calories: 208, protein: 22, carbs: 0, fat: 12 },
+                    { name: 'Greek Yogurt', calories: 100, protein: 17, carbs: 6, fat: 0 },
+                    { name: 'Eggs (2 large)', calories: 140, protein: 12, carbs: 1, fat: 10 }
+                ],
+                grains: [
+                    { name: 'Brown Rice (1 cup)', calories: 216, protein: 5, carbs: 45, fat: 1.8 },
+                    { name: 'Quinoa (1 cup)', calories: 222, protein: 8, carbs: 39, fat: 3.6 },
+                    { name: 'Oatmeal (1 cup)', calories: 154, protein: 6, carbs: 28, fat: 3 },
+                    { name: 'Whole Wheat Bread (2 slices)', calories: 160, protein: 8, carbs: 28, fat: 2 }
+                ],
+                vegetables: [
+                    { name: 'Broccoli (1 cup)', calories: 25, protein: 3, carbs: 5, fat: 0.3 },
+                    { name: 'Spinach (2 cups)', calories: 14, protein: 2, carbs: 2, fat: 0.2 },
+                    { name: 'Sweet Potato (medium)', calories: 112, protein: 2, carbs: 26, fat: 0.1 },
+                    { name: 'Bell Peppers (1 cup)', calories: 30, protein: 1, carbs: 7, fat: 0.3 }
+                ],
+                fruits: [
+                    { name: 'Apple (medium)', calories: 95, protein: 0.5, carbs: 25, fat: 0.3 },
+                    { name: 'Banana (medium)', calories: 105, protein: 1.3, carbs: 27, fat: 0.4 },
+                    { name: 'Berries (1 cup)', calories: 84, protein: 1, carbs: 21, fat: 0.5 },
+                    { name: 'Orange (medium)', calories: 62, protein: 1.2, carbs: 15, fat: 0.2 }
+                ]
+            };
+
+            const food = foods[category][foodIndex];
+            if (food) {
+                gameState.dailyStats.calories += food.calories;
+                gameState.dailyStats.protein = (gameState.dailyStats.protein || 0) + food.protein;
+                gameState.dailyStats.carbs = (gameState.dailyStats.carbs || 0) + food.carbs;
+                gameState.dailyStats.fat = (gameState.dailyStats.fat || 0) + food.fat;
+
+                updateAllUI();
+                updateNutritionDisplay();
+                saveGameState();
+                awardXP(10, `${food.name} added! 🥗`);
+
+                document.querySelector('.fixed').remove();
+                showFloatingNotification('🍽️ Food Added!', `${food.name} - ${food.calories} calories`);
+            }
+        }
+
+        function generateWeeklyMealPlan() {
+            const mealPlan = [
+                { day: 'Monday', breakfast: 'Protein oats with berries', lunch: 'Grilled chicken salad', dinner: 'Salmon with quinoa' },
+                { day: 'Tuesday', breakfast: 'Greek yogurt parfait', lunch: 'Turkey wrap', dinner: 'Chicken stir-fry' },
+                { day: 'Wednesday', breakfast: 'Smoothie bowl', lunch: 'Quinoa Buddha bowl', dinner: 'Lean beef with sweet potato' },
+                { day: 'Thursday', breakfast: 'Avocado toast', lunch: 'Chicken soup', dinner: 'Fish tacos' },
+                { day: 'Friday', breakfast: 'Protein pancakes', lunch: 'Mediterranean salad', dinner: 'Vegetarian curry' },
+                { day: 'Saturday', breakfast: 'Egg scramble', lunch: 'Grain bowl', dinner: 'Grilled chicken with vegetables' },
+                { day: 'Sunday', breakfast: 'Chia pudding', lunch: 'Soup and sandwich', dinner: 'Sunday roast with vegetables' }
+            ];
+
+            const container = document.getElementById('weeklyMealPlan');
+            if (!container) return;
+
+            container.innerHTML = mealPlan.map(day => `
+                <div class="border rounded-lg p-4 hover:bg-gray-50 dark:hover:bg-gray-700">
+                    <div class="font-bold mb-2">${day.day}</div>
+                    <div class="text-sm space-y-1">
+                        <div>🌅 Breakfast: ${day.breakfast}</div>
+                        <div>🥙 Lunch: ${day.lunch}</div>
+                        <div>🍽️ Dinner: ${day.dinner}</div>
+                    </div>
+                </div>
+            `).join('');
+
+            showFloatingNotification('📅 Meal Plan Generated!', 'Your weekly meal plan is ready');
+            awardXP(30, 'Weekly meal plan generated! 📅');
+        }
+
         // 🚀 START THE APPLICATION
         window.addEventListener('load', () => {
             initializeApp();
             loadSpotifyState();
             handleSpotifyCallback();
+            
+            // Initialize Spotify Web Player when SDK is ready
+            if (window.Spotify) {
+                window.onSpotifyWebPlaybackSDKReady();
+            }
         });
         
         // Listen for health data from iOS shortcuts
