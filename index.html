@@ -712,6 +712,9 @@
                                 <button onclick="transferToWebPlayer()" class="p-3 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition-all" title="Transfer to Web Player">
                                     📱
                                 </button>
+                                <button onclick="refreshSpotifyConnection()" class="p-3 bg-orange-500 text-white rounded-full hover:bg-orange-600 transition-all" title="Refresh Connection">
+                                    🔄
+                                </button>
                             </div>
                             
                             <!-- Volume Control -->
@@ -4956,6 +4959,77 @@
             updateTasksUI();
             
             showFloatingNotification('🧠 Focus Mode', 'Lo-fi music started, focus task added');
+        }
+
+        // 🔄 REFRESH SPOTIFY CONNECTION
+        function refreshSpotifyConnection() {
+            addDebugEntry('spotify', 'info', 'Refreshing Spotify connection initiated by user');
+            
+            // Show immediate feedback
+            showFloatingNotification('🔄 Refreshing Connection', 'Clearing tokens and re-initiating authentication...');
+            
+            // Clear all existing tokens and state
+            spotifyAccessToken = null;
+            refreshToken = null;
+            tokenExpiryTime = null;
+            currentPlaybackState = null;
+            
+            // Clear token storage
+            localStorage.removeItem('spotify_access_token');
+            localStorage.removeItem('spotify_refresh_token');
+            localStorage.removeItem('spotify_token_expiry');
+            
+            // Clear temporary OAuth state
+            localStorage.removeItem('spotify_code_verifier');
+            localStorage.removeItem('spotify_auth_state');
+            localStorage.removeItem('spotify_oauth_client_id');
+            localStorage.removeItem('spotify_oauth_redirect_uri');
+            
+            // Reset UI to login state
+            document.getElementById('spotifyLogin').classList.remove('hidden');
+            document.getElementById('spotifyPlayer').classList.add('hidden');
+            updateSpotifyStatus('Not Connected');
+            updateAboutSpotifyStatus('Not Connected');
+            
+            // Reset player UI
+            const trackImage = document.getElementById('trackImage');
+            const trackName = document.getElementById('trackName');
+            const trackArtist = document.getElementById('trackArtist');
+            const trackAlbum = document.getElementById('trackAlbum');
+            const playPauseBtn = document.getElementById('playPauseBtn');
+            const trackProgress = document.getElementById('trackProgress');
+            const progressBar = document.getElementById('progressBar');
+            
+            if (trackImage) trackImage.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHZpZXdCb3g9IjAgMCA2NCA2NCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiBmaWxsPSIjNjY2NjY2Ii8+Cjx0ZXh0IHg9IjMyIiB5PSIzNiIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjEwIiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+U3BvdGlmeTwvdGV4dD4KPC9zdmc+Cg==';
+            if (trackName) trackName.textContent = 'Not connected';
+            if (trackArtist) trackArtist.textContent = 'Click "Connect Spotify" to start';
+            if (trackAlbum) trackAlbum.textContent = '-';
+            if (playPauseBtn) playPauseBtn.textContent = '▶️';
+            if (trackProgress) trackProgress.textContent = '0:00 / 0:00';
+            if (progressBar) progressBar.style.width = '0%';
+            
+            // Clear device list
+            const deviceSelect = document.getElementById('deviceSelect');
+            if (deviceSelect) {
+                deviceSelect.innerHTML = '<option value="">Select Device</option>';
+            }
+            
+            // Reset volume display
+            const volumeSlider = document.getElementById('volumeSlider');
+            const volumeDisplay = document.getElementById('volumeDisplay');
+            if (volumeSlider) volumeSlider.value = 50;
+            if (volumeDisplay) volumeDisplay.textContent = '50%';
+            
+            addDebugEntry('spotify', 'success', 'Spotify connection refresh completed', {
+                tokenCleared: true,
+                uiReset: true,
+                playerState: 'disconnected'
+            });
+            
+            // Provide user guidance
+            setTimeout(() => {
+                showFloatingNotification('✅ Connection Refreshed', 'You can now reconnect to Spotify with fresh authentication');
+            }, 1000);
         }
 
         // ⚙️ SETTINGS MANAGEMENT
