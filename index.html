@@ -686,12 +686,66 @@
                                 <button onclick="quickTrackWater()" class="w-full bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 transition-all">
                                     💧 Log Water + Music
                                 </button>
+                                <button onclick="quickLogSteps()" class="w-full bg-green-500 text-white py-2 rounded-lg hover:bg-green-600 transition-all">
+                                    👟 Log Steps + Energy Music
+                                </button>
                                 <button onclick="quickLogWorkout()" class="w-full bg-red-500 text-white py-2 rounded-lg hover:bg-red-600 transition-all">
                                     💪 Workout + Pump-up Music
                                 </button>
                                 <button onclick="focusMode()" class="w-full bg-purple-500 text-white py-2 rounded-lg hover:bg-purple-600 transition-all">
                                     🧠 Focus Mode + Lo-fi
                                 </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Manual Tracking -->
+                        <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg">
+                            <h4 class="font-bold mb-4">📊 Manual Tracking</h4>
+                            <div class="space-y-4">
+                                <!-- Water Tracker -->
+                                <div class="p-4 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
+                                    <div class="flex items-center justify-between mb-3">
+                                        <h5 class="font-medium text-blue-700 dark:text-blue-300">💧 Water Tracker</h5>
+                                        <span id="waterDisplay" class="text-sm text-blue-600 dark:text-blue-400">0/8 glasses</span>
+                                    </div>
+                                    <div class="grid grid-cols-4 gap-2 mb-3" id="waterGlasses">
+                                        <!-- Water glasses will be populated here -->
+                                    </div>
+                                    <div class="flex space-x-2">
+                                        <button onclick="addWaterGlass()" class="flex-1 bg-blue-500 text-white py-2 rounded text-sm hover:bg-blue-600 transition-all">
+                                            + Glass
+                                        </button>
+                                        <button onclick="removeWaterGlass()" class="flex-1 bg-blue-300 text-white py-2 rounded text-sm hover:bg-blue-400 transition-all">
+                                            - Glass
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <!-- Steps Tracker -->
+                                <div class="p-4 bg-green-50 dark:bg-green-900/30 rounded-lg">
+                                    <div class="flex items-center justify-between mb-3">
+                                        <h5 class="font-medium text-green-700 dark:text-green-300">👟 Steps Tracker</h5>
+                                        <span id="stepsDisplay" class="text-sm text-green-600 dark:text-green-400">0 steps</span>
+                                    </div>
+                                    <div class="flex space-x-2 mb-3">
+                                        <input type="number" id="stepsInput" placeholder="Enter steps..." min="0" max="50000"
+                                               class="flex-1 p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-base">
+                                        <button onclick="addSteps()" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition-all">
+                                            Add
+                                        </button>
+                                    </div>
+                                    <div class="flex space-x-2">
+                                        <button onclick="quickAddSteps(1000)" class="flex-1 bg-green-400 text-white py-1 rounded text-sm hover:bg-green-500 transition-all">
+                                            +1K
+                                        </button>
+                                        <button onclick="quickAddSteps(2500)" class="flex-1 bg-green-500 text-white py-1 rounded text-sm hover:bg-green-600 transition-all">
+                                            +2.5K
+                                        </button>
+                                        <button onclick="quickAddSteps(5000)" class="flex-1 bg-green-600 text-white py-1 rounded text-sm hover:bg-green-700 transition-all">
+                                            +5K
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                         
@@ -782,11 +836,20 @@
                         <div class="space-y-4">
                             <div>
                                 <label class="block text-sm font-medium mb-2">🔑 Spotify Client ID</label>
-                                <input type="text" id="spotifyClientId" placeholder="Enter your Spotify app client ID" 
-                                       class="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-base">
+                                <div class="relative">
+                                    <input type="text" id="spotifyClientId" placeholder="Enter your Spotify app client ID" 
+                                           class="w-full p-3 pr-12 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-base">
+                                    <div id="clientIdStatus" class="absolute right-3 top-1/2 transform -translate-y-1/2 hidden">
+                                        <div class="flex items-center space-x-1">
+                                            <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                                            <span class="text-xs text-green-600 dark:text-green-400 font-medium">Saved</span>
+                                        </div>
+                                    </div>
+                                </div>
                                 <div class="text-xs text-gray-500 mt-1">
                                     Get your client ID from <a href="https://developer.spotify.com/dashboard" target="_blank" class="text-blue-500 hover:underline">Spotify Developer Dashboard</a>
                                 </div>
+                                <div id="clientIdSaveStatus" class="hidden mt-2"></div>
                             </div>
                             
                             <div>
@@ -2452,7 +2515,14 @@
                 return { success: false, error: 'Storage manager not available' };
             }
             
-            return storageManager.load();
+            const result = storageManager.load();
+            
+            // Update UI to show client ID status after loading
+            setTimeout(() => {
+                updateSpotifyClientIdStatus();
+            }, 100);
+            
+            return result;
         }
 
         // 🏆 XP AND LEVELING
@@ -2953,13 +3023,7 @@
             gameState.dailyStats.waterGlasses++;
             awardXP(5, 'Water Logged');
             updateStatsUI();
-            
-            // Update water visualization
-            const glassId = `waterGlass${gameState.dailyStats.waterGlasses}`;
-            const glass = document.getElementById(glassId);
-            if (glass) {
-                glass.style.backgroundColor = '#3b82f6';
-            }
+            updateWaterVisualization();
             
             showFloatingNotification('💧 Water Logged!', `Glass ${gameState.dailyStats.waterGlasses}/8`);
             
@@ -2967,6 +3031,158 @@
             if (gameState.dailyStats.waterGlasses === 8) {
                 addAchievement('💧 Hydration Hero!', 'Drank 8 glasses of water today', 75);
             }
+        }
+
+        function addWaterGlass() {
+            if (gameState.dailyStats.waterGlasses < 10) { // Allow up to 10 glasses
+                gameState.dailyStats.waterGlasses++;
+                awardXP(5, 'Water Glass Added');
+                updateStatsUI();
+                updateWaterVisualization();
+                showFloatingNotification('💧 Water Added!', `Glass ${gameState.dailyStats.waterGlasses} logged`);
+                
+                // Check hydration achievements
+                if (gameState.dailyStats.waterGlasses === 8) {
+                    addAchievement('💧 Hydration Hero!', 'Drank 8 glasses of water today', 75);
+                }
+            } else {
+                showFloatingNotification('💧 Hydration Max!', 'Great job! You\'ve logged plenty of water today');
+            }
+        }
+
+        function removeWaterGlass() {
+            if (gameState.dailyStats.waterGlasses > 0) {
+                gameState.dailyStats.waterGlasses--;
+                updateStatsUI();
+                updateWaterVisualization();
+                showFloatingNotification('💧 Water Removed', `Now at ${gameState.dailyStats.waterGlasses} glasses`);
+            } else {
+                showFloatingNotification('💧 No Water to Remove', 'You haven\'t logged any water yet');
+            }
+        }
+
+        function updateWaterVisualization() {
+            const waterGlassesContainer = document.getElementById('waterGlasses');
+            if (!waterGlassesContainer) return;
+            
+            // Create 8 water glass icons
+            const totalGlasses = 8;
+            let glassesHTML = '';
+            
+            for (let i = 1; i <= totalGlasses; i++) {
+                const filled = i <= gameState.dailyStats.waterGlasses;
+                glassesHTML += `
+                    <div class="flex flex-col items-center">
+                        <div class="w-8 h-10 border-2 border-blue-400 rounded-b-lg relative overflow-hidden ${filled ? 'bg-blue-400' : 'bg-gray-100 dark:bg-gray-600'}">
+                            ${filled ? '<div class="absolute bottom-0 left-0 right-0 h-full bg-blue-500 opacity-75 animate-pulse"></div>' : ''}
+                        </div>
+                        <div class="text-xs mt-1 ${filled ? 'text-blue-600' : 'text-gray-400'}">${i}</div>
+                    </div>
+                `;
+            }
+            
+            waterGlassesContainer.innerHTML = glassesHTML;
+            
+            // Update water display
+            const waterDisplay = document.getElementById('waterDisplay');
+            if (waterDisplay) {
+                waterDisplay.textContent = `${gameState.dailyStats.waterGlasses}/${totalGlasses} glasses`;
+            }
+        }
+
+        // 👟 STEPS TRACKING
+        function quickLogSteps() {
+            // Add 2000 steps as a quick log
+            const stepsToAdd = 2000;
+            gameState.dailyStats.steps += stepsToAdd;
+            awardXP(20, 'Steps Logged');
+            updateStatsUI();
+            updateStepsDisplay();
+            
+            showFloatingNotification('👟 Steps Logged!', `+${stepsToAdd.toLocaleString()} steps added`);
+            
+            // Check step achievements
+            checkStepsAchievements();
+        }
+
+        function addSteps() {
+            const stepsInput = document.getElementById('stepsInput');
+            const steps = parseInt(stepsInput.value);
+            
+            if (!steps || steps <= 0) {
+                showFloatingNotification('⚠️ Invalid Steps', 'Please enter a valid number of steps');
+                return;
+            }
+            
+            if (steps > 50000) {
+                showFloatingNotification('⚠️ Too Many Steps', 'That\'s a lot of steps! Please enter a realistic number');
+                return;
+            }
+            
+            gameState.dailyStats.steps += steps;
+            const xp = Math.min(50, Math.floor(steps / 100)); // 1 XP per 100 steps, max 50 XP
+            awardXP(xp, `Logged ${steps.toLocaleString()} steps`);
+            
+            updateStatsUI();
+            updateStepsDisplay();
+            stepsInput.value = '';
+            
+            showFloatingNotification('👟 Steps Added!', `+${steps.toLocaleString()} steps logged`);
+            
+            // Check step achievements
+            checkStepsAchievements();
+        }
+
+        function quickAddSteps(steps) {
+            gameState.dailyStats.steps += steps;
+            const xp = Math.min(30, Math.floor(steps / 100)); // 1 XP per 100 steps, max 30 XP for quick add
+            awardXP(xp, `Quick Add: ${steps.toLocaleString()} steps`);
+            
+            updateStatsUI();
+            updateStepsDisplay();
+            
+            showFloatingNotification('👟 Quick Steps!', `+${steps.toLocaleString()} steps added`);
+            
+            // Check step achievements
+            checkStepsAchievements();
+        }
+
+        function updateStepsDisplay() {
+            const stepsDisplay = document.getElementById('stepsDisplay');
+            if (stepsDisplay) {
+                const steps = gameState.dailyStats.steps;
+                stepsDisplay.textContent = `${steps.toLocaleString()} steps`;
+                
+                // Add target info if profile is complete
+                if (gameState.healthMetrics.dailyStepsTarget > 0) {
+                    const percentage = Math.round((steps / gameState.healthMetrics.dailyStepsTarget) * 100);
+                    stepsDisplay.textContent += ` (${percentage}% of goal)`;
+                }
+            }
+        }
+
+        function checkStepsAchievements() {
+            const steps = gameState.dailyStats.steps;
+            
+            if (steps >= 5000 && !hasAchievement('5K Steps')) {
+                addAchievement('👟 5K Steps!', 'Walked 5,000 steps in one day', 50);
+            }
+            
+            if (steps >= 10000 && !hasAchievement('10K Steps')) {
+                addAchievement('🚀 10K Steps!', 'Reached the daily 10,000 step goal', 100);
+            }
+            
+            if (steps >= 15000 && !hasAchievement('15K Steps')) {
+                addAchievement('🏃‍♂️ Step Master!', 'Walked an impressive 15,000 steps', 150);
+            }
+            
+            if (steps >= 20000 && !hasAchievement('20K Steps')) {
+                addAchievement('🏆 Step Champion!', 'Amazing 20,000 steps in one day', 200);
+            }
+        }
+
+        function hasAchievement(title) {
+            return gameState.achievements.some(achievement => achievement.title.includes(title));
         }
 
         function logMeal(mealType) {
@@ -5085,6 +5301,9 @@
                 addDebugEntry('storage', 'error', 'Game state force-save failed', error);
             }
             
+            // Update visual indicators immediately
+            updateSpotifyClientIdStatus();
+            
             // Verify the save worked with multiple checks
             setTimeout(() => {
                 verifySpotifyConfigSave(clientId, redirectUri);
@@ -5098,6 +5317,46 @@
                 : 'Client ID saved with multi-tier backup and auto-detected redirect URI!';
             
             showFloatingNotification('💾 Spotify Config Saved', message);
+        }
+
+        function updateSpotifyClientIdStatus() {
+            const clientId = gameState.settings.spotifyClientId;
+            const statusElement = document.getElementById('clientIdStatus');
+            const saveStatusElement = document.getElementById('clientIdSaveStatus');
+            
+            if (clientId && clientId.length > 10) {
+                // Show green indicator in input field
+                if (statusElement) {
+                    statusElement.classList.remove('hidden');
+                }
+                
+                // Show status message below input
+                if (saveStatusElement) {
+                    saveStatusElement.innerHTML = `
+                        <div class="flex items-center space-x-2 p-2 bg-green-50 dark:bg-green-900/30 rounded-lg border border-green-200 dark:border-green-600">
+                            <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                            <span class="text-xs font-medium text-green-700 dark:text-green-300">Client ID saved successfully</span>
+                            <span class="text-xs text-green-600 dark:text-green-400">(${clientId.substring(0, 8)}...)</span>
+                        </div>
+                    `;
+                    saveStatusElement.classList.remove('hidden');
+                }
+                
+                addDebugEntry('ui', 'info', 'Spotify client ID status updated - saved', {
+                    clientId: `${clientId.substring(0, 8)}...`
+                });
+            } else {
+                // Hide indicators
+                if (statusElement) {
+                    statusElement.classList.add('hidden');
+                }
+                
+                if (saveStatusElement) {
+                    saveStatusElement.classList.add('hidden');
+                }
+                
+                addDebugEntry('ui', 'info', 'Spotify client ID status updated - not saved');
+            }
         }
 
         function verifySpotifyConfigSave(expectedClientId, expectedRedirectUri) {
