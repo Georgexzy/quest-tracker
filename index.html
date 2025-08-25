@@ -4725,7 +4725,7 @@
                             <button onclick="exportDebugLog()" class="text-sm bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600">
                                 Export
                             </button>
-                            <button onclick="this.closest('.modal-overlay').remove()" class="text-gray-400 hover:text-gray-600 text-xl">×</button>
+                            <button onclick="closeDebugConsole()" class="text-gray-400 hover:text-gray-600 text-xl" title="Close Debug Console">×</button>
                         </div>
                     </div>
                     
@@ -4780,9 +4780,18 @@
                     </div>
                     
                     <!-- Debug Log -->
-                    <div class="flex-1 overflow-hidden">
+                    <div class="flex-1 overflow-hidden relative">
                         <div id="debugLogContainer" class="h-full overflow-y-auto space-y-2 p-2 bg-gray-900 rounded-lg font-mono text-sm">
                             ${renderDebugLog()}
+                        </div>
+                        <!-- Scroll Controls -->
+                        <div class="absolute bottom-4 right-4 flex flex-col space-y-2">
+                            <button onclick="scrollDebugToTop()" class="bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-full shadow-lg transition-all" title="Scroll to Top">
+                                ⬆️
+                            </button>
+                            <button onclick="scrollDebugToBottom()" class="bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-full shadow-lg transition-all" title="Scroll to Bottom">
+                                ⬇️
+                            </button>
                         </div>
                     </div>
                     
@@ -4807,21 +4816,143 @@
                             </div>
                         </div>
                     </div>
+                    
+                    <!-- Bottom Action Bar -->
+                    <div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-600 flex flex-col space-y-3">
+                        <div class="flex space-x-3">
+                            <button onclick="scrollDebugToTop()" class="flex-1 bg-blue-500 text-white py-2 rounded hover:bg-blue-600 transition-all">
+                                ⬆️ Scroll to Top
+                            </button>
+                            <button onclick="scrollDebugToBottom()" class="flex-1 bg-blue-500 text-white py-2 rounded hover:bg-blue-600 transition-all">
+                                ⬇️ Scroll to Bottom
+                            </button>
+                            <button onclick="toggleAutoRefresh()" id="autoRefreshBtn" class="flex-1 bg-green-500 text-white py-2 rounded hover:bg-green-600 transition-all">
+                                🔄 Auto-Refresh: ON
+                            </button>
+                        </div>
+                        <div class="flex space-x-3">
+                            <button onclick="copyAllDebugInfo()" class="flex-1 bg-purple-500 text-white py-2 rounded hover:bg-purple-600 transition-all">
+                                📋 Copy All
+                            </button>
+                            <button onclick="closeDebugConsole()" class="flex-2 bg-red-500 text-white py-3 rounded hover:bg-red-600 transition-all font-bold">
+                                ❌ Close Debug Console
+                            </button>
+                        </div>
+                    </div>
                 </div>
             `;
             document.body.appendChild(modal);
+            
+            // Add keyboard event listener for ESC key
+            const keyHandler = (e) => {
+                if (e.key === 'Escape') {
+                    closeDebugConsole();
+                    document.removeEventListener('keydown', keyHandler);
+                }
+            };
+            document.addEventListener('keydown', keyHandler);
+            
+            // Store refresh interval for cleanup
+            modal.setAttribute('data-refresh-enabled', 'true');
             
             // Update debug statistics
             updateDebugStatistics();
             
             // Auto-refresh debug log every 2 seconds
             const refreshInterval = setInterval(() => {
-                if (document.querySelector('.modal-overlay')) {
+                const modalExists = document.querySelector('.modal-overlay');
+                const autoRefreshEnabled = modalExists?.getAttribute('data-refresh-enabled') === 'true';
+                
+                if (modalExists && autoRefreshEnabled) {
                     updateDebugLogDisplay();
                 } else {
                     clearInterval(refreshInterval);
                 }
             }, 2000);
+        }
+
+        function closeDebugConsole() {
+            const modal = document.querySelector('.modal-overlay');
+            if (modal) {
+                modal.remove();
+                addDebugEntry('ui', 'info', 'Debug console closed by user');
+            }
+        }
+
+        function scrollDebugToTop() {
+            const container = document.getElementById('debugLogContainer');
+            if (container) {
+                container.scrollTo({ top: 0, behavior: 'smooth' });
+                addDebugEntry('ui', 'info', 'Debug log scrolled to top');
+            }
+        }
+
+        function scrollDebugToBottom() {
+            const container = document.getElementById('debugLogContainer');
+            if (container) {
+                container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+                addDebugEntry('ui', 'info', 'Debug log scrolled to bottom');
+            }
+        }
+
+        function toggleAutoRefresh() {
+            const modal = document.querySelector('.modal-overlay');
+            const btn = document.getElementById('autoRefreshBtn');
+            
+            if (modal && btn) {
+                const currentState = modal.getAttribute('data-refresh-enabled') === 'true';
+                const newState = !currentState;
+                
+                modal.setAttribute('data-refresh-enabled', newState);
+                btn.textContent = newState ? '🔄 Auto-Refresh: ON' : '⏸️ Auto-Refresh: OFF';
+                btn.className = newState 
+                    ? 'flex-1 bg-green-500 text-white py-2 rounded hover:bg-green-600 transition-all'
+                    : 'flex-1 bg-gray-500 text-white py-2 rounded hover:bg-gray-600 transition-all';
+                
+                addDebugEntry('ui', 'info', `Debug auto-refresh ${newState ? 'enabled' : 'disabled'}`);
+            }
+        }
+
+        function copyAllDebugInfo() {
+            const debugText = [
+                '🔍 LIFE QUEST RPG - COMPLETE DEBUG LOG',
+                '=====================================',
+                `Timestamp: ${new Date().toISOString()}`,
+                `App Version: v2.2.2`,
+                `Total Entries: ${debugLog.length}`,
+                `Browser: ${navigator.userAgent}`,
+                ``,
+                '📊 APP STATE SUMMARY:',
+                `• Level: ${gameState.level}`,
+                `• XP: ${gameState.xp}/${gameState.level * 100}`,
+                `• Tasks Completed: ${gameState.dailyStats.tasksCompleted}`,
+                `• AI Confidence: ${Math.round(gameState.ai.confidence * 100)}%`,
+                `• Spotify Status: ${spotifyAccessToken ? 'Connected' : 'Not Connected'}`,
+                `• Debug Entries: ${debugLog.length}`,
+                ``,
+                '🔍 DEBUG ENTRIES:',
+                '================',
+                ...debugLog.slice(0, 50).map((entry, index) => [
+                    `Entry #${index + 1}:`,
+                    `  Time: ${new Date(entry.timestamp).toLocaleString()}`,
+                    `  Category: ${entry.category}`,
+                    `  Level: ${entry.level}`,
+                    `  Message: ${entry.message}`,
+                    entry.data ? `  Data: ${JSON.stringify(entry.data)}` : '',
+                    '---'
+                ].filter(line => line).join('\n')),
+                '',
+                '=====================================',
+                `End of Debug Log (${debugLog.length > 50 ? 'showing first 50 entries' : 'all entries shown'})`
+            ].join('\n');
+            
+            navigator.clipboard.writeText(debugText).then(() => {
+                showFloatingNotification('📋 Debug Copied!', 'Complete debug information copied to clipboard');
+                addDebugEntry('ui', 'success', 'Complete debug log copied to clipboard');
+            }).catch(() => {
+                showFloatingNotification('❌ Copy Failed', 'Unable to copy debug information');
+                addDebugEntry('ui', 'error', 'Failed to copy debug log to clipboard');
+            });
         }
 
         function renderDebugLog(filterCategory = 'all') {
