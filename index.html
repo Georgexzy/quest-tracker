@@ -3900,14 +3900,40 @@
             }
             
             try {
-                if (spotifyState.currentTrack && spotifyState.currentTrack.is_playing) {
-                    await makeSpotifyRequest('https://api.spotify.com/v1/me/player/pause', { method: 'PUT' });
+                // Use web player if active, otherwise use Web API
+                if (webPlayerActive && webPlayerInstance) {
+                    console.log('🎵 Using web player for play/pause');
+                    webPlayerInstance.togglePlay().then(() => {
+                        console.log('✅ Web player toggle successful');
+                        awardXP(5, 'Playback toggled! 🎵');
+                        // Update state immediately
+                        setTimeout(() => {
+                            webPlayerInstance.getCurrentState().then(state => {
+                                if (state) {
+                                    updatePlayerUI({
+                                        item: state.track_window.current_track,
+                                        is_playing: !state.paused,
+                                        progress_ms: state.position,
+                                        duration_ms: state.track_window.current_track.duration_ms
+                                    });
+                                }
+                            });
+                        }, 200);
+                    }).catch(error => {
+                        console.error('Web player toggle error:', error);
+                        showFloatingNotification('⚠️ Playback Error', 'Web player control failed');
+                    });
                 } else {
-                    await makeSpotifyRequest('https://api.spotify.com/v1/me/player/play', { method: 'PUT' });
+                    console.log('🎵 Using Web API for play/pause');
+                    if (spotifyState.currentTrack && spotifyState.currentTrack.is_playing) {
+                        await makeSpotifyRequest('https://api.spotify.com/v1/me/player/pause', { method: 'PUT' });
+                    } else {
+                        await makeSpotifyRequest('https://api.spotify.com/v1/me/player/play', { method: 'PUT' });
+                    }
+                    
+                    awardXP(5, 'Playback toggled! 🎵');
+                    setTimeout(getCurrentlyPlaying, 500);
                 }
-                
-                // Update immediately
-                setTimeout(getCurrentlyPlaying, 500);
                 
             } catch (error) {
                 console.error('Error toggling playback:', error);
@@ -3922,9 +3948,37 @@
             }
             
             try {
-                await makeSpotifyRequest('https://api.spotify.com/v1/me/player/next', { method: 'POST' });
-                setTimeout(getCurrentlyPlaying, 1000);
-                awardXP(5, 'Track skipped! 🎵');
+                // Use web player if active, otherwise use Web API
+                if (webPlayerActive && webPlayerInstance) {
+                    console.log('🎵 Using web player for next track');
+                    webPlayerInstance.nextTrack().then(() => {
+                        console.log('✅ Web player next track successful');
+                        awardXP(5, 'Track skipped! 🎵');
+                        showFloatingNotification('⏭️ Next Track', 'Skipped to next track');
+                        // Update state after a short delay
+                        setTimeout(() => {
+                            webPlayerInstance.getCurrentState().then(state => {
+                                if (state) {
+                                    updatePlayerUI({
+                                        item: state.track_window.current_track,
+                                        is_playing: !state.paused,
+                                        progress_ms: state.position,
+                                        duration_ms: state.track_window.current_track.duration_ms
+                                    });
+                                }
+                            });
+                        }, 500);
+                    }).catch(error => {
+                        console.error('Web player next track error:', error);
+                        showFloatingNotification('⚠️ Skip Error', 'Web player skip failed');
+                    });
+                } else {
+                    console.log('🎵 Using Web API for next track');
+                    await makeSpotifyRequest('https://api.spotify.com/v1/me/player/next', { method: 'POST' });
+                    setTimeout(getCurrentlyPlaying, 1000);
+                    awardXP(5, 'Track skipped! 🎵');
+                    showFloatingNotification('⏭️ Next Track', 'Skipped to next track');
+                }
             } catch (error) {
                 console.error('Error skipping track:', error);
                 showFloatingNotification('⚠️ Skip Error', 'Unable to skip track');
@@ -3938,9 +3992,37 @@
             }
             
             try {
-                await makeSpotifyRequest('https://api.spotify.com/v1/me/player/previous', { method: 'POST' });
-                setTimeout(getCurrentlyPlaying, 1000);
-                awardXP(5, 'Previous track! 🎵');
+                // Use web player if active, otherwise use Web API
+                if (webPlayerActive && webPlayerInstance) {
+                    console.log('🎵 Using web player for previous track');
+                    webPlayerInstance.previousTrack().then(() => {
+                        console.log('✅ Web player previous track successful');
+                        awardXP(5, 'Previous track! 🎵');
+                        showFloatingNotification('⏮️ Previous Track', 'Went to previous track');
+                        // Update state after a short delay
+                        setTimeout(() => {
+                            webPlayerInstance.getCurrentState().then(state => {
+                                if (state) {
+                                    updatePlayerUI({
+                                        item: state.track_window.current_track,
+                                        is_playing: !state.paused,
+                                        progress_ms: state.position,
+                                        duration_ms: state.track_window.current_track.duration_ms
+                                    });
+                                }
+                            });
+                        }, 500);
+                    }).catch(error => {
+                        console.error('Web player previous track error:', error);
+                        showFloatingNotification('⚠️ Previous Error', 'Web player previous failed');
+                    });
+                } else {
+                    console.log('🎵 Using Web API for previous track');
+                    await makeSpotifyRequest('https://api.spotify.com/v1/me/player/previous', { method: 'POST' });
+                    setTimeout(getCurrentlyPlaying, 1000);
+                    awardXP(5, 'Previous track! 🎵');
+                    showFloatingNotification('⏮️ Previous Track', 'Went to previous track');
+                }
             } catch (error) {
                 console.error('Error going to previous track:', error);
                 showFloatingNotification('⚠️ Previous Error', 'Unable to go to previous track');
@@ -4139,14 +4221,26 @@
 
         function updateMusicAnalytics() {
             const analyticsContainer = document.getElementById('musicAnalytics');
-            if (!analyticsContainer || !spotifyState.isConnected) return;
+            if (!analyticsContainer) return;
+            
+            if (!spotifyState.isConnected) {
+                analyticsContainer.innerHTML = `
+                    <div class="text-center text-gray-500 py-8">
+                        <div class="text-4xl mb-2">🎵</div>
+                        <div>Connect Spotify to analyze your music preferences</div>
+                    </div>
+                `;
+                return;
+            }
             
             const topGenres = {};
-            spotifyState.topArtists.items?.forEach(artist => {
-                artist.genres.forEach(genre => {
-                    topGenres[genre] = (topGenres[genre] || 0) + 1;
+            if (spotifyState.topArtists.items) {
+                spotifyState.topArtists.items.forEach(artist => {
+                    artist.genres.forEach(genre => {
+                        topGenres[genre] = (topGenres[genre] || 0) + 1;
+                    });
                 });
-            });
+            }
             
             const sortedGenres = Object.entries(topGenres)
                 .sort(([,a], [,b]) => b - a)
@@ -4157,7 +4251,10 @@
                     <div class="bg-green-50 dark:bg-green-900/30 p-4 rounded-lg">
                         <h4 class="font-bold mb-2 text-green-700 dark:text-green-300">🎵 Your Music Profile</h4>
                         <div class="text-sm text-green-600 dark:text-green-400">
-                            Top Genres: ${sortedGenres.map(([genre]) => genre).join(', ') || 'Analyzing...'}
+                            ${sortedGenres.length > 0 ? 
+                                `Top Genres: ${sortedGenres.map(([genre]) => genre).join(', ')}` : 
+                                'Loading your music preferences...'
+                            }
                         </div>
                     </div>
                     
@@ -4175,9 +4272,12 @@
                     <div class="bg-orange-50 dark:bg-orange-900/30 p-4 rounded-lg">
                         <h4 class="font-bold mb-2 text-orange-700 dark:text-orange-300">🤖 AI Analysis</h4>
                         <div class="text-sm text-orange-600 dark:text-orange-400">
-                            Your music taste shows preferences for ${spotifyState.musicPreferences.workoutGenres.length > 0 ? 'high-energy workout music' : 'diverse genres'}. 
-                            Perfect for ${spotifyState.musicPreferences.focusGenres.length > 0 ? 'focus sessions and' : ''} 
-                            ${spotifyState.musicPreferences.relaxationGenres.length > 0 ? 'relaxation' : 'various activities'}.
+                            ${spotifyState.musicPreferences && spotifyState.musicPreferences.workoutGenres.length > 0 ? 
+                                `Your music taste shows preferences for ${spotifyState.musicPreferences.workoutGenres.length > 0 ? 'high-energy workout music' : 'diverse genres'}. 
+                                Perfect for ${spotifyState.musicPreferences.focusGenres.length > 0 ? 'focus sessions and' : ''} 
+                                ${spotifyState.musicPreferences.relaxationGenres.length > 0 ? 'relaxation' : 'various activities'}.` :
+                                'Your music preferences are being analyzed to provide personalized recommendations!'
+                            }
                         </div>
                     </div>
                 </div>
