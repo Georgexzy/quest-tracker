@@ -2940,7 +2940,6 @@
                 throw new Error('Spotify Client ID not configured. Please check your settings.');
             }
 
-            const redirectUri = getSpotifyRedirectURI();
             const tokenParams = new URLSearchParams({
                 grant_type: 'authorization_code',
                 code: authorizationCode,
