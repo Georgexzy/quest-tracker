@@ -4153,7 +4153,36 @@
         }
 
         async function exchangeCodeForToken(authorizationCode) {
-            const clientId = gameState.settings.spotifyClientId;
+            // CRITICAL FIX: Get clientId from backup storage FIRST, before gameState
+            let clientId = localStorage.getItem('spotify_oauth_client_id') || 
+                          localStorage.getItem('spotify_client_id_backup') || 
+                          gameState.settings.spotifyClientId;
+            
+            // Try secondary backup if still missing
+            if (!clientId) {
+                try {
+                    const secondaryBackup = localStorage.getItem('spotify_config_backup');
+                    if (secondaryBackup) {
+                        const parsed = JSON.parse(secondaryBackup);
+                        clientId = parsed.clientId;
+                    }
+                } catch (error) {
+                    console.warn('Secondary backup parse failed:', error);
+                }
+            }
+            
+            // Try verification backup as last resort
+            if (!clientId) {
+                try {
+                    const verificationBackup = localStorage.getItem('spotify_config_verification');
+                    if (verificationBackup) {
+                        clientId = atob(verificationBackup);
+                    }
+                } catch (error) {
+                    console.warn('Verification backup decode failed:', error);
+                }
+            }
+            
             const codeVerifier = localStorage.getItem('spotify_code_verifier');
             const redirectUri = getSpotifyRedirectURI();
             
