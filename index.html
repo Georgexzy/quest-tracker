@@ -1527,27 +1527,932 @@
             document.getElementById('loadingScreen').style.display = 'none';
         }
 
-        // 💾 STORAGE MANAGEMENT
-        function saveGameState() {
-            try {
-                localStorage.setItem('lifeQuestAI', JSON.stringify(gameState));
-                console.log('✅ Game state saved');
-            } catch (error) {
-                console.error('❌ Save failed:', error);
+        // 💾 COMPREHENSIVE STORAGE MANAGEMENT SYSTEM
+        class AdvancedStorageManager {
+            constructor() {
+                this.maxBackups = 3;
+                this.backupInterval = 30000; // 30 seconds
+                this.autoBackupTimer = null;
+                this.storageKeys = {
+                    primary: 'lifeQuestAI_primary',
+                    backup1: 'lifeQuestAI_backup_1',
+                    backup2: 'lifeQuestAI_backup_2',
+                    backup3: 'lifeQuestAI_backup_3',
+                    metadata: 'lifeQuestAI_metadata',
+                    spotifySecure: 'lifeQuestAI_spotify_secure',
+                    cache: 'lifeQuestAI_cache'
+                };
+                this.criticalKeys = [
+                    'settings.spotifyClientId',
+                    'settings.spotifyRedirectUri',
+                    'level',
+                    'totalXP',
+                    'achievements',
+                    'profile'
+                ];
+                this.isInitialized = false;
+                this.lastSaveTime = 0;
+                this.saveQueue = new Set();
+                this.compressionEnabled = true;
+                
+                this.initialize();
+            }
+
+            initialize() {
+                addDebugEntry('storage', 'info', 'Initializing Advanced Storage Manager');
+                
+                // Set up auto-backup interval
+                this.startAutoBackup();
+                
+                // Set up page lifecycle listeners
+                this.setupLifecycleListeners();
+                
+                // Verify storage availability
+                this.verifyStorageAvailability();
+                
+                // Check and repair storage integrity
+                this.checkStorageIntegrity();
+                
+                this.isInitialized = true;
+                addDebugEntry('storage', 'success', 'Advanced Storage Manager initialized', {
+                    backupInterval: this.backupInterval,
+                    maxBackups: this.maxBackups,
+                    compressionEnabled: this.compressionEnabled
+                });
+            }
+
+            verifyStorageAvailability() {
+                const storageTypes = ['localStorage', 'sessionStorage'];
+                const availability = {};
+                
+                storageTypes.forEach(type => {
+                    try {
+                        const storage = window[type];
+                        const testKey = '__storage_test__';
+                        storage.setItem(testKey, 'test');
+                        storage.removeItem(testKey);
+                        availability[type] = true;
+                    } catch (error) {
+                        availability[type] = false;
+                        addDebugEntry('storage', 'warn', `${type} not available`, { error: error.message });
+                    }
+                });
+                
+                if (!availability.localStorage) {
+                    addDebugEntry('storage', 'error', 'localStorage not available - app may not function properly');
+                    showFloatingNotification('⚠️ Storage Warning', 'Browser storage is limited - some features may not work');
+                }
+                
+                return availability;
+            }
+
+            setupLifecycleListeners() {
+                // Save on page visibility change
+                document.addEventListener('visibilitychange', () => {
+                    if (document.hidden) {
+                        this.forceSave('page_hidden');
+                        addDebugEntry('storage', 'info', 'Emergency save triggered: page hidden');
+                    }
+                });
+
+                // Save before page unload
+                window.addEventListener('beforeunload', () => {
+                    this.forceSave('page_unload');
+                    addDebugEntry('storage', 'info', 'Emergency save triggered: page unload');
+                });
+
+                // Save on page load (after a delay)
+                window.addEventListener('load', () => {
+                    setTimeout(() => {
+                        this.save('page_loaded');
+                        addDebugEntry('storage', 'info', 'Backup save triggered: page loaded');
+                    }, 2000);
+                });
+
+                // Save on focus/blur events
+                window.addEventListener('blur', () => {
+                    this.save('focus_lost');
+                });
+
+                window.addEventListener('focus', () => {
+                    this.save('focus_gained');
+                });
+            }
+
+            startAutoBackup() {
+                if (this.autoBackupTimer) {
+                    clearInterval(this.autoBackupTimer);
+                }
+                
+                this.autoBackupTimer = setInterval(() => {
+                    this.save('auto_backup');
+                    addDebugEntry('storage', 'info', 'Automatic backup completed', {
+                        interval: this.backupInterval,
+                        timeSinceLastSave: Date.now() - this.lastSaveTime
+                    });
+                }, this.backupInterval);
+                
+                addDebugEntry('storage', 'success', 'Auto-backup system started', { 
+                    intervalMs: this.backupInterval 
+                });
+            }
+
+            stopAutoBackup() {
+                if (this.autoBackupTimer) {
+                    clearInterval(this.autoBackupTimer);
+                    this.autoBackupTimer = null;
+                    addDebugEntry('storage', 'info', 'Auto-backup system stopped');
+                }
+            }
+
+            // Comprehensive save with rolling backups
+            save(trigger = 'manual', options = {}) {
+                const startTime = performance.now();
+                const saveId = `save_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+                
+                try {
+                    addDebugEntry('storage', 'info', `Save initiated: ${trigger}`, { saveId, trigger });
+                    
+                    // Prepare save data
+                    const saveData = this.prepareSaveData();
+                    
+                    // Validate critical data
+                    const validation = this.validateSaveData(saveData);
+                    if (!validation.isValid) {
+                        throw new Error(`Save validation failed: ${validation.errors.join(', ')}`);
+                    }
+                    
+                    // Perform rolling backup
+                    this.performRollingBackup();
+                    
+                    // Save to primary storage
+                    this.saveToPrimaryStorage(saveData, saveId);
+                    
+                    // Save to secure storage (critical data)
+                    this.saveToSecureStorage(saveData);
+                    
+                    // Save to cache storage
+                    this.saveToCacheStorage(saveData);
+                    
+                    // Update metadata
+                    this.updateMetadata(saveId, trigger, saveData);
+                    
+                    // Verify save integrity
+                    this.verifySaveIntegrity(saveData, saveId);
+                    
+                    this.lastSaveTime = Date.now();
+                    const duration = performance.now() - startTime;
+                    
+                    addDebugEntry('storage', 'success', `Save completed: ${trigger}`, {
+                        saveId,
+                        trigger,
+                        duration: `${duration.toFixed(2)}ms`,
+                        dataSize: JSON.stringify(saveData).length,
+                        timestamp: new Date().toISOString()
+                    });
+                    
+                    return { success: true, saveId, duration };
+                    
+                } catch (error) {
+                    const duration = performance.now() - startTime;
+                    addDebugEntry('storage', 'error', `Save failed: ${trigger}`, {
+                        saveId,
+                        trigger,
+                        error: error.message,
+                        duration: `${duration.toFixed(2)}ms`
+                    });
+                    
+                    // Attempt emergency backup
+                    this.emergencyBackup(saveId, error);
+                    
+                    return { success: false, error: error.message, saveId };
+                }
+            }
+
+            prepareSaveData() {
+                const saveData = {
+                    version: '2.3.0',
+                    timestamp: new Date().toISOString(),
+                    gameState: JSON.parse(JSON.stringify(gameState)), // Deep clone
+                    metadata: {
+                        saveCount: (this.getSaveMetadata()?.saveCount || 0) + 1,
+                        lastSaveTime: Date.now(),
+                        appVersion: '2.3.0',
+                        userAgent: navigator.userAgent,
+                        platform: navigator.platform,
+                        language: navigator.language
+                    },
+                    checksum: null
+                };
+                
+                // Calculate checksum for integrity verification
+                saveData.checksum = this.calculateChecksum(saveData.gameState);
+                
+                return saveData;
+            }
+
+            validateSaveData(saveData) {
+                const validation = { isValid: true, errors: [] };
+                
+                // Check critical paths
+                this.criticalKeys.forEach(keyPath => {
+                    const value = this.getNestedValue(saveData.gameState, keyPath);
+                    if (keyPath === 'settings.spotifyClientId' && value && value.length < 10) {
+                        validation.errors.push(`Invalid Spotify client ID length: ${value.length}`);
+                    }
+                });
+                
+                // Check data structure
+                if (!saveData.gameState) {
+                    validation.errors.push('Missing gameState');
+                }
+                
+                if (!saveData.timestamp) {
+                    validation.errors.push('Missing timestamp');
+                }
+                
+                if (!saveData.checksum) {
+                    validation.errors.push('Missing checksum');
+                }
+                
+                // Check data size (warn if too large)
+                const dataSize = JSON.stringify(saveData).length;
+                if (dataSize > 5 * 1024 * 1024) { // 5MB warning
+                    validation.errors.push(`Data size too large: ${dataSize} bytes`);
+                }
+                
+                validation.isValid = validation.errors.length === 0;
+                return validation;
+            }
+
+            performRollingBackup() {
+                try {
+                    // Shift backups: 2->3, 1->2, primary->1
+                    const backup2 = localStorage.getItem(this.storageKeys.backup2);
+                    if (backup2) {
+                        localStorage.setItem(this.storageKeys.backup3, backup2);
+                    }
+                    
+                    const backup1 = localStorage.getItem(this.storageKeys.backup1);
+                    if (backup1) {
+                        localStorage.setItem(this.storageKeys.backup2, backup1);
+                    }
+                    
+                    const primary = localStorage.getItem(this.storageKeys.primary);
+                    if (primary) {
+                        localStorage.setItem(this.storageKeys.backup1, primary);
+                    }
+                    
+                    addDebugEntry('storage', 'info', 'Rolling backup completed', {
+                        backupsShifted: 3,
+                        oldestRemoved: !!backup2
+                    });
+                    
+                } catch (error) {
+                    addDebugEntry('storage', 'warn', 'Rolling backup failed', { error: error.message });
+                }
+            }
+
+            saveToPrimaryStorage(saveData, saveId) {
+                const dataToSave = this.compressionEnabled ? 
+                    this.compressData(JSON.stringify(saveData)) : 
+                    JSON.stringify(saveData);
+                
+                localStorage.setItem(this.storageKeys.primary, dataToSave);
+                
+                addDebugEntry('storage', 'info', 'Primary storage saved', {
+                    saveId,
+                    compressed: this.compressionEnabled,
+                    size: dataToSave.length
+                });
+            }
+
+            saveToSecureStorage(saveData) {
+                // Save critical data separately for extra protection
+                const criticalData = {};
+                this.criticalKeys.forEach(keyPath => {
+                    const value = this.getNestedValue(saveData.gameState, keyPath);
+                    if (value !== undefined) {
+                        criticalData[keyPath] = value;
+                    }
+                });
+                
+                const secureData = {
+                    timestamp: saveData.timestamp,
+                    data: criticalData,
+                    checksum: this.calculateChecksum(criticalData)
+                };
+                
+                localStorage.setItem(this.storageKeys.spotifySecure, JSON.stringify(secureData));
+                
+                addDebugEntry('storage', 'info', 'Secure storage saved', {
+                    criticalKeys: Object.keys(criticalData).length,
+                    spotifyClientId: criticalData['settings.spotifyClientId'] ? 
+                        `${criticalData['settings.spotifyClientId'].substring(0, 8)}...` : 'missing'
+                });
+            }
+
+            saveToCacheStorage(saveData) {
+                try {
+                    // Use sessionStorage for cache
+                    const cacheData = {
+                        timestamp: saveData.timestamp,
+                        version: saveData.version,
+                        gameState: saveData.gameState,
+                        checksum: saveData.checksum
+                    };
+                    
+                    sessionStorage.setItem(this.storageKeys.cache, JSON.stringify(cacheData));
+                    
+                    addDebugEntry('storage', 'info', 'Cache storage saved', {
+                        storage: 'sessionStorage',
+                        size: JSON.stringify(cacheData).length
+                    });
+                    
+                } catch (error) {
+                    addDebugEntry('storage', 'warn', 'Cache storage failed', { error: error.message });
+                }
+            }
+
+            updateMetadata(saveId, trigger, saveData) {
+                const metadata = {
+                    lastSaveId: saveId,
+                    lastSaveTrigger: trigger,
+                    lastSaveTime: Date.now(),
+                    saveCount: (this.getSaveMetadata()?.saveCount || 0) + 1,
+                    version: saveData.version,
+                    dataSize: JSON.stringify(saveData).length,
+                    compressionEnabled: this.compressionEnabled,
+                    backupHistory: this.getBackupHistory()
+                };
+                
+                localStorage.setItem(this.storageKeys.metadata, JSON.stringify(metadata));
+            }
+
+            verifySaveIntegrity(originalData, saveId) {
+                try {
+                    // Verify primary storage
+                    const savedData = this.loadFromPrimaryStorage();
+                    if (savedData && savedData.checksum === originalData.checksum) {
+                        addDebugEntry('storage', 'success', 'Save integrity verified', { saveId });
+                        return true;
+                    } else {
+                        throw new Error('Checksum mismatch in primary storage');
+                    }
+                } catch (error) {
+                    addDebugEntry('storage', 'error', 'Save integrity verification failed', {
+                        saveId,
+                        error: error.message
+                    });
+                    return false;
+                }
+            }
+
+            // Comprehensive load with fallback recovery
+            load() {
+                const loadId = `load_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+                addDebugEntry('storage', 'info', 'Load initiated', { loadId });
+                
+                try {
+                    // Try loading from primary storage
+                    let loadedData = this.loadFromPrimaryStorage();
+                    let source = 'primary';
+                    
+                    // If primary fails, try cache
+                    if (!loadedData) {
+                        loadedData = this.loadFromCacheStorage();
+                        source = 'cache';
+                        addDebugEntry('storage', 'warn', 'Primary storage failed, using cache', { loadId });
+                    }
+                    
+                    // If cache fails, try backups
+                    if (!loadedData) {
+                        loadedData = this.loadFromBackups();
+                        source = 'backup';
+                        addDebugEntry('storage', 'warn', 'Cache storage failed, using backup', { loadId });
+                    }
+                    
+                    // If backups fail, try secure storage for critical data
+                    if (!loadedData) {
+                        loadedData = this.loadFromSecureStorage();
+                        source = 'secure';
+                        addDebugEntry('storage', 'warn', 'Backup storage failed, using secure storage', { loadId });
+                    }
+                    
+                    if (loadedData) {
+                        // Validate loaded data
+                        const validation = this.validateLoadedData(loadedData);
+                        if (!validation.isValid) {
+                            throw new Error(`Loaded data validation failed: ${validation.errors.join(', ')}`);
+                        }
+                        
+                        // Merge with current gameState
+                        this.mergeGameState(loadedData.gameState);
+                        
+                        addDebugEntry('storage', 'success', 'Load completed', {
+                            loadId,
+                            source,
+                            version: loadedData.version,
+                            timestamp: loadedData.timestamp,
+                            dataIntegrity: validation.integrity
+                        });
+                        
+                        // Trigger a save to ensure data is current
+                        setTimeout(() => this.save('post_load_save'), 1000);
+                        
+                        return { success: true, source, loadId, data: loadedData };
+                        
+                    } else {
+                        throw new Error('All storage recovery methods failed');
+                    }
+                    
+                } catch (error) {
+                    addDebugEntry('storage', 'error', 'Load failed completely', {
+                        loadId,
+                        error: error.message
+                    });
+                    
+                    // Initialize with defaults but preserve any existing data
+                    this.initializeDefaults();
+                    
+                    return { success: false, error: error.message, loadId };
+                }
+            }
+
+            loadFromPrimaryStorage() {
+                try {
+                    const rawData = localStorage.getItem(this.storageKeys.primary);
+                    if (!rawData) return null;
+                    
+                    const data = this.compressionEnabled ? 
+                        JSON.parse(this.decompressData(rawData)) : 
+                        JSON.parse(rawData);
+                    
+                    addDebugEntry('storage', 'info', 'Primary storage loaded', {
+                        compressed: this.compressionEnabled,
+                        version: data.version,
+                        timestamp: data.timestamp
+                    });
+                    
+                    return data;
+                } catch (error) {
+                    addDebugEntry('storage', 'warn', 'Primary storage load failed', { error: error.message });
+                    return null;
+                }
+            }
+
+            loadFromCacheStorage() {
+                try {
+                    const rawData = sessionStorage.getItem(this.storageKeys.cache);
+                    if (!rawData) return null;
+                    
+                    const data = JSON.parse(rawData);
+                    
+                    addDebugEntry('storage', 'info', 'Cache storage loaded', {
+                        storage: 'sessionStorage',
+                        version: data.version,
+                        timestamp: data.timestamp
+                    });
+                    
+                    return data;
+                } catch (error) {
+                    addDebugEntry('storage', 'warn', 'Cache storage load failed', { error: error.message });
+                    return null;
+                }
+            }
+
+            loadFromBackups() {
+                const backupKeys = [this.storageKeys.backup1, this.storageKeys.backup2, this.storageKeys.backup3];
+                
+                for (let i = 0; i < backupKeys.length; i++) {
+                    try {
+                        const rawData = localStorage.getItem(backupKeys[i]);
+                        if (!rawData) continue;
+                        
+                        const data = this.compressionEnabled ? 
+                            JSON.parse(this.decompressData(rawData)) : 
+                            JSON.parse(rawData);
+                        
+                        addDebugEntry('storage', 'success', `Backup ${i + 1} loaded successfully`, {
+                            backupNumber: i + 1,
+                            version: data.version,
+                            timestamp: data.timestamp
+                        });
+                        
+                        return data;
+                    } catch (error) {
+                        addDebugEntry('storage', 'warn', `Backup ${i + 1} load failed`, { error: error.message });
+                    }
+                }
+                
+                return null;
+            }
+
+            loadFromSecureStorage() {
+                try {
+                    const rawData = localStorage.getItem(this.storageKeys.spotifySecure);
+                    if (!rawData) return null;
+                    
+                    const secureData = JSON.parse(rawData);
+                    
+                    // Create minimal gameState from critical data
+                    const gameState = this.createMinimalGameState();
+                    
+                    // Restore critical values
+                    Object.entries(secureData.data).forEach(([keyPath, value]) => {
+                        this.setNestedValue(gameState, keyPath, value);
+                    });
+                    
+                    const data = {
+                        version: '2.3.0',
+                        timestamp: secureData.timestamp,
+                        gameState: gameState,
+                        checksum: secureData.checksum,
+                        source: 'secure_recovery'
+                    };
+                    
+                    addDebugEntry('storage', 'success', 'Secure storage loaded (critical data only)', {
+                        criticalKeysRestored: Object.keys(secureData.data).length,
+                        spotifyClientId: secureData.data['settings.spotifyClientId'] ? 
+                            `${secureData.data['settings.spotifyClientId'].substring(0, 8)}...` : 'missing'
+                    });
+                    
+                    return data;
+                } catch (error) {
+                    addDebugEntry('storage', 'error', 'Secure storage load failed', { error: error.message });
+                    return null;
+                }
+            }
+
+            validateLoadedData(data) {
+                const validation = { isValid: true, errors: [], integrity: 'unknown' };
+                
+                if (!data || typeof data !== 'object') {
+                    validation.errors.push('Invalid data structure');
+                    validation.isValid = false;
+                    return validation;
+                }
+                
+                if (!data.gameState) {
+                    validation.errors.push('Missing gameState');
+                    validation.isValid = false;
+                }
+                
+                if (!data.timestamp) {
+                    validation.errors.push('Missing timestamp');
+                }
+                
+                // Verify checksum if available
+                if (data.checksum && data.gameState) {
+                    const calculatedChecksum = this.calculateChecksum(data.gameState);
+                    if (calculatedChecksum === data.checksum) {
+                        validation.integrity = 'verified';
+                    } else {
+                        validation.integrity = 'corrupted';
+                        validation.errors.push('Checksum mismatch - data may be corrupted');
+                    }
+                }
+                
+                validation.isValid = validation.errors.length === 0 || validation.integrity === 'verified';
+                return validation;
+            }
+
+            mergeGameState(loadedGameState) {
+                // Intelligent merge that preserves current session data while restoring saved data
+                if (!loadedGameState) return;
+                
+                // Critical data that should always be restored
+                const criticalMerge = [
+                    'settings.spotifyClientId',
+                    'settings.spotifyRedirectUri',
+                    'level',
+                    'totalXP',
+                    'achievements',
+                    'profile',
+                    'patterns',
+                    'interests'
+                ];
+                
+                criticalMerge.forEach(keyPath => {
+                    const savedValue = this.getNestedValue(loadedGameState, keyPath);
+                    if (savedValue !== undefined) {
+                        this.setNestedValue(gameState, keyPath, savedValue);
+                    }
+                });
+                
+                // Merge non-critical data (preserve current session if newer)
+                const currentTime = Date.now();
+                const savedTime = new Date(loadedGameState.lastSaveTime || 0).getTime();
+                
+                if (savedTime > currentTime - 60000) { // If saved within last minute, trust it more
+                    gameState.tasks = loadedGameState.tasks || gameState.tasks;
+                    gameState.dailyStats = loadedGameState.dailyStats || gameState.dailyStats;
+                }
+                
+                addDebugEntry('storage', 'success', 'Game state merged successfully', {
+                    criticalKeysMerged: criticalMerge.length,
+                    timeDifference: currentTime - savedTime
+                });
+            }
+
+            // Utility methods
+            forceSave(trigger) {
+                // Immediate synchronous save for critical situations
+                const result = this.save(trigger, { priority: 'critical' });
+                
+                if (!result.success) {
+                    // Last resort: try to save critical data only
+                    this.emergencyBackup(`emergency_${Date.now()}`, new Error(result.error));
+                }
+                
+                return result;
+            }
+
+            emergencyBackup(saveId, originalError) {
+                try {
+                    const criticalData = {};
+                    this.criticalKeys.forEach(keyPath => {
+                        const value = this.getNestedValue(gameState, keyPath);
+                        if (value !== undefined) {
+                            criticalData[keyPath] = value;
+                        }
+                    });
+                    
+                    const emergencyKey = `lifeQuestAI_emergency_${Date.now()}`;
+                    localStorage.setItem(emergencyKey, JSON.stringify({
+                        timestamp: new Date().toISOString(),
+                        saveId: saveId,
+                        originalError: originalError.message,
+                        criticalData: criticalData
+                    }));
+                    
+                    addDebugEntry('storage', 'warn', 'Emergency backup created', {
+                        saveId,
+                        emergencyKey,
+                        originalError: originalError.message,
+                        criticalDataKeys: Object.keys(criticalData).length
+                    });
+                    
+                } catch (emergencyError) {
+                    addDebugEntry('storage', 'error', 'Emergency backup failed', {
+                        saveId,
+                        originalError: originalError.message,
+                        emergencyError: emergencyError.message
+                    });
+                }
+            }
+
+            checkStorageIntegrity() {
+                addDebugEntry('storage', 'info', 'Checking storage integrity');
+                
+                const integrityReport = {
+                    primary: this.checkStorageSlot(this.storageKeys.primary),
+                    backup1: this.checkStorageSlot(this.storageKeys.backup1),
+                    backup2: this.checkStorageSlot(this.storageKeys.backup2),
+                    backup3: this.checkStorageSlot(this.storageKeys.backup3),
+                    secure: this.checkStorageSlot(this.storageKeys.spotifySecure),
+                    cache: this.checkStorageSlot(this.storageKeys.cache, 'sessionStorage'),
+                    metadata: this.checkStorageSlot(this.storageKeys.metadata)
+                };
+                
+                const validSlots = Object.values(integrityReport).filter(slot => slot.valid).length;
+                const totalSlots = Object.keys(integrityReport).length;
+                
+                addDebugEntry('storage', validSlots > 0 ? 'success' : 'warn', 'Storage integrity check completed', {
+                    validSlots: `${validSlots}/${totalSlots}`,
+                    details: integrityReport
+                });
+                
+                return integrityReport;
+            }
+
+            checkStorageSlot(key, storageType = 'localStorage') {
+                try {
+                    const storage = storageType === 'sessionStorage' ? sessionStorage : localStorage;
+                    const data = storage.getItem(key);
+                    
+                    if (!data) {
+                        return { valid: false, reason: 'not_found', size: 0 };
+                    }
+                    
+                    // Try to parse
+                    JSON.parse(data);
+                    
+                    return { 
+                        valid: true, 
+                        size: data.length,
+                        lastModified: 'unknown' // Could add timestamp tracking
+                    };
+                    
+                } catch (error) {
+                    return { 
+                        valid: false, 
+                        reason: 'parse_error', 
+                        error: error.message,
+                        size: 0
+                    };
+                }
+            }
+
+            // Data compression for large saves
+            compressData(data) {
+                // Simple compression using built-in compression
+                try {
+                    return btoa(encodeURIComponent(data));
+                } catch (error) {
+                    addDebugEntry('storage', 'warn', 'Compression failed, using raw data', { error: error.message });
+                    return data;
+                }
+            }
+
+            decompressData(compressedData) {
+                try {
+                    return decodeURIComponent(atob(compressedData));
+                } catch (error) {
+                    addDebugEntry('storage', 'warn', 'Decompression failed, trying as raw data', { error: error.message });
+                    return compressedData;
+                }
+            }
+
+            calculateChecksum(data) {
+                // Simple checksum calculation
+                const str = JSON.stringify(data);
+                let hash = 0;
+                for (let i = 0; i < str.length; i++) {
+                    const char = str.charCodeAt(i);
+                    hash = ((hash << 5) - hash) + char;
+                    hash = hash & hash; // Convert to 32-bit integer
+                }
+                return hash.toString(36);
+            }
+
+            getNestedValue(obj, path) {
+                return path.split('.').reduce((current, key) => current && current[key], obj);
+            }
+
+            setNestedValue(obj, path, value) {
+                const keys = path.split('.');
+                const lastKey = keys.pop();
+                const target = keys.reduce((current, key) => {
+                    if (!current[key]) current[key] = {};
+                    return current[key];
+                }, obj);
+                target[lastKey] = value;
+            }
+
+            createMinimalGameState() {
+                return {
+                    level: 1,
+                    xp: 0,
+                    totalXP: 0,
+                    currentStreak: 0,
+                    profile: {},
+                    healthMetrics: {},
+                    dailyStats: {
+                        workouts: 0,
+                        waterGlasses: 0,
+                        calories: 0,
+                        protein: 0,
+                        carbs: 0,
+                        fat: 0,
+                        tasksCompleted: 0,
+                        totalTasks: 0,
+                        caloriesBurned: 0,
+                        exerciseMinutes: 0,
+                        steps: 0
+                    },
+                    tasks: [],
+                    achievements: [],
+                    interests: ['fitness', 'productivity', 'learning'],
+                    patterns: {
+                        activities: {},
+                        preferences: {},
+                        timing: {},
+                        interests: {},
+                        contextual: {},
+                        learning: {
+                            enabled: true,
+                            confidence: 0.85,
+                            patterns: []
+                        }
+                    },
+                    ai: {
+                        neuralNetwork: null,
+                        mlEngine: null,
+                        confidence: 0.85,
+                        lastUpdate: Date.now(),
+                        predictions: {},
+                        insights: [],
+                        taskContext: {
+                            completionTimes: {},
+                            successfulPatterns: {},
+                            optimalTimings: {}
+                        }
+                    },
+                    settings: {
+                        notifications: true,
+                        animations: true,
+                        soundEffects: true,
+                        aiLearning: true,
+                        spotifyClientId: '',
+                        spotifyRedirectUri: ''
+                    }
+                };
+            }
+
+            initializeDefaults() {
+                const defaults = this.createMinimalGameState();
+                gameState = { ...defaults, ...gameState };
+                
+                addDebugEntry('storage', 'info', 'Default game state initialized', {
+                    reason: 'storage_recovery_failed'
+                });
+                
+                // Save defaults immediately
+                this.save('initialize_defaults');
+            }
+
+            getSaveMetadata() {
+                try {
+                    const metadata = localStorage.getItem(this.storageKeys.metadata);
+                    return metadata ? JSON.parse(metadata) : null;
+                } catch (error) {
+                    return null;
+                }
+            }
+
+            getBackupHistory() {
+                const history = [];
+                [this.storageKeys.backup1, this.storageKeys.backup2, this.storageKeys.backup3].forEach((key, index) => {
+                    const integrity = this.checkStorageSlot(key);
+                    history.push({
+                        backupNumber: index + 1,
+                        valid: integrity.valid,
+                        size: integrity.size,
+                        reason: integrity.reason || 'ok'
+                    });
+                });
+                return history;
+            }
+
+            // Public API methods
+            getStorageStatus() {
+                const metadata = this.getSaveMetadata();
+                const integrity = this.checkStorageIntegrity();
+                
+                return {
+                    isInitialized: this.isInitialized,
+                    lastSaveTime: this.lastSaveTime,
+                    autoBackupActive: !!this.autoBackupTimer,
+                    backupInterval: this.backupInterval,
+                    metadata: metadata,
+                    integrity: integrity,
+                    compressionEnabled: this.compressionEnabled
+                };
+            }
+
+            clearAllStorage() {
+                Object.values(this.storageKeys).forEach(key => {
+                    localStorage.removeItem(key);
+                    sessionStorage.removeItem(key);
+                });
+                
+                // Clear emergency backups
+                Object.keys(localStorage).forEach(key => {
+                    if (key.startsWith('lifeQuestAI_emergency_')) {
+                        localStorage.removeItem(key);
+                    }
+                });
+                
+                addDebugEntry('storage', 'info', 'All storage cleared');
+            }
+
+            destroy() {
+                this.stopAutoBackup();
+                addDebugEntry('storage', 'info', 'Storage manager destroyed');
             }
         }
 
-        function loadGameState() {
-            try {
-                const saved = localStorage.getItem('lifeQuestAI');
-                if (saved) {
-                    const parsed = JSON.parse(saved);
-                    gameState = { ...gameState, ...parsed };
-                    console.log('✅ Game state loaded');
-                }
-            } catch (error) {
-                console.error('❌ Load failed:', error);
+        // Global storage manager instance
+        let storageManager;
+
+        // Updated save/load functions that use the advanced storage manager
+        function saveGameState(trigger = 'manual') {
+            if (!storageManager) {
+                console.error('Storage manager not initialized');
+                return { success: false, error: 'Storage manager not available' };
             }
+            
+            return storageManager.save(trigger);
+        }
+
+        function loadGameState() {
+            if (!storageManager) {
+                console.error('Storage manager not initialized');
+                return { success: false, error: 'Storage manager not available' };
+            }
+            
+            return storageManager.load();
         }
 
         // 🏆 XP AND LEVELING
