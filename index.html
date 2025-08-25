@@ -2902,12 +2902,30 @@
 
         async function connectSpotify() {
             try {
-                const clientId = gameState.settings.spotifyClientId;
+                let clientId = gameState.settings.spotifyClientId;
+                
+                // Try to restore client ID from backups if missing
+                if (!clientId) {
+                    clientId = restoreSpotifyClientId();
+                    if (clientId) {
+                        gameState.settings.spotifyClientId = clientId;
+                        saveGameState();
+                        addDebugEntry('spotify', 'success', 'Client ID restored from backup', { 
+                            clientId: `${clientId.substring(0, 8)}...`,
+                            source: 'backup_restore'
+                        });
+                    }
+                }
                 
                 if (!clientId) {
                     showFloatingNotification('⚠️ Setup Required', 'Please configure your Spotify Client ID in settings first');
                     return;
                 }
+
+                addDebugEntry('spotify', 'info', 'Starting Spotify OAuth flow', { 
+                    clientId: `${clientId.substring(0, 8)}...`,
+                    hasBackups: checkBackupIntegrity()
+                });
 
                 showFloatingNotification('🎵 Connecting...', 'Initiating secure PKCE authentication with Spotify');
 
@@ -2915,9 +2933,13 @@
                 const codeVerifier = generateCodeVerifier();
                 const codeChallenge = await generateCodeChallenge(codeVerifier);
 
-                // Store code verifier for later use
+                // Store code verifier and client ID for later use - CRITICAL for OAuth callback
                 localStorage.setItem('spotify_code_verifier', codeVerifier);
                 localStorage.setItem('spotify_auth_state', Date.now().toString());
+                
+                // Store client ID with OAuth state for callback recovery
+                localStorage.setItem('spotify_oauth_client_id', clientId);
+                localStorage.setItem('spotify_oauth_redirect_uri', getSpotifyRedirectURI());
 
                 // Build authorization URL
                 const redirectUri = getSpotifyRedirectURI();
@@ -2931,12 +2953,19 @@
                     state: localStorage.getItem('spotify_auth_state')
                 });
 
+                addDebugEntry('spotify', 'info', 'OAuth URL generated', { 
+                    redirectUri: redirectUri,
+                    scopes: SPOTIFY_SCOPES.split(' ').length,
+                    codeChallenge: codeChallenge.substring(0, 10) + '...'
+                });
+
                 // Redirect to Spotify authorization
                 const authUrl = `https://accounts.spotify.com/authorize?${authParams}`;
                 window.location.href = authUrl;
 
             } catch (error) {
                 console.error('Spotify connection error:', error);
+                addDebugEntry('spotify', 'error', 'Connection failed', { error: error.message });
                 showFloatingNotification('❌ Connection Failed', 'Unable to connect to Spotify: ' + error.message);
             }
         }
@@ -4115,55 +4144,129 @@
                 return;
             }
             
-            // Store in multiple places for redundancy
+            // Store in multiple places for redundancy - CRITICAL for OAuth flow
             gameState.settings.spotifyClientId = clientId;
             gameState.settings.spotifyRedirectUri = redirectUri || '';
             
-            // Direct localStorage backup (redundant storage)
+            // Multiple backup strategies to prevent loss during OAuth redirect
             try {
+                // Primary backup
                 localStorage.setItem('spotify_client_id_backup', clientId);
                 localStorage.setItem('spotify_redirect_uri_backup', redirectUri || '');
-                addDebugEntry('storage', 'success', 'Backup storage successful');
+                
+                // Secondary backup with timestamp
+                localStorage.setItem('spotify_config_backup', JSON.stringify({
+                    clientId: clientId,
+                    redirectUri: redirectUri || '',
+                    timestamp: Date.now()
+                }));
+                
+                // Immediate verification backup
+                localStorage.setItem('spotify_config_verification', btoa(clientId));
+                
+                addDebugEntry('storage', 'success', 'Multi-tier backup storage successful', {
+                    backupMethods: 3,
+                    clientIdLength: clientId.length
+                });
             } catch (error) {
                 addDebugEntry('storage', 'error', 'Backup storage failed', error);
             }
             
-            // Save main game state
-            const saveResult = saveGameState();
+            // Force immediate save of game state
+            try {
+                localStorage.setItem('lifeQuestAI', JSON.stringify(gameState));
+                addDebugEntry('storage', 'success', 'Game state force-saved');
+            } catch (error) {
+                addDebugEntry('storage', 'error', 'Game state force-save failed', error);
+            }
             
-            // Verify the save worked
+            // Verify the save worked with multiple checks
             setTimeout(() => {
-                const verification = localStorage.getItem('lifeQuestAI');
-                if (verification) {
-                    try {
-                        const parsed = JSON.parse(verification);
-                        const savedClientId = parsed.settings?.spotifyClientId;
-                        if (savedClientId === clientId) {
-                            addDebugEntry('storage', 'success', 'Spotify config save verified', { 
-                                savedClientId: `${savedClientId.substring(0, 8)}...`
-                            });
-                        } else {
-                            addDebugEntry('storage', 'error', 'Save verification failed', { 
-                                expected: `${clientId.substring(0, 8)}...`,
-                                actual: savedClientId ? `${savedClientId.substring(0, 8)}...` : 'MISSING'
-                            });
-                        }
-                    } catch (parseError) {
-                        addDebugEntry('storage', 'error', 'Save verification parse error', parseError);
-                    }
-                } else {
-                    addDebugEntry('storage', 'error', 'No localStorage data found after save');
-                }
+                verifySpotifyConfigSave(clientId, redirectUri);
             }, 100);
             
             // Update the display of current redirect URI
             updateRedirectUriDisplay();
             
             const message = redirectUri 
-                ? 'Client ID and custom redirect URI saved!' 
-                : 'Client ID saved with auto-detected redirect URI!';
+                ? 'Client ID and custom redirect URI saved with multi-tier backup!' 
+                : 'Client ID saved with multi-tier backup and auto-detected redirect URI!';
             
             showFloatingNotification('💾 Spotify Config Saved', message);
+        }
+
+        function verifySpotifyConfigSave(expectedClientId, expectedRedirectUri) {
+            let verificationPassed = 0;
+            let verificationTotal = 4;
+            
+            // Check 1: Game state
+            const verification1 = localStorage.getItem('lifeQuestAI');
+            if (verification1) {
+                try {
+                    const parsed = JSON.parse(verification1);
+                    const savedClientId = parsed.settings?.spotifyClientId;
+                    if (savedClientId === expectedClientId) {
+                        verificationPassed++;
+                        addDebugEntry('storage', 'success', 'Verification 1/4: Game state save verified');
+                    } else {
+                        addDebugEntry('storage', 'error', 'Verification 1/4: Game state save failed', { 
+                            expected: expectedClientId ? `${expectedClientId.substring(0, 8)}...` : 'EMPTY',
+                            actual: savedClientId ? `${savedClientId.substring(0, 8)}...` : 'MISSING'
+                        });
+                    }
+                } catch (parseError) {
+                    addDebugEntry('storage', 'error', 'Verification 1/4: Parse error', parseError);
+                }
+            } else {
+                addDebugEntry('storage', 'error', 'Verification 1/4: No localStorage data found');
+            }
+            
+            // Check 2: Primary backup
+            const backup1 = localStorage.getItem('spotify_client_id_backup');
+            if (backup1 === expectedClientId) {
+                verificationPassed++;
+                addDebugEntry('storage', 'success', 'Verification 2/4: Primary backup verified');
+            } else {
+                addDebugEntry('storage', 'error', 'Verification 2/4: Primary backup failed', {
+                    expected: expectedClientId ? `${expectedClientId.substring(0, 8)}...` : 'EMPTY',
+                    actual: backup1 ? `${backup1.substring(0, 8)}...` : 'MISSING'
+                });
+            }
+            
+            // Check 3: Secondary backup
+            const backup2 = localStorage.getItem('spotify_config_backup');
+            if (backup2) {
+                try {
+                    const parsed = JSON.parse(backup2);
+                    if (parsed.clientId === expectedClientId) {
+                        verificationPassed++;
+                        addDebugEntry('storage', 'success', 'Verification 3/4: Secondary backup verified');
+                    } else {
+                        addDebugEntry('storage', 'error', 'Verification 3/4: Secondary backup mismatch');
+                    }
+                } catch (error) {
+                    addDebugEntry('storage', 'error', 'Verification 3/4: Secondary backup parse error');
+                }
+            } else {
+                addDebugEntry('storage', 'error', 'Verification 3/4: Secondary backup missing');
+            }
+            
+            // Check 4: Verification backup
+            const backup3 = localStorage.getItem('spotify_config_verification');
+            if (backup3 && atob(backup3) === expectedClientId) {
+                verificationPassed++;
+                addDebugEntry('storage', 'success', 'Verification 4/4: Verification backup confirmed');
+            } else {
+                addDebugEntry('storage', 'error', 'Verification 4/4: Verification backup failed');
+            }
+            
+            // Final verification report
+            addDebugEntry('storage', verificationPassed === verificationTotal ? 'success' : 'warn', 
+                `Spotify config verification complete: ${verificationPassed}/${verificationTotal} checks passed`, {
+                clientIdSaved: verificationPassed > 0,
+                redundancyLevel: verificationPassed,
+                allBackupsWorking: verificationPassed === verificationTotal
+            });
         }
         
         function updateRedirectUriDisplay() {
@@ -5415,6 +5518,142 @@
             } catch (error) {
                 showFloatingNotification('❌ Copy Failed', 'Unable to copy debug information');
             }
+        }
+
+        // 🔧 SPOTIFY CLIENT ID RECOVERY FUNCTIONS
+        function restoreSpotifyClientId() {
+            addDebugEntry('spotify', 'info', 'Attempting to restore client ID from backups');
+            
+            // Try multiple recovery strategies in order of preference
+            let restoredClientId = null;
+            let recoverySource = null;
+            
+            // Strategy 1: OAuth flow backup (highest priority - saved during auth)
+            const oauthClientId = localStorage.getItem('spotify_oauth_client_id');
+            if (oauthClientId && oauthClientId.length > 10) {
+                restoredClientId = oauthClientId;
+                recoverySource = 'oauth_backup';
+                addDebugEntry('spotify', 'success', 'Client ID recovered from OAuth backup', { 
+                    clientId: `${oauthClientId.substring(0, 8)}...` 
+                });
+            }
+            
+            // Strategy 2: Primary backup
+            if (!restoredClientId) {
+                const primaryBackup = localStorage.getItem('spotify_client_id_backup');
+                if (primaryBackup && primaryBackup.length > 10) {
+                    restoredClientId = primaryBackup;
+                    recoverySource = 'primary_backup';
+                    addDebugEntry('spotify', 'success', 'Client ID recovered from primary backup', { 
+                        clientId: `${primaryBackup.substring(0, 8)}...` 
+                    });
+                }
+            }
+            
+            // Strategy 3: Secondary JSON backup
+            if (!restoredClientId) {
+                try {
+                    const secondaryBackup = localStorage.getItem('spotify_config_backup');
+                    if (secondaryBackup) {
+                        const parsed = JSON.parse(secondaryBackup);
+                        if (parsed.clientId && parsed.clientId.length > 10) {
+                            restoredClientId = parsed.clientId;
+                            recoverySource = 'secondary_backup';
+                            addDebugEntry('spotify', 'success', 'Client ID recovered from secondary backup', { 
+                                clientId: `${parsed.clientId.substring(0, 8)}...`,
+                                timestamp: parsed.timestamp 
+                            });
+                        }
+                    }
+                } catch (error) {
+                    addDebugEntry('spotify', 'warn', 'Secondary backup parse failed', { error: error.message });
+                }
+            }
+            
+            // Strategy 4: Verification backup
+            if (!restoredClientId) {
+                try {
+                    const verificationBackup = localStorage.getItem('spotify_config_verification');
+                    if (verificationBackup) {
+                        const decoded = atob(verificationBackup);
+                        if (decoded && decoded.length > 10) {
+                            restoredClientId = decoded;
+                            recoverySource = 'verification_backup';
+                            addDebugEntry('spotify', 'success', 'Client ID recovered from verification backup', { 
+                                clientId: `${decoded.substring(0, 8)}...` 
+                            });
+                        }
+                    }
+                } catch (error) {
+                    addDebugEntry('spotify', 'warn', 'Verification backup decode failed', { error: error.message });
+                }
+            }
+            
+            if (restoredClientId) {
+                addDebugEntry('spotify', 'success', `Client ID successfully restored using ${recoverySource}`, {
+                    recoverySource: recoverySource,
+                    clientId: `${restoredClientId.substring(0, 8)}...`,
+                    backupIntegrity: checkBackupIntegrity()
+                });
+                return restoredClientId;
+            } else {
+                addDebugEntry('spotify', 'error', 'All client ID recovery strategies failed', {
+                    strategiesTried: 4,
+                    availableBackups: getAvailableBackups()
+                });
+                return null;
+            }
+        }
+
+        function checkBackupIntegrity() {
+            const backups = {
+                oauth: !!localStorage.getItem('spotify_oauth_client_id'),
+                primary: !!localStorage.getItem('spotify_client_id_backup'),
+                secondary: !!localStorage.getItem('spotify_config_backup'),
+                verification: !!localStorage.getItem('spotify_config_verification')
+            };
+            
+            const workingBackups = Object.values(backups).filter(Boolean).length;
+            
+            addDebugEntry('storage', 'info', `Backup integrity check: ${workingBackups}/4 backups available`, backups);
+            
+            return workingBackups;
+        }
+
+        function getAvailableBackups() {
+            const backups = {};
+            
+            const oauthBackup = localStorage.getItem('spotify_oauth_client_id');
+            backups.oauth = oauthBackup ? `${oauthBackup.substring(0, 8)}...` : 'missing';
+            
+            const primaryBackup = localStorage.getItem('spotify_client_id_backup');
+            backups.primary = primaryBackup ? `${primaryBackup.substring(0, 8)}...` : 'missing';
+            
+            const secondaryBackup = localStorage.getItem('spotify_config_backup');
+            if (secondaryBackup) {
+                try {
+                    const parsed = JSON.parse(secondaryBackup);
+                    backups.secondary = parsed.clientId ? `${parsed.clientId.substring(0, 8)}...` : 'invalid';
+                } catch (error) {
+                    backups.secondary = 'corrupted';
+                }
+            } else {
+                backups.secondary = 'missing';
+            }
+            
+            const verificationBackup = localStorage.getItem('spotify_config_verification');
+            if (verificationBackup) {
+                try {
+                    const decoded = atob(verificationBackup);
+                    backups.verification = decoded ? `${decoded.substring(0, 8)}...` : 'invalid';
+                } catch (error) {
+                    backups.verification = 'corrupted';
+                }
+            } else {
+                backups.verification = 'missing';
+            }
+            
+            return backups;
         }
     </script>
 </body>
