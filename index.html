@@ -1007,7 +1007,7 @@
                         <div class="space-y-3 text-sm">
                             <div class="flex justify-between">
                                 <span>Version:</span>
-                                <span class="font-mono bg-green-100 dark:bg-green-900 px-2 py-1 rounded">v2.2.1</span>
+                                <span class="font-mono bg-green-100 dark:bg-green-900 px-2 py-1 rounded">v2.2.2</span>
                             </div>
                             <div class="flex justify-between">
                                 <span>AI Engine:</span>
@@ -1037,7 +1037,7 @@
                         <div class="mt-4 text-center">
                             <div class="inline-block bg-gray-100 dark:bg-gray-700 px-3 py-1 rounded-full">
                                 <span class="text-xs text-gray-500 dark:text-gray-400">Build Version: </span>
-                                <span class="text-xs font-mono font-bold text-primary">v2.2.1-fix2</span>
+                                <span class="text-xs font-mono font-bold text-primary">v2.2.2-stable</span>
                             </div>
                         </div>
                     </div>
@@ -1139,6 +1139,37 @@
             predict(inputs) {
                 const activations = this.forward(inputs);
                 return activations[activations.length - 1];
+            }
+            
+            backpropagate(inputs, expectedOutputs) {
+                // Simple backpropagation implementation
+                try {
+                    const activations = this.forward(inputs);
+                    const outputs = activations[activations.length - 1];
+                    
+                    // Calculate output layer error
+                    const outputErrors = outputs.map((output, i) => expectedOutputs[i] - output);
+                    
+                    // Update weights and biases (simplified)
+                    for (let i = this.weights.length - 1; i >= 0; i--) {
+                        for (let j = 0; j < this.weights[i].length; j++) {
+                            for (let k = 0; k < this.weights[i][j].length; k++) {
+                                const delta = this.learningRate * outputErrors[k] * activations[i][j];
+                                this.weights[i][j][k] += delta + this.momentum * this.previousWeightDeltas[i][j][k];
+                                this.previousWeightDeltas[i][j][k] = delta;
+                            }
+                        }
+                        
+                        for (let j = 0; j < this.biases[i].length; j++) {
+                            const delta = this.learningRate * outputErrors[j];
+                            this.biases[i][j] += delta + this.momentum * this.previousBiasDeltas[i][j];
+                            this.previousBiasDeltas[i][j] = delta;
+                        }
+                    }
+                } catch (error) {
+                    // Gracefully handle backpropagation errors
+                    console.warn('Backpropagation warning:', error.message);
+                }
             }
         }
 
@@ -1395,7 +1426,8 @@
                 animations: true,
                 soundEffects: true,
                 aiLearning: true,
-                spotifyClientId: ''
+                spotifyClientId: '',
+                spotifyRedirectUri: ''
             }
         };
 
@@ -2898,7 +2930,7 @@
             console.log('🎵 Starting token exchange...');
             console.log('Client ID:', clientId ? `${clientId.substring(0, 8)}...` : 'MISSING');
             console.log('Code Verifier:', codeVerifier ? 'Present' : 'MISSING');
-            console.log('Redirect URI:', SPOTIFY_REDIRECT_URI);
+            console.log('Redirect URI:', redirectUri);
 
             if (!codeVerifier) {
                 throw new Error('Code verifier not found. Please try reconnecting.');
@@ -2953,7 +2985,7 @@
                         userMessage = errorData.error_description;
                     }
 
-                    throw new Error(`${userMessage}\n\nDebug Info:\n- Error: ${errorData.error}\n- Status: ${response.status}\n- Redirect URI: ${SPOTIFY_REDIRECT_URI}`);
+                    throw new Error(`${userMessage}\n\nDebug Info:\n- Error: ${errorData.error}\n- Status: ${response.status}\n- Redirect URI: ${redirectUri}`);
                 }
 
                 const tokenData = await response.json();
