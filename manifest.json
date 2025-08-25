@@ -1,13 +1,16 @@
 {
   "name": "Quest Tracker Pro - Complete Wellness Platform",
   "short_name": "Quest Tracker",
-  "description": "AI-powered personal wellness optimization platform",
+  "description": "AI-powered personal wellness optimization platform with health tracking",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#FFFFFF",
   "theme_color": "#5D5CDE",
   "orientation": "portrait-primary",
   "scope": "./",
+  "categories": ["health", "fitness", "productivity", "lifestyle"],
+  "lang": "en",
+  "dir": "ltr",
   "icons": [
     {
       "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' fill='%235D5CDE' rx='20'/><text x='96' y='140' font-size='120' text-anchor='middle' fill='white'>🏆</text></svg>",
@@ -22,7 +25,42 @@
       "purpose": "any maskable"
     }
   ],
-  "categories": ["health", "fitness", "productivity", "lifestyle"],
-  "lang": "en",
-  "dir": "ltr"
+  "share_target": {
+    "action": "/share-data",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url",
+      "files": [
+        {
+          "name": "healthData",
+          "accept": [
+            "text/plain",
+            "application/json",
+            ".txt",
+            ".json",
+            ".csv"
+          ]
+        }
+      ]
+    }
+  },
+  "screenshots": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 390 844'><rect width='390' height='844' fill='%23f8f9fa'/><rect x='20' y='100' width='350' height='200' fill='%235D5CDE' rx='10'/><text x='195' y='200' text-anchor='middle' fill='white' font-size='24'>Quest Tracker Pro</text></svg>",
+      "sizes": "390x844",
+      "type": "image/svg+xml",
+      "form_factor": "narrow"
+    }
+  ],
+  "related_applications": [],
+  "prefer_related_applications": false,
+  "protocol_handlers": [
+    {
+      "protocol": "web+questtracker",
+      "url": "/handle-data?data=%s"
+    }
+  ]
 }
