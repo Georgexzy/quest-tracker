@@ -1103,7 +1103,39 @@
                 height: null,
                 activityLevel: 'moderate',
                 fitnessGoal: 'maintain',
-                bmr: null
+                bmr: null,
+                stepGoal: 8000,
+                calorieTarget: 2000,
+                proteinPercent: 25,
+                carbsPercent: 50,
+                fatPercent: 25,
+                equipment: {
+                    dumbbells: false,
+                    barbells: false,
+                    kettlebells: false,
+                    resistanceBands: false,
+                    pullupBar: false,
+                    yogaMat: true,
+                    treadmill: false,
+                    bike: false,
+                    homeGym: false
+                },
+                dietaryRestrictions: {
+                    vegetarian: false,
+                    vegan: false,
+                    glutenFree: false,
+                    dairyFree: false,
+                    nutFree: false,
+                    lowCarb: false,
+                    keto: false
+                },
+                workoutPreferences: {
+                    duration: 30, // minutes
+                    timeOfDay: 'morning',
+                    intensity: 'moderate',
+                    focusAreas: ['full_body'],
+                    experienceLevel: 'beginner'
+                }
             },
             streaks: {
                 workout: 0,
@@ -2552,6 +2584,118 @@
             if (gameState.dailyStats.waterGlasses >= 8) {
                 addAchievement('💧 Hydration Hero', 'Drank 8+ glasses of water today!', 25);
             }
+            
+            // Check for hydration streaks
+            checkHydrationAchievements();
+        }
+
+        function checkHydrationAchievements() {
+            const water = gameState.dailyStats.waterGlasses;
+            
+            if (water >= 4 && !gameState.achievements.find(a => a.title.includes('Hydration Started'))) {
+                addAchievement('💧 Hydration Started', 'Drank 4+ glasses of water today!', 15);
+            }
+            
+            if (water >= 6 && !gameState.achievements.find(a => a.title.includes('Well Hydrated'))) {
+                addAchievement('💧 Well Hydrated', 'Drank 6+ glasses of water today!', 20);
+            }
+            
+            if (water >= 10 && !gameState.achievements.find(a => a.title.includes('Hydration Champion'))) {
+                addAchievement('💧 Hydration Champion', 'Exceptional hydration - 10+ glasses!', 35);
+            }
+        }
+
+        function updateNutritionInsight(calories, protein, carbs, fat, target) {
+            const insightElement = document.getElementById('nutritionInsight');
+            if (!insightElement) return;
+            
+            const hour = new Date().getHours();
+            const progress = (calories / target) * 100;
+            const proteinTarget = (target * (gameState.profile.proteinPercent || 25) / 100) / 4;
+            const carbsTarget = (target * (gameState.profile.carbsPercent || 50) / 100) / 4;
+            
+            let insight = '';
+            
+            if (progress >= 100) {
+                insight = '🎉 Calorie goal achieved! Focus on maintaining balanced macros and staying hydrated.';
+            } else if (progress >= 75) {
+                insight = '🔥 Great nutrition progress today! You\'re almost at your calorie target.';
+            } else if (protein < proteinTarget * 0.5 && hour > 16) {
+                insight = '🥩 Consider adding more protein to support muscle recovery and satiety.';
+            } else if (carbs < carbsTarget * 0.3 && hour < 14) {
+                insight = '🌾 Morning fuel: Complex carbs can provide sustained energy for your day.';
+            } else if (hour > 18 && progress < 50) {
+                insight = '🍽️ Evening catch-up: Plan a nutritious dinner to reach your daily goals.';
+            } else if (hour < 10) {
+                insight = '🌅 Start strong! A protein-rich breakfast sets the tone for balanced nutrition.';
+            } else {
+                insight = '💪 Stay on track with regular, balanced meals throughout the day.';
+            }
+            
+            insightElement.textContent = insight;
+        }
+
+        function logCustomActivity() {
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+            modal.innerHTML = `
+                <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-xl max-w-md w-full mx-4">
+                    <h3 class="text-xl font-bold mb-4">⚡ Log Custom Activity</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Activity Name</label>
+                            <input type="text" id="customActivityName" placeholder="e.g., Gardening, Dancing, Cleaning..." class="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-base">
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium mb-2">Duration (min)</label>
+                                <input type="number" id="customActivityDuration" placeholder="30" min="5" max="300" class="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-base">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium mb-2">Intensity</label>
+                                <select id="customActivityIntensity" class="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-base">
+                                    <option value="light">Light</option>
+                                    <option value="moderate">Moderate</option>
+                                    <option value="intense">Intense</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="flex space-x-3">
+                            <button onclick="saveCustomActivity()" class="flex-1 bg-gray-600 text-white py-3 rounded-lg hover:bg-gray-700">
+                                Log Activity
+                            </button>
+                            <button onclick="this.closest('.fixed').remove()" class="flex-1 bg-gray-500 text-white py-3 rounded-lg hover:bg-gray-600">
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+
+        function saveCustomActivity() {
+            const name = document.getElementById('customActivityName').value.trim();
+            const duration = parseInt(document.getElementById('customActivityDuration').value) || 0;
+            const intensity = document.getElementById('customActivityIntensity').value;
+
+            if (!name || duration === 0) {
+                showFloatingNotification('❌ Invalid Input', 'Please enter activity name and duration');
+                return;
+            }
+
+            const intensityMultipliers = { light: 3, moderate: 5, intense: 8 };
+            const calories = duration * intensityMultipliers[intensity];
+
+            gameState.dailyStats.caloriesBurned += calories;
+            gameState.dailyStats.exerciseMinutes += duration;
+
+            updateAllUI();
+            saveGameState();
+            awardXP(duration * 2, `${name} completed! ⚡`);
+
+            document.querySelector('.fixed').remove();
+            showFloatingNotification('⚡ Activity Logged!', `${name} - ${duration} min, ${calories} cal burned`);
         }
 
         function logMeal() {
@@ -3288,9 +3432,15 @@
             updateStatsDisplay();
             updateXPDisplay();
             updateTasksList();
+            updateTasksListDetailed();
             updateAchievementsList();
+            updateAchievementsListDetailed();
             updateExerciseStats();
+            updateStepsDisplay();
+            updateNutritionDisplay();
             updateWeeklyPlan();
+            updateHealthProgress();
+            updateSettingsStats();
             showAIInsights();
         }
 
@@ -5280,7 +5430,11 @@
                 'snacksCount': 0, // Placeholder
                 'mealStreak': 0, // Placeholder
                 'hydrationProgress': `${water}/8`,
-                'weeklyAverage': Math.round(calories) // Simplified
+                'weeklyAverage': Math.round(calories), // Simplified
+                'macroBalance': `${gameState.profile.proteinPercent || 25}-${gameState.profile.carbsPercent || 50}-${gameState.profile.fatPercent || 25}`,
+                'proteinTarget': `${gameState.profile.proteinPercent || 25}%`,
+                'carbsTarget': `${gameState.profile.carbsPercent || 50}%`,
+                'fatTarget': `${gameState.profile.fatPercent || 25}%`
             };
 
             Object.entries(nutritionElements).forEach(([id, value]) => {
@@ -5292,6 +5446,17 @@
             const progressElement = document.getElementById('caloriesProgress');
             if (progressElement) {
                 progressElement.style.width = `${progress}%`;
+                
+                // Change color based on progress
+                if (progress >= 100) {
+                    progressElement.className = 'bg-green-500 h-full rounded-full transition-all duration-500';
+                } else if (progress >= 75) {
+                    progressElement.className = 'bg-nutrition h-full rounded-full transition-all duration-500';
+                } else if (progress >= 50) {
+                    progressElement.className = 'bg-yellow-500 h-full rounded-full transition-all duration-500';
+                } else {
+                    progressElement.className = 'bg-gray-400 h-full rounded-full transition-all duration-500';
+                }
             }
 
             // Update status
@@ -5299,14 +5464,21 @@
             if (statusElement) {
                 if (progress >= 100) {
                     statusElement.textContent = `🎉 Daily goal achieved! ${calories - target} calories over target.`;
+                    statusElement.className = 'text-xs text-center text-green-600 dark:text-green-400';
                 } else if (progress >= 75) {
                     statusElement.textContent = `🔥 Almost there! ${target - calories} calories to go.`;
+                    statusElement.className = 'text-xs text-center text-green-600 dark:text-green-400';
                 } else if (calories > 0) {
                     statusElement.textContent = `💪 Good progress! ${target - calories} calories remaining.`;
+                    statusElement.className = 'text-xs text-center text-gray-600 dark:text-gray-400';
                 } else {
                     statusElement.textContent = 'Start tracking meals to reach your goal!';
+                    statusElement.className = 'text-xs text-center text-gray-600 dark:text-gray-400';
                 }
             }
+            
+            // Update nutrition insight
+            updateNutritionInsight(calories, protein, carbs, fat, target);
         }
 
         function showFoodCategory(category) {
