@@ -6,6 +6,7 @@
     <title>🧠 Life Quest RPG - Ultimate AI Edition</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/4.3.0/marked.min.js"></script>
+    <script src="https://sdk.scdn.co/spotify-player.js"></script>
     <script>
         tailwind.config = {
             theme: {
@@ -4081,7 +4082,7 @@
             }, 3000);
         }
 
-        // 🎵 SPOTIFY INTEGRATION WITH COMPLETE API COMPLIANCE
+        // 🎵 SPOTIFY WEB PLAYBACK SDK INTEGRATION
         let spotifyPlayer = null;
         let spotifyAccessToken = null;
         let currentPlaybackState = null;
@@ -4091,6 +4092,13 @@
         let isPlayerInitialized = false;
         let lastPlayerUpdate = 0;
         let retryCount = 0;
+        let webPlaybackSDKReady = false;
+        let deviceId = null;
+        let playerReady = false;
+        let currentTrack = null;
+        let playerPosition = 0;
+        let playerDuration = 0;
+        let isPlayerPaused = true;
         const MAX_RETRIES = 3;
 
         // Spotify API Configuration - Following official documentation
