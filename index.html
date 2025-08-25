@@ -2926,18 +2926,46 @@
         async function exchangeCodeForToken(authorizationCode) {
             const clientId = gameState.settings.spotifyClientId;
             const codeVerifier = localStorage.getItem('spotify_code_verifier');
-
+            const redirectUri = getSpotifyRedirectURI();
+            
+            // Create debug info object
+            const debugInfo = {
+                timestamp: new Date().toISOString(),
+                clientId: clientId ? `${clientId.substring(0, 8)}...` : 'MISSING',
+                codeVerifier: codeVerifier ? 'Present' : 'MISSING',
+                authCode: authorizationCode ? `${authorizationCode.substring(0, 10)}...` : 'MISSING',
+                redirectUri: redirectUri,
+                status: 'Starting token exchange...'
+            };
+            
             console.log('🎵 Starting token exchange...');
-            console.log('Client ID:', clientId ? `${clientId.substring(0, 8)}...` : 'MISSING');
-            console.log('Code Verifier:', codeVerifier ? 'Present' : 'MISSING');
-            console.log('Redirect URI:', redirectUri);
+            console.log('Client ID:', debugInfo.clientId);
+            console.log('Code Verifier:', debugInfo.codeVerifier);
+            console.log('Auth Code:', debugInfo.authCode);
+            console.log('Redirect URI:', debugInfo.redirectUri);
+
+            if (!authorizationCode) {
+                const error = 'Authorization code is missing.';
+                debugInfo.error = error;
+                debugInfo.status = 'Failed';
+                showSpotifyDebugModal(debugInfo);
+                throw new Error(error);
+            }
 
             if (!codeVerifier) {
-                throw new Error('Code verifier not found. Please try reconnecting.');
+                const error = 'Code verifier not found. Please try reconnecting.';
+                debugInfo.error = error;
+                debugInfo.status = 'Failed';
+                showSpotifyDebugModal(debugInfo);
+                throw new Error(error);
             }
 
             if (!clientId) {
-                throw new Error('Spotify Client ID not configured. Please check your settings.');
+                const error = 'Spotify Client ID not configured. Please check your settings.';
+                debugInfo.error = error;
+                debugInfo.status = 'Failed';
+                showSpotifyDebugModal(debugInfo);
+                throw new Error(error);
             }
 
             const tokenParams = new URLSearchParams({
@@ -2948,6 +2976,7 @@
                 code_verifier: codeVerifier
             });
 
+            debugInfo.status = 'Sending request to Spotify...';
             console.log('🎵 Sending token request to Spotify...');
 
             try {
@@ -2959,35 +2988,59 @@
                     body: tokenParams
                 });
 
+                debugInfo.responseStatus = response.status;
+                debugInfo.responseHeaders = Object.fromEntries(response.headers.entries());
                 console.log('🎵 Token response status:', response.status);
 
                 if (!response.ok) {
                     const errorText = await response.text();
-                    console.error('🎵 Token exchange error response:', errorText);
+                    debugInfo.errorText = errorText;
                     
                     let errorData;
                     try {
                         errorData = JSON.parse(errorText);
+                        debugInfo.errorData = errorData;
                     } catch (e) {
-                        errorData = { error: 'unknown', error_description: errorText };
+                        errorData = { error: 'parse_error', error_description: errorText };
+                        debugInfo.errorData = errorData;
                     }
 
                     // Provide more specific error messages
                     let userMessage = 'Token exchange failed';
+                    let troubleshooting = '';
+                    
                     if (errorData.error === 'invalid_client') {
                         userMessage = 'Invalid Client ID. Please check your Spotify app configuration.';
+                        troubleshooting = 'Make sure your Client ID is correct and the app is not in development mode restrictions.';
                     } else if (errorData.error === 'invalid_grant') {
                         userMessage = 'Authorization code expired or invalid. Please try connecting again.';
+                        troubleshooting = 'The authorization code may have expired (10 minutes max) or been used already.';
                     } else if (errorData.error === 'invalid_request') {
-                        userMessage = 'Invalid request. Please check your redirect URI configuration.';
+                        userMessage = 'Invalid request parameters.';
+                        troubleshooting = `Check your redirect URI. Expected: ${redirectUri}`;
                     } else if (errorData.error_description) {
                         userMessage = errorData.error_description;
                     }
 
-                    throw new Error(`${userMessage}\n\nDebug Info:\n- Error: ${errorData.error}\n- Status: ${response.status}\n- Redirect URI: ${redirectUri}`);
+                    debugInfo.userMessage = userMessage;
+                    debugInfo.troubleshooting = troubleshooting;
+                    debugInfo.status = 'Failed';
+                    
+                    // Show visual debug modal for mobile users
+                    showSpotifyDebugModal(debugInfo);
+                    
+                    throw new Error(userMessage);
                 }
 
                 const tokenData = await response.json();
+                debugInfo.tokenReceived = {
+                    access_token: tokenData.access_token ? 'received' : 'missing',
+                    refresh_token: tokenData.refresh_token ? 'received' : 'missing',
+                    expires_in: tokenData.expires_in,
+                    token_type: tokenData.token_type
+                };
+                debugInfo.status = 'Success!';
+                
                 console.log('🎵 Token exchange successful!');
                 
                 // Store tokens securely
@@ -3011,7 +3064,15 @@
                 showFloatingNotification('✅ Spotify Connected!', 'Successfully authenticated with Spotify Web API');
 
             } catch (fetchError) {
+                debugInfo.fetchError = fetchError.message;
+                debugInfo.status = 'Network Error';
+                debugInfo.troubleshooting = 'Check your internet connection and try again.';
+                
                 console.error('🎵 Network error during token exchange:', fetchError);
+                
+                // Show visual debug modal for mobile users
+                showSpotifyDebugModal(debugInfo);
+                
                 throw new Error(`Network error: ${fetchError.message}. Please check your internet connection and try again.`);
             }
         }
@@ -4564,6 +4625,581 @@
                 }
             } catch (error) {
                 console.error('Error restoring Spotify tokens:', error);
+            }
+        }
+
+        // 🔧 COMPREHENSIVE DEBUG SYSTEM FOR ALL APP PROCESSES
+        let debugLog = [];
+        let debugEnabled = true;
+        let maxDebugEntries = 500;
+
+        function addDebugEntry(category, level, message, data = null) {
+            if (!debugEnabled) return;
+            
+            const entry = {
+                id: Date.now() + Math.random(),
+                timestamp: new Date().toISOString(),
+                category: category, // 'ai', 'spotify', 'tasks', 'profile', 'storage', 'ui', 'performance'
+                level: level, // 'info', 'warn', 'error', 'success'
+                message: message,
+                data: data,
+                stack: new Error().stack.split('\n').slice(2, 5).join('\n') // Light stack trace
+            };
+            
+            debugLog.unshift(entry);
+            
+            // Limit log size
+            if (debugLog.length > maxDebugEntries) {
+                debugLog = debugLog.slice(0, maxDebugEntries);
+            }
+            
+            // Console fallback for traditional debugging
+            const consoleMethod = level === 'error' ? 'error' : level === 'warn' ? 'warn' : 'log';
+            console[consoleMethod](`[${category.toUpperCase()}] ${message}`, data || '');
+            
+            // Update debug badge if visible
+            updateDebugBadge();
+        }
+
+        function showDebugConsole() {
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 modal-overlay';
+            modal.innerHTML = `
+                <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-xl max-w-6xl w-full mx-4 max-h-[90vh] overflow-hidden flex flex-col">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-2xl font-bold flex items-center space-x-2">
+                            <span>🔍</span>
+                            <span>Advanced Debug Console</span>
+                            <div class="bg-green-500 w-3 h-3 rounded-full animate-pulse"></div>
+                        </h3>
+                        <div class="flex items-center space-x-3">
+                            <span class="text-sm text-gray-500">${debugLog.length} entries</span>
+                            <button onclick="clearDebugLog()" class="text-sm bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600">
+                                Clear Log
+                            </button>
+                            <button onclick="exportDebugLog()" class="text-sm bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600">
+                                Export
+                            </button>
+                            <button onclick="this.closest('.modal-overlay').remove()" class="text-gray-400 hover:text-gray-600 text-xl">×</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Debug Controls -->
+                    <div class="mb-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                        <h4 class="font-bold mb-3">🛠️ Debug Controls</h4>
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                            <div class="text-center">
+                                <div class="text-2xl font-bold text-blue-600" id="debugAIOperations">0</div>
+                                <div class="text-xs text-blue-500">AI Operations</div>
+                            </div>
+                            <div class="text-center">
+                                <div class="text-2xl font-bold text-green-600" id="debugTaskOperations">0</div>
+                                <div class="text-xs text-green-500">Task Operations</div>
+                            </div>
+                            <div class="text-center">
+                                <div class="text-2xl font-bold text-purple-600" id="debugStorageOperations">0</div>
+                                <div class="text-xs text-purple-500">Storage Operations</div>
+                            </div>
+                            <div class="text-center">
+                                <div class="text-2xl font-bold text-orange-600" id="debugErrors">0</div>
+                                <div class="text-xs text-orange-500">Errors</div>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-3 flex flex-wrap gap-2">
+                            <button onclick="filterDebugCategory('all')" class="debug-filter-btn active" data-category="all">
+                                🔍 All
+                            </button>
+                            <button onclick="filterDebugCategory('ai')" class="debug-filter-btn" data-category="ai">
+                                🧠 AI
+                            </button>
+                            <button onclick="filterDebugCategory('spotify')" class="debug-filter-btn" data-category="spotify">
+                                🎵 Spotify
+                            </button>
+                            <button onclick="filterDebugCategory('tasks')" class="debug-filter-btn" data-category="tasks">
+                                📋 Tasks
+                            </button>
+                            <button onclick="filterDebugCategory('profile')" class="debug-filter-btn" data-category="profile">
+                                👤 Profile
+                            </button>
+                            <button onclick="filterDebugCategory('storage')" class="debug-filter-btn" data-category="storage">
+                                💾 Storage
+                            </button>
+                            <button onclick="filterDebugCategory('performance')" class="debug-filter-btn" data-category="performance">
+                                ⚡ Performance
+                            </button>
+                            <button onclick="filterDebugCategory('error')" class="debug-filter-btn" data-category="error">
+                                ❌ Errors Only
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Debug Log -->
+                    <div class="flex-1 overflow-hidden">
+                        <div id="debugLogContainer" class="h-full overflow-y-auto space-y-2 p-2 bg-gray-900 rounded-lg font-mono text-sm">
+                            ${renderDebugLog()}
+                        </div>
+                    </div>
+                    
+                    <!-- Debug Statistics -->
+                    <div class="mt-4 p-3 bg-gray-100 dark:bg-gray-700 rounded-lg">
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
+                            <div>
+                                <span class="font-medium">App Uptime:</span>
+                                <span id="debugUptime" class="text-blue-600">${getAppUptime()}</span>
+                            </div>
+                            <div>
+                                <span class="font-medium">Memory Usage:</span>
+                                <span id="debugMemory" class="text-green-600">${getMemoryUsage()}</span>
+                            </div>
+                            <div>
+                                <span class="font-medium">Last Error:</span>
+                                <span id="debugLastError" class="text-red-600">${getLastError()}</span>
+                            </div>
+                            <div>
+                                <span class="font-medium">Debug Level:</span>
+                                <span class="text-purple-600">Verbose</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+            
+            // Update debug statistics
+            updateDebugStatistics();
+            
+            // Auto-refresh debug log every 2 seconds
+            const refreshInterval = setInterval(() => {
+                if (document.querySelector('.modal-overlay')) {
+                    updateDebugLogDisplay();
+                } else {
+                    clearInterval(refreshInterval);
+                }
+            }, 2000);
+        }
+
+        function renderDebugLog(filterCategory = 'all') {
+            let filteredLog = debugLog;
+            
+            if (filterCategory !== 'all') {
+                if (filterCategory === 'error') {
+                    filteredLog = debugLog.filter(entry => entry.level === 'error');
+                } else {
+                    filteredLog = debugLog.filter(entry => entry.category === filterCategory);
+                }
+            }
+            
+            if (filteredLog.length === 0) {
+                return `
+                    <div class="text-center text-gray-400 py-8">
+                        <div class="text-2xl mb-2">🔍</div>
+                        <p>No debug entries found for "${filterCategory}"</p>
+                        <p class="text-xs mt-2">Interact with the app to generate debug information</p>
+                    </div>
+                `;
+            }
+            
+            return filteredLog.slice(0, 100).map(entry => {
+                const levelColors = {
+                    info: 'text-blue-400',
+                    success: 'text-green-400',
+                    warn: 'text-yellow-400',
+                    error: 'text-red-400'
+                };
+                
+                const categoryIcons = {
+                    ai: '🧠',
+                    spotify: '🎵',
+                    tasks: '📋',
+                    profile: '👤',
+                    storage: '💾',
+                    ui: '🎨',
+                    performance: '⚡'
+                };
+                
+                const timeStr = new Date(entry.timestamp).toLocaleTimeString();
+                const icon = categoryIcons[entry.category] || '🔧';
+                const color = levelColors[entry.level] || 'text-gray-400';
+                
+                return `
+                    <div class="debug-entry p-2 border border-gray-600 rounded hover:bg-gray-800 cursor-pointer" 
+                         onclick="expandDebugEntry('${entry.id}')">
+                        <div class="flex items-start space-x-2">
+                            <span class="text-xs text-gray-500">${timeStr}</span>
+                            <span class="text-sm">${icon}</span>
+                            <span class="text-xs px-2 py-1 bg-gray-700 rounded text-gray-300 uppercase">${entry.category}</span>
+                            <span class="text-xs px-2 py-1 rounded ${color} bg-gray-800">${entry.level.toUpperCase()}</span>
+                        </div>
+                        <div class="mt-1 ${color}">${entry.message}</div>
+                        ${entry.data ? `
+                            <div class="mt-2 text-xs text-gray-500 bg-gray-800 p-2 rounded max-h-20 overflow-hidden">
+                                ${typeof entry.data === 'object' ? JSON.stringify(entry.data, null, 2) : entry.data}
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function filterDebugCategory(category) {
+            // Update active button
+            document.querySelectorAll('.debug-filter-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.querySelector(`[data-category="${category}"]`).classList.add('active');
+            
+            // Update log display
+            const container = document.getElementById('debugLogContainer');
+            if (container) {
+                container.innerHTML = renderDebugLog(category);
+            }
+        }
+
+        function updateDebugLogDisplay() {
+            const container = document.getElementById('debugLogContainer');
+            if (container) {
+                const activeFilter = document.querySelector('.debug-filter-btn.active')?.dataset.category || 'all';
+                container.innerHTML = renderDebugLog(activeFilter);
+            }
+            updateDebugStatistics();
+        }
+
+        function updateDebugStatistics() {
+            const stats = {
+                ai: debugLog.filter(e => e.category === 'ai').length,
+                tasks: debugLog.filter(e => e.category === 'tasks').length,
+                storage: debugLog.filter(e => e.category === 'storage').length,
+                errors: debugLog.filter(e => e.level === 'error').length
+            };
+            
+            if (document.getElementById('debugAIOperations')) {
+                document.getElementById('debugAIOperations').textContent = stats.ai;
+                document.getElementById('debugTaskOperations').textContent = stats.tasks;
+                document.getElementById('debugStorageOperations').textContent = stats.storage;
+                document.getElementById('debugErrors').textContent = stats.errors;
+            }
+        }
+
+        function expandDebugEntry(entryId) {
+            const entry = debugLog.find(e => e.id == entryId);
+            if (!entry) return;
+            
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50';
+            modal.innerHTML = `
+                <div class="bg-gray-900 text-white p-6 rounded-xl shadow-xl max-w-4xl w-full mx-4 max-h-[80vh] overflow-y-auto">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-bold">Debug Entry Details</h3>
+                        <button onclick="this.remove()" class="text-gray-400 hover:text-white text-xl">×</button>
+                    </div>
+                    
+                    <div class="space-y-4 font-mono text-sm">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <div class="text-gray-400">Timestamp:</div>
+                                <div class="text-blue-400">${new Date(entry.timestamp).toLocaleString()}</div>
+                            </div>
+                            <div>
+                                <div class="text-gray-400">Category:</div>
+                                <div class="text-green-400">${entry.category}</div>
+                            </div>
+                            <div>
+                                <div class="text-gray-400">Level:</div>
+                                <div class="text-yellow-400">${entry.level}</div>
+                            </div>
+                            <div>
+                                <div class="text-gray-400">Entry ID:</div>
+                                <div class="text-purple-400">${entry.id}</div>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <div class="text-gray-400 mb-2">Message:</div>
+                            <div class="bg-gray-800 p-3 rounded text-white">${entry.message}</div>
+                        </div>
+                        
+                        ${entry.data ? `
+                            <div>
+                                <div class="text-gray-400 mb-2">Data:</div>
+                                <pre class="bg-gray-800 p-3 rounded text-green-400 overflow-x-auto">${JSON.stringify(entry.data, null, 2)}</pre>
+                            </div>
+                        ` : ''}
+                        
+                        <div>
+                            <div class="text-gray-400 mb-2">Stack Trace:</div>
+                            <pre class="bg-gray-800 p-3 rounded text-red-400 text-xs overflow-x-auto">${entry.stack}</pre>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-6 flex space-x-3">
+                        <button onclick="copyDebugEntry('${entry.id}')" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+                            📋 Copy Entry
+                        </button>
+                        <button onclick="this.remove()" class="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700">
+                            Close
+                        </button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+
+        function copyDebugEntry(entryId) {
+            const entry = debugLog.find(e => e.id == entryId);
+            if (!entry) return;
+            
+            const entryText = [
+                '🔍 DEBUG ENTRY',
+                '===============',
+                `Timestamp: ${entry.timestamp}`,
+                `Category: ${entry.category}`,
+                `Level: ${entry.level}`,
+                `Message: ${entry.message}`,
+                entry.data ? `Data: ${JSON.stringify(entry.data, null, 2)}` : '',
+                `Stack: ${entry.stack}`,
+                '==============='
+            ].filter(line => line).join('\n');
+            
+            navigator.clipboard.writeText(entryText).then(() => {
+                showFloatingNotification('📋 Copied!', 'Debug entry copied to clipboard');
+            }).catch(() => {
+                showFloatingNotification('❌ Copy Failed', 'Unable to copy debug entry');
+            });
+        }
+
+        function clearDebugLog() {
+            debugLog = [];
+            addDebugEntry('ui', 'info', 'Debug log cleared by user');
+            updateDebugLogDisplay();
+            showFloatingNotification('🗑️ Debug Log Cleared', 'All debug entries have been removed');
+        }
+
+        function exportDebugLog() {
+            const exportData = {
+                timestamp: new Date().toISOString(),
+                appVersion: '2.2.2',
+                totalEntries: debugLog.length,
+                gameState: {
+                    level: gameState.level,
+                    xp: gameState.xp,
+                    tasksCompleted: gameState.dailyStats.tasksCompleted,
+                    aiConfidence: gameState.ai.confidence
+                },
+                debugEntries: debugLog
+            };
+            
+            const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `life-quest-debug-${Date.now()}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            
+            addDebugEntry('storage', 'success', 'Debug log exported', { entries: debugLog.length });
+            showFloatingNotification('📊 Debug Export', 'Complete debug log has been downloaded');
+        }
+
+        function getAppUptime() {
+            const startTime = localStorage.getItem('appStartTime') || Date.now();
+            const uptime = Date.now() - parseInt(startTime);
+            const minutes = Math.floor(uptime / 60000);
+            return minutes > 0 ? `${minutes}m` : '<1m';
+        }
+
+        function getMemoryUsage() {
+            if (performance.memory) {
+                return `${Math.round(performance.memory.usedJSHeapSize / 1024 / 1024)}MB`;
+            }
+            return 'N/A';
+        }
+
+        function getLastError() {
+            const lastError = debugLog.find(e => e.level === 'error');
+            return lastError ? new Date(lastError.timestamp).toLocaleTimeString() : 'None';
+        }
+
+        function updateDebugBadge() {
+            // Update debug badge in header if present
+            const errorCount = debugLog.filter(e => e.level === 'error').length;
+            let badge = document.getElementById('debugBadge');
+            
+            if (errorCount > 0 && !badge) {
+                badge = document.createElement('div');
+                badge.id = 'debugBadge';
+                badge.className = 'fixed top-4 right-4 bg-red-500 text-white text-xs px-2 py-1 rounded-full z-40 cursor-pointer animate-pulse';
+                badge.textContent = `${errorCount} errors`;
+                badge.onclick = showDebugConsole;
+                document.body.appendChild(badge);
+            } else if (errorCount === 0 && badge) {
+                badge.remove();
+            } else if (badge) {
+                badge.textContent = `${errorCount} errors`;
+            }
+        }
+
+        // 🔧 SPOTIFY DEBUG MODAL FOR MOBILE USERS
+        function showSpotifyDebugModal(debugInfo) {
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 modal-overlay';
+            modal.innerHTML = `
+                <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-xl max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-xl font-bold flex items-center space-x-2">
+                            <span>🎵</span>
+                            <span>Spotify Debug Report</span>
+                        </h3>
+                        <button onclick="this.closest('.modal-overlay').remove()" class="text-gray-400 hover:text-gray-600 text-xl">×</button>
+                    </div>
+                    
+                    <div class="space-y-4">
+                        <div class="p-4 rounded-lg ${debugInfo.status === 'Failed' || debugInfo.status === 'Network Error' ? 'bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-600' : 'bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-600'}">
+                            <h4 class="font-bold mb-2 ${debugInfo.status === 'Failed' || debugInfo.status === 'Network Error' ? 'text-red-700 dark:text-red-300' : 'text-blue-700 dark:text-blue-300'}">
+                                Status: ${debugInfo.status}
+                            </h4>
+                            <div class="text-sm ${debugInfo.status === 'Failed' || debugInfo.status === 'Network Error' ? 'text-red-600 dark:text-red-400' : 'text-blue-600 dark:text-blue-400'}">
+                                ${debugInfo.userMessage || debugInfo.status}
+                            </div>
+                        </div>
+                        
+                        <div class="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                            <h4 class="font-bold mb-3">🔍 Debug Details</h4>
+                            <div class="space-y-2 text-sm">
+                                <div class="grid grid-cols-3 gap-2">
+                                    <span class="font-medium">Time:</span>
+                                    <span class="col-span-2 font-mono text-xs">${new Date(debugInfo.timestamp).toLocaleString()}</span>
+                                </div>
+                                <div class="grid grid-cols-3 gap-2">
+                                    <span class="font-medium">Client ID:</span>
+                                    <span class="col-span-2 font-mono">${debugInfo.clientId}</span>
+                                </div>
+                                <div class="grid grid-cols-3 gap-2">
+                                    <span class="font-medium">Code Verifier:</span>
+                                    <span class="col-span-2 font-mono">${debugInfo.codeVerifier}</span>
+                                </div>
+                                <div class="grid grid-cols-3 gap-2">
+                                    <span class="font-medium">Auth Code:</span>
+                                    <span class="col-span-2 font-mono">${debugInfo.authCode}</span>
+                                </div>
+                                <div class="grid grid-cols-3 gap-2">
+                                    <span class="font-medium">Redirect URI:</span>
+                                    <span class="col-span-2 font-mono text-xs break-all">${debugInfo.redirectUri}</span>
+                                </div>
+                                ${debugInfo.responseStatus ? `
+                                <div class="grid grid-cols-3 gap-2">
+                                    <span class="font-medium">Response Code:</span>
+                                    <span class="col-span-2 font-mono ${debugInfo.responseStatus >= 400 ? 'text-red-600' : 'text-green-600'}">${debugInfo.responseStatus}</span>
+                                </div>
+                                ` : ''}
+                            </div>
+                        </div>
+                        
+                        ${debugInfo.errorData ? `
+                        <div class="p-4 bg-red-50 dark:bg-red-900/30 rounded-lg border border-red-200 dark:border-red-600">
+                            <h4 class="font-bold mb-3 text-red-700 dark:text-red-300">❌ Spotify Error Details</h4>
+                            <div class="space-y-2 text-sm">
+                                <div class="grid grid-cols-3 gap-2">
+                                    <span class="font-medium">Error Type:</span>
+                                    <span class="col-span-2 font-mono text-red-600">${debugInfo.errorData.error}</span>
+                                </div>
+                                ${debugInfo.errorData.error_description ? `
+                                <div class="grid grid-cols-3 gap-2">
+                                    <span class="font-medium">Description:</span>
+                                    <span class="col-span-2 text-red-600">${debugInfo.errorData.error_description}</span>
+                                </div>
+                                ` : ''}
+                            </div>
+                        </div>
+                        ` : ''}
+                        
+                        ${debugInfo.troubleshooting ? `
+                        <div class="p-4 bg-yellow-50 dark:bg-yellow-900/30 rounded-lg border border-yellow-200 dark:border-yellow-600">
+                            <h4 class="font-bold mb-3 text-yellow-700 dark:text-yellow-300">💡 Troubleshooting Suggestions</h4>
+                            <div class="text-sm text-yellow-600 dark:text-yellow-400">
+                                ${debugInfo.troubleshooting}
+                            </div>
+                        </div>
+                        ` : ''}
+                        
+                        <div class="p-4 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
+                            <h4 class="font-bold mb-3 text-blue-700 dark:text-blue-300">🛠️ Common Solutions</h4>
+                            <div class="text-sm text-blue-600 dark:text-blue-400 space-y-2">
+                                <div>• Check that your Client ID is correct</div>
+                                <div>• Verify your redirect URI matches exactly</div>
+                                <div>• Make sure your Spotify app is not in development mode</div>
+                                <div>• Try connecting again (auth codes expire quickly)</div>
+                                <div>• Check that HTTPS is being used for redirect URI</div>
+                            </div>
+                        </div>
+                        
+                        ${debugInfo.tokenReceived ? `
+                        <div class="p-4 bg-green-50 dark:bg-green-900/30 rounded-lg border border-green-200 dark:border-green-600">
+                            <h4 class="font-bold mb-3 text-green-700 dark:text-green-300">✅ Token Exchange Successful</h4>
+                            <div class="space-y-2 text-sm">
+                                <div class="grid grid-cols-3 gap-2">
+                                    <span class="font-medium">Access Token:</span>
+                                    <span class="col-span-2 text-green-600">${debugInfo.tokenReceived.access_token}</span>
+                                </div>
+                                <div class="grid grid-cols-3 gap-2">
+                                    <span class="font-medium">Refresh Token:</span>
+                                    <span class="col-span-2 text-green-600">${debugInfo.tokenReceived.refresh_token}</span>
+                                </div>
+                                <div class="grid grid-cols-3 gap-2">
+                                    <span class="font-medium">Expires In:</span>
+                                    <span class="col-span-2 text-green-600">${debugInfo.tokenReceived.expires_in} seconds</span>
+                                </div>
+                            </div>
+                        </div>
+                        ` : ''}
+                    </div>
+                    
+                    <div class="mt-6 flex space-x-3">
+                        <button onclick="copyDebugInfo('${btoa(JSON.stringify(debugInfo))}')" class="flex-1 bg-blue-500 text-white py-2 rounded hover:bg-blue-600 transition-all">
+                            📋 Copy Debug Info
+                        </button>
+                        <button onclick="this.closest('.modal-overlay').remove()" class="flex-1 bg-gray-500 text-white py-2 rounded hover:bg-gray-600 transition-all">
+                            Close
+                        </button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+
+        function copyDebugInfo(encodedData) {
+            try {
+                const debugInfo = JSON.parse(atob(encodedData));
+                const debugText = [
+                    '🎵 SPOTIFY DEBUG REPORT',
+                    '========================',
+                    `Timestamp: ${debugInfo.timestamp}`,
+                    `Status: ${debugInfo.status}`,
+                    `Client ID: ${debugInfo.clientId}`,
+                    `Code Verifier: ${debugInfo.codeVerifier}`,
+                    `Auth Code: ${debugInfo.authCode}`,
+                    `Redirect URI: ${debugInfo.redirectUri}`,
+                    debugInfo.responseStatus ? `Response Status: ${debugInfo.responseStatus}` : '',
+                    debugInfo.errorData ? `Error: ${debugInfo.errorData.error}` : '',
+                    debugInfo.errorData?.error_description ? `Description: ${debugInfo.errorData.error_description}` : '',
+                    debugInfo.troubleshooting ? `Troubleshooting: ${debugInfo.troubleshooting}` : '',
+                    '========================'
+                ].filter(line => line).join('\n');
+                
+                navigator.clipboard.writeText(debugText).then(() => {
+                    showFloatingNotification('📋 Copied!', 'Debug information copied to clipboard');
+                }).catch(() => {
+                    // Fallback for older browsers
+                    const textArea = document.createElement('textarea');
+                    textArea.value = debugText;
+                    document.body.appendChild(textArea);
+                    textArea.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(textArea);
+                    showFloatingNotification('📋 Copied!', 'Debug information copied to clipboard');
+                });
+            } catch (error) {
+                showFloatingNotification('❌ Copy Failed', 'Unable to copy debug information');
             }
         }
     </script>
