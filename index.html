@@ -4231,94 +4231,294 @@
 
         async function getWorkoutRecommendations() {
             console.log('🎵 Getting workout recommendations...');
+            console.log('🎵 Available top tracks:', spotifyState.topTracks?.items?.length || 0);
+            console.log('🎵 Available top artists:', spotifyState.topArtists?.items?.length || 0);
             
-            // Check if we have enough top tracks
-            if (!spotifyState.topTracks?.items || spotifyState.topTracks.items.length === 0) {
-                console.log('⚠️ No top tracks available, using genre seeds');
-                return await getGenreBasedRecommendations('workout');
-            }
-            
+            // Try multiple approaches for personalized recommendations
             try {
-                const seedTracks = spotifyState.topTracks.items
-                    .slice(0, Math.min(5, spotifyState.topTracks.items.length))
-                    .map(track => track.id)
-                    .join(',');
+                let recommendations = null;
                 
-                console.log('🎵 Using seed tracks:', seedTracks);
+                // Approach 1: Use mix of tracks and artists as seeds
+                if (spotifyState.topTracks?.items?.length > 0 && spotifyState.topArtists?.items?.length > 0) {
+                    console.log('🎵 Trying mixed seeds approach...');
+                    
+                    // Get high-energy tracks from user's history
+                    const energeticTracks = spotifyState.topTracks.items
+                        .filter(track => track.popularity > 50) // Popular tracks tend to be more energetic
+                        .slice(0, 3)
+                        .map(track => track.id);
+                    
+                    const workoutArtists = spotifyState.topArtists.items
+                        .slice(0, 2)
+                        .map(artist => artist.id);
+                    
+                    if (energeticTracks.length > 0 && workoutArtists.length > 0) {
+                        const seedTracks = energeticTracks.join(',');
+                        const seedArtists = workoutArtists.join(',');
+                        
+                        console.log('🎵 Using seed tracks:', seedTracks);
+                        console.log('🎵 Using seed artists:', seedArtists);
+                        
+                        recommendations = await makeSpotifyRequest(
+                            `https://api.spotify.com/v1/recommendations?seed_tracks=${seedTracks}&seed_artists=${seedArtists}&target_energy=0.8&target_danceability=0.7&min_tempo=120&limit=20`
+                        );
+                        
+                        if (recommendations.tracks?.length > 0) {
+                            console.log('✅ Mixed seeds workout recommendations:', recommendations.tracks.length);
+                            return recommendations;
+                        }
+                    }
+                }
                 
-                const recommendations = await makeSpotifyRequest(
-                    `https://api.spotify.com/v1/recommendations?seed_tracks=${seedTracks}&target_energy=0.8&target_danceability=0.7&min_tempo=120&limit=20`
-                );
+                // Approach 2: Use only top tracks if mixed approach fails
+                if (spotifyState.topTracks?.items?.length >= 3) {
+                    console.log('🎵 Trying tracks-only approach...');
+                    
+                    const seedTracks = spotifyState.topTracks.items
+                        .slice(0, 5)
+                        .map(track => track.id)
+                        .join(',');
+                    
+                    console.log('🎵 Using seed tracks:', seedTracks);
+                    
+                    recommendations = await makeSpotifyRequest(
+                        `https://api.spotify.com/v1/recommendations?seed_tracks=${seedTracks}&target_energy=0.7&target_danceability=0.6&min_tempo=110&limit=20`
+                    );
+                    
+                    if (recommendations.tracks?.length > 0) {
+                        console.log('✅ Track-based workout recommendations:', recommendations.tracks.length);
+                        return recommendations;
+                    }
+                }
                 
-                console.log('✅ Workout recommendations received:', recommendations.tracks?.length || 0);
-                return recommendations;
+                // Approach 3: Use user's actual genres
+                console.log('🎵 Trying personalized genre approach...');
+                return await getPersonalizedGenreRecommendations('workout');
                 
             } catch (error) {
-                console.warn('⚠️ Track-based recommendations failed, trying genre-based:', error);
-                return await getGenreBasedRecommendations('workout');
+                console.warn('⚠️ Personalized recommendations failed, trying user genres:', error);
+                return await getPersonalizedGenreRecommendations('workout');
             }
         }
 
         async function getFocusRecommendations() {
             console.log('🎵 Getting focus recommendations...');
-            
-            if (!spotifyState.topTracks?.items || spotifyState.topTracks.items.length === 0) {
-                console.log('⚠️ No top tracks available, using genre seeds');
-                return await getGenreBasedRecommendations('focus');
-            }
+            console.log('🎵 Available top tracks:', spotifyState.topTracks?.items?.length || 0);
+            console.log('🎵 Available top artists:', spotifyState.topArtists?.items?.length || 0);
             
             try {
-                const seedTracks = spotifyState.topTracks.items
-                    .slice(0, Math.min(5, spotifyState.topTracks.items.length))
-                    .map(track => track.id)
-                    .join(',');
+                let recommendations = null;
                 
-                console.log('🎵 Using seed tracks:', seedTracks);
+                // Approach 1: Use mix of tracks and artists for focus music
+                if (spotifyState.topTracks?.items?.length > 0 && spotifyState.topArtists?.items?.length > 0) {
+                    console.log('🎵 Trying mixed seeds approach for focus...');
+                    
+                    // Get calmer tracks from user's history
+                    const calmerTracks = spotifyState.topTracks.items
+                        .slice(0, 3)
+                        .map(track => track.id);
+                    
+                    const focusArtists = spotifyState.topArtists.items
+                        .slice(0, 2)
+                        .map(artist => artist.id);
+                    
+                    if (calmerTracks.length > 0 && focusArtists.length > 0) {
+                        const seedTracks = calmerTracks.join(',');
+                        const seedArtists = focusArtists.join(',');
+                        
+                        console.log('🎵 Using seed tracks:', seedTracks);
+                        console.log('🎵 Using seed artists:', seedArtists);
+                        
+                        recommendations = await makeSpotifyRequest(
+                            `https://api.spotify.com/v1/recommendations?seed_tracks=${seedTracks}&seed_artists=${seedArtists}&target_energy=0.3&target_valence=0.5&max_tempo=100&target_instrumentalness=0.7&limit=20`
+                        );
+                        
+                        if (recommendations.tracks?.length > 0) {
+                            console.log('✅ Mixed seeds focus recommendations:', recommendations.tracks.length);
+                            return recommendations;
+                        }
+                    }
+                }
                 
-                const recommendations = await makeSpotifyRequest(
-                    `https://api.spotify.com/v1/recommendations?seed_tracks=${seedTracks}&target_energy=0.3&target_valence=0.5&max_tempo=100&target_instrumentalness=0.7&limit=20`
-                );
+                // Approach 2: Use only top tracks
+                if (spotifyState.topTracks?.items?.length >= 3) {
+                    console.log('🎵 Trying tracks-only approach for focus...');
+                    
+                    const seedTracks = spotifyState.topTracks.items
+                        .slice(0, 5)
+                        .map(track => track.id)
+                        .join(',');
+                    
+                    console.log('🎵 Using seed tracks:', seedTracks);
+                    
+                    recommendations = await makeSpotifyRequest(
+                        `https://api.spotify.com/v1/recommendations?seed_tracks=${seedTracks}&target_energy=0.3&target_valence=0.5&max_tempo=100&target_instrumentalness=0.7&limit=20`
+                    );
+                    
+                    if (recommendations.tracks?.length > 0) {
+                        console.log('✅ Track-based focus recommendations:', recommendations.tracks.length);
+                        return recommendations;
+                    }
+                }
                 
-                console.log('✅ Focus recommendations received:', recommendations.tracks?.length || 0);
-                return recommendations;
+                // Approach 3: Use personalized genres
+                console.log('🎵 Trying personalized genre approach for focus...');
+                return await getPersonalizedGenreRecommendations('focus');
                 
             } catch (error) {
-                console.warn('⚠️ Track-based recommendations failed, trying genre-based:', error);
-                return await getGenreBasedRecommendations('focus');
+                console.warn('⚠️ Personalized focus recommendations failed, trying user genres:', error);
+                return await getPersonalizedGenreRecommendations('focus');
             }
         }
 
         async function getRelaxationRecommendations() {
             console.log('🎵 Getting relaxation recommendations...');
             
-            if (!spotifyState.topTracks?.items || spotifyState.topTracks.items.length === 0) {
-                console.log('⚠️ No top tracks available, using genre seeds');
-                return await getGenreBasedRecommendations('relaxation');
+            try {
+                let recommendations = null;
+                
+                // Approach 1: Use mix of tracks and artists for relaxation music
+                if (spotifyState.topTracks?.items?.length > 0 && spotifyState.topArtists?.items?.length > 0) {
+                    console.log('🎵 Trying mixed seeds approach for relaxation...');
+                    
+                    // Get calmer tracks from user's history
+                    const relaxingTracks = spotifyState.topTracks.items
+                        .slice(0, 3)
+                        .map(track => track.id);
+                    
+                    const relaxingArtists = spotifyState.topArtists.items
+                        .slice(0, 2)
+                        .map(artist => artist.id);
+                    
+                    if (relaxingTracks.length > 0 && relaxingArtists.length > 0) {
+                        const seedTracks = relaxingTracks.join(',');
+                        const seedArtists = relaxingArtists.join(',');
+                        
+                        console.log('🎵 Using seed tracks:', seedTracks);
+                        console.log('🎵 Using seed artists:', seedArtists);
+                        
+                        recommendations = await makeSpotifyRequest(
+                            `https://api.spotify.com/v1/recommendations?seed_tracks=${seedTracks}&seed_artists=${seedArtists}&target_energy=0.2&target_valence=0.6&max_tempo=80&target_acousticness=0.8&limit=20`
+                        );
+                        
+                        if (recommendations.tracks?.length > 0) {
+                            console.log('✅ Mixed seeds relaxation recommendations:', recommendations.tracks.length);
+                            return recommendations;
+                        }
+                    }
+                }
+                
+                // Approach 2: Use only top tracks
+                if (spotifyState.topTracks?.items?.length >= 3) {
+                    console.log('🎵 Trying tracks-only approach for relaxation...');
+                    
+                    const seedTracks = spotifyState.topTracks.items
+                        .slice(0, 5)
+                        .map(track => track.id)
+                        .join(',');
+                    
+                    console.log('🎵 Using seed tracks:', seedTracks);
+                    
+                    recommendations = await makeSpotifyRequest(
+                        `https://api.spotify.com/v1/recommendations?seed_tracks=${seedTracks}&target_energy=0.2&target_valence=0.6&max_tempo=80&target_acousticness=0.8&limit=20`
+                    );
+                    
+                    if (recommendations.tracks?.length > 0) {
+                        console.log('✅ Track-based relaxation recommendations:', recommendations.tracks.length);
+                        return recommendations;
+                    }
+                }
+                
+                // Approach 3: Use personalized genres
+                console.log('🎵 Trying personalized genre approach for relaxation...');
+                return await getPersonalizedGenreRecommendations('relaxation');
+                
+            } catch (error) {
+                console.warn('⚠️ Personalized relaxation recommendations failed, trying user genres:', error);
+                return await getPersonalizedGenreRecommendations('relaxation');
+            }
+        }
+
+        async function getPersonalizedGenreRecommendations(activity) {
+            console.log('🎵 Getting personalized genre recommendations for:', activity);
+            
+            // Extract genres from user's top artists for personalization
+            const userGenres = [];
+            if (spotifyState.topArtists?.items?.length > 0) {
+                spotifyState.topArtists.items.forEach(artist => {
+                    if (artist.genres) {
+                        userGenres.push(...artist.genres);
+                    }
+                });
             }
             
-            try {
-                const seedTracks = spotifyState.topTracks.items
-                    .slice(0, Math.min(5, spotifyState.topTracks.items.length))
-                    .map(track => track.id)
-                    .join(',');
+            console.log('🎵 User genres found:', userGenres.slice(0, 10));
+            
+            // Combine user genres with activity-specific genres
+            const activityGenres = {
+                workout: ['pop', 'hip-hop', 'electronic', 'rock', 'dance', 'edm', 'pop-rap'],
+                focus: ['ambient', 'classical', 'chill', 'instrumental', 'jazz', 'lo-fi', 'indie'],
+                relaxation: ['ambient', 'new-age', 'acoustic', 'folk', 'classical', 'meditation']
+            };
+            
+            let finalGenres = [];
+            
+            // Prioritize user's genres that match the activity
+            if (userGenres.length > 0) {
+                const activitySpecificGenres = activityGenres[activity] || activityGenres.workout;
                 
-                console.log('🎵 Using seed tracks:', seedTracks);
-                
-                const recommendations = await makeSpotifyRequest(
-                    `https://api.spotify.com/v1/recommendations?seed_tracks=${seedTracks}&target_energy=0.2&target_valence=0.6&max_tempo=80&target_acousticness=0.8&limit=20`
+                // Find user genres that are suitable for this activity
+                const matchingUserGenres = userGenres.filter(userGenre => 
+                    activitySpecificGenres.some(activityGenre => 
+                        userGenre.toLowerCase().includes(activityGenre.toLowerCase()) ||
+                        activityGenre.toLowerCase().includes(userGenre.toLowerCase())
+                    )
                 );
                 
-                console.log('✅ Relaxation recommendations received:', recommendations.tracks?.length || 0);
+                console.log('🎵 Matching user genres for', activity, ':', matchingUserGenres);
+                
+                // Use user's matching genres first, then fill with activity genres
+                finalGenres = [...new Set([
+                    ...matchingUserGenres.slice(0, 3),
+                    ...activitySpecificGenres.slice(0, 5)
+                ])].slice(0, 5);
+            } else {
+                // Fallback to default activity genres
+                finalGenres = activityGenres[activity] || activityGenres.workout;
+            }
+            
+            const targetAttributes = {
+                workout: { target_energy: 0.8, target_danceability: 0.7, min_tempo: 120 },
+                focus: { target_energy: 0.3, target_valence: 0.5, max_tempo: 100, target_instrumentalness: 0.7 },
+                relaxation: { target_energy: 0.2, target_valence: 0.6, max_tempo: 80, target_acousticness: 0.8 }
+            };
+            
+            try {
+                const seedGenres = finalGenres.slice(0, 5).join(',');
+                const attributes = targetAttributes[activity] || targetAttributes.workout;
+                
+                const params = new URLSearchParams({
+                    seed_genres: seedGenres,
+                    limit: '20',
+                    ...attributes
+                });
+                
+                console.log('🎵 Using personalized genre seeds:', seedGenres);
+                const recommendations = await makeSpotifyRequest(
+                    `https://api.spotify.com/v1/recommendations?${params.toString()}`
+                );
+                
+                console.log('✅ Personalized genre recommendations received:', recommendations.tracks?.length || 0);
                 return recommendations;
                 
             } catch (error) {
-                console.warn('⚠️ Track-based recommendations failed, trying genre-based:', error);
-                return await getGenreBasedRecommendations('relaxation');
+                console.error('❌ Personalized genre recommendations failed, trying basic fallback:', error);
+                return await getGenreBasedRecommendations(activity);
             }
         }
 
         async function getGenreBasedRecommendations(activity) {
-            console.log('🎵 Getting genre-based recommendations for:', activity);
+            console.log('🎵 Getting basic genre-based recommendations for:', activity);
             
             const genreSeeds = {
                 workout: ['pop', 'hip-hop', 'electronic', 'rock', 'dance'],
@@ -4343,16 +4543,16 @@
                     ...attributes
                 });
                 
-                console.log('🎵 Using genre seeds:', seedGenres);
+                console.log('🎵 Using basic genre seeds:', seedGenres);
                 const recommendations = await makeSpotifyRequest(
                     `https://api.spotify.com/v1/recommendations?${params.toString()}`
                 );
                 
-                console.log('✅ Genre-based recommendations received:', recommendations.tracks?.length || 0);
+                console.log('✅ Basic genre recommendations received:', recommendations.tracks?.length || 0);
                 return recommendations;
                 
             } catch (error) {
-                console.error('❌ Genre-based recommendations also failed:', error);
+                console.error('❌ All recommendation methods failed:', error);
                 return { tracks: [] };
             }
         }
