@@ -1476,139 +1476,80 @@
             }
         }
 
-        // 🏪 ADVANCED STORAGE MANAGER WITH MULTI-TIER CACHING
-        class AdvancedStorageManager {
+        // 💾 SIMPLE RELIABLE STORAGE MANAGER
+        class StorageManager {
             constructor() {
-                this.primaryKey = 'lifeQuestAI_v2.3';
-                this.backupKeys = [
-                    'lifeQuestAI_backup1',
-                    'lifeQuestAI_backup2', 
-                    'lifeQuestAI_backup3'
-                ];
-                this.saveCounter = parseInt(localStorage.getItem('saveCounter') || '0');
-                this.integrityHashes = new Map();
+                this.storageKey = 'lifequest_gamestate';
+                this.configKeys = {
+                    spotify: 'lifequest_spotify_config',
+                    usda: 'lifequest_usda_config'
+                };
             }
             
-            generateChecksum(data) {
-                const str = JSON.stringify(data);
-                let hash = 0;
-                for (let i = 0; i < str.length; i++) {
-                    const char = str.charCodeAt(i);
-                    hash = ((hash << 5) - hash) + char;
-                    hash = hash & hash;
-                }
-                return hash.toString(16);
-            }
-            
-            save(trigger = 'manual') {
-                const startTime = performance.now();
-                const saveId = `save_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-                
+            save(data, trigger = 'manual') {
                 try {
-                    const dataToSave = {
-                        ...gameState,
-                        meta: {
-                            saveId,
-                            timestamp: Date.now(),
-                            trigger,
-                            version: '2.3.0',
-                            saveCounter: ++this.saveCounter
-                        }
+                    const saveData = {
+                        ...data,
+                        lastSaved: Date.now(),
+                        version: '2.4.0',
+                        trigger
                     };
                     
-                    const jsonData = JSON.stringify(dataToSave);
-                    const checksum = this.generateChecksum(dataToSave);
-                    
-                    localStorage.setItem(this.primaryKey, jsonData);
-                    localStorage.setItem(`${this.primaryKey}_checksum`, checksum);
-                    localStorage.setItem('saveCounter', this.saveCounter.toString());
-                    
-                    const backupIndex = this.saveCounter % this.backupKeys.length;
-                    localStorage.setItem(this.backupKeys[backupIndex], jsonData);
-                    localStorage.setItem(`${this.backupKeys[backupIndex]}_checksum`, checksum);
-                    
-                    this.integrityHashes.set(saveId, checksum);
-                    
-                    const duration = performance.now() - startTime;
-                    return {
-                        success: true,
-                        saveId,
-                        duration: Math.round(duration * 100) / 100,
-                        method: 'advanced',
-                        backupIndex
-                    };
-                    
+                    localStorage.setItem(this.storageKey, JSON.stringify(saveData));
+                    return { success: true, timestamp: saveData.lastSaved };
                 } catch (error) {
-                    return {
-                        success: false,
-                        error: error.message,
-                        saveId
-                    };
+                    console.error('Save failed:', error);
+                    return { success: false, error: error.message };
                 }
             }
             
             load() {
-                const loadId = `load_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-                
-                let data = this.loadFromKey(this.primaryKey, 'primary');
-                if (data.success) {
-                    Object.assign(gameState, data.gameState);
-                    return { success: true, source: 'primary', loadId };
-                }
-                
-                for (let i = this.backupKeys.length - 1; i >= 0; i--) {
-                    data = this.loadFromKey(this.backupKeys[i], `backup${i + 1}`);
-                    if (data.success) {
-                        Object.assign(gameState, data.gameState);
-                        return { success: true, source: `backup${i + 1}`, loadId };
-                    }
-                }
-                
-                return { success: false, error: 'No valid save data found', loadId };
-            }
-            
-            loadFromKey(key, source) {
                 try {
-                    const jsonData = localStorage.getItem(key);
-                    const expectedChecksum = localStorage.getItem(`${key}_checksum`);
+                    const data = localStorage.getItem(this.storageKey);
+                    if (!data) return { success: false, error: 'No save data found' };
                     
-                    if (!jsonData) return { success: false, error: `No data in ${source}` };
-                    
-                    const parsedData = JSON.parse(jsonData);
-                    
-                    if (expectedChecksum) {
-                        const actualChecksum = this.generateChecksum(parsedData);
-                        if (actualChecksum !== expectedChecksum) {
-                            return { success: false, error: `Checksum mismatch in ${source}` };
-                        }
-                    }
-                    
-                    return { success: true, gameState: parsedData };
-                    
+                    const parsed = JSON.parse(data);
+                    return { success: true, data: parsed };
                 } catch (error) {
-                    return { success: false, error: `Parse error in ${source}: ${error.message}` };
+                    console.error('Load failed:', error);
+                    return { success: false, error: error.message };
                 }
             }
             
-            getStorageInfo() {
-                const info = {
-                    primaryExists: !!localStorage.getItem(this.primaryKey),
-                    backups: this.backupKeys.map(key => ({
-                        key,
-                        exists: !!localStorage.getItem(key),
-                        hasChecksum: !!localStorage.getItem(`${key}_checksum`)
-                    })),
-                    saveCounter: this.saveCounter,
-                    totalSize: 0
-                };
-                
-                for (let key in localStorage) {
-                    if (key.startsWith('lifeQuestAI')) {
-                        info.totalSize += localStorage.getItem(key).length;
-                    }
+            saveConfig(type, config) {
+                try {
+                    const key = this.configKeys[type];
+                    if (!key) throw new Error('Invalid config type');
+                    
+                    localStorage.setItem(key, JSON.stringify(config));
+                    return { success: true };
+                } catch (error) {
+                    return { success: false, error: error.message };
                 }
-                
-                return info;
+            }
+            
+            loadConfig(type) {
+                try {
+                    const key = this.configKeys[type];
+                    if (!key) return { success: false, error: 'Invalid config type' };
+                    
+                    const data = localStorage.getItem(key);
+                    if (!data) return { success: false, error: 'No config found' };
+                    
+                    return { success: true, data: JSON.parse(data) };
+                } catch (error) {
+                    return { success: false, error: error.message };
+                }
+            }
+            
+            clear() {
+                try {
+                    Object.values(this.configKeys).forEach(key => localStorage.removeItem(key));
+                    localStorage.removeItem(this.storageKey);
+                    return { success: true };
+                } catch (error) {
+                    return { success: false, error: error.message };
+                }
             }
         }
 
