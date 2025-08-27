@@ -4659,22 +4659,39 @@
             const redirectUri = gameState.settings.spotifyRedirectUri || window.location.origin + window.location.pathname;
             const state = Math.random().toString(36).substring(2, 15);
             
+            // Generate PKCE challenge
+            const codeVerifier = generateRandomString(128);
+            const codeChallenge = btoa(String.fromCharCode(...new Uint8Array(crypto.subtle.digestSync('SHA-256', new TextEncoder().encode(codeVerifier)))))
+                .replace(/\+/g, '-')
+                .replace(/\//g, '_')
+                .replace(/=/g, '');
+            
             localStorage.setItem('spotify_auth_state', state);
+            localStorage.setItem('spotify_code_verifier', codeVerifier);
             
             const authUrl = `https://accounts.spotify.com/authorize?` +
                 `response_type=code&` +
                 `client_id=${encodeURIComponent(clientId)}&` +
                 `scope=${encodeURIComponent(scopes)}&` +
                 `redirect_uri=${encodeURIComponent(redirectUri)}&` +
-                `state=${encodeURIComponent(state)}`;
+                `state=${encodeURIComponent(state)}&` +
+                `code_challenge_method=S256&` +
+                `code_challenge=${encodeURIComponent(codeChallenge)}`;
             
-            addDebugEntry('spotify', 'info', 'Initiating Spotify OAuth flow', {
+            addDebugEntry('spotify', 'info', 'Initiating Spotify PKCE OAuth flow', {
                 clientId: clientId.substring(0, 8) + '...',
                 redirectUri,
-                scopes
+                scopes,
+                pkce: true
             });
             
             window.location.href = authUrl;
+        }
+
+        function generateRandomString(length) {
+            const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+            const values = crypto.getRandomValues(new Uint8Array(length));
+            return values.reduce((acc, x) => acc + possible[x % possible.length], "");
         }
 
         function handleSpotifyCallback() {
@@ -5631,36 +5648,50 @@
                 return;
             }
             
-            // Store the API key in gameState
-            gameState.settings.usdaApiKey = apiKey;
-            
-            // Update status displays
-            const statusElements = {
-                usdaApiKeyDisplayStatus: 'Configured ✅',
-                usdaApiLimit: '1,000 requests/hour (Full access)',
-                usdaSearchQuality: 'Full database (400,000+ foods)'
-            };
-            
-            Object.entries(statusElements).forEach(([id, value]) => {
-                const element = document.getElementById(id);
-                if (element) element.textContent = value;
-            });
-            
-            // Show success indicator
-            const statusIndicator = document.getElementById('usdaApiKeyStatus');
-            if (statusIndicator) {
-                statusIndicator.classList.remove('hidden');
-                setTimeout(() => statusIndicator.classList.add('hidden'), 3000);
+            try {
+                // Store the API key in gameState
+                gameState.settings.usdaApiKey = apiKey;
+                
+                // Save to localStorage immediately (direct backup)
+                localStorage.setItem('quest_tracker_usda_api_key', apiKey);
+                
+                // Update status displays
+                const statusElements = {
+                    usdaApiKeyDisplayStatus: 'Configured ✅',
+                    usdaApiLimit: '1,000 requests/hour (Full access)',
+                    usdaSearchQuality: 'Full database (400,000+ foods)'
+                };
+                
+                Object.entries(statusElements).forEach(([id, value]) => {
+                    const element = document.getElementById(id);
+                    if (element) element.textContent = value;
+                });
+                
+                // Show success indicator
+                const statusIndicator = document.getElementById('usdaApiKeyStatus');
+                if (statusIndicator) {
+                    statusIndicator.classList.remove('hidden');
+                    setTimeout(() => statusIndicator.classList.add('hidden'), 3000);
+                }
+                
+                addDebugEntry('settings', 'success', 'USDA API key configured', {
+                    keyLength: apiKey.length,
+                    masked: apiKey.substring(0, 8) + '...'
+                });
+                
+                // Save to main storage
+                const saveResult = saveGameState('usda_config_saved');
+                
+                if (saveResult) {
+                    showFloatingNotification('✅ USDA API Saved', 'Configuration saved successfully!');
+                } else {
+                    showFloatingNotification('⚠️ Save Warning', 'API key stored but backup save failed', 'warning');
+                }
+                
+            } catch (error) {
+                addDebugEntry('settings', 'error', 'USDA API save failed', { error: error.message });
+                showFloatingNotification('❌ Save Failed', 'Could not save USDA API key', 'error');
             }
-            
-            addDebugEntry('settings', 'success', 'USDA API key configured', {
-                keyLength: apiKey.length,
-                masked: apiKey.substring(0, 8) + '...'
-            });
-            
-            // Save to storage immediately
-            saveGameState('usda_config_saved');
-            showFloatingNotification('✅ USDA API Saved', 'Configuration saved successfully!');
         }
 
         function saveSpotifyConfig() {
@@ -5672,25 +5703,40 @@
                 return;
             }
             
-            // Store the configuration in gameState
-            gameState.settings.spotifyClientId = clientId;
-            gameState.settings.spotifyRedirectUri = redirectUri || getCurrentRedirectUri();
-            
-            // Show success indicator
-            const statusIndicator = document.getElementById('clientIdStatus');
-            if (statusIndicator) {
-                statusIndicator.classList.remove('hidden');
-                setTimeout(() => statusIndicator.classList.add('hidden'), 3000);
+            try {
+                // Store the configuration in gameState
+                gameState.settings.spotifyClientId = clientId;
+                gameState.settings.spotifyRedirectUri = redirectUri || getCurrentRedirectUri();
+                
+                // Save to localStorage immediately (direct backup)
+                localStorage.setItem('quest_tracker_spotify_client_id', clientId);
+                localStorage.setItem('quest_tracker_spotify_redirect_uri', gameState.settings.spotifyRedirectUri);
+                
+                // Show success indicator
+                const statusIndicator = document.getElementById('clientIdStatus');
+                if (statusIndicator) {
+                    statusIndicator.classList.remove('hidden');
+                    setTimeout(() => statusIndicator.classList.add('hidden'), 3000);
+                }
+                
+                addDebugEntry('settings', 'success', 'Spotify configuration saved', {
+                    clientId: clientId.substring(0, 8) + '...',
+                    redirectUri: gameState.settings.spotifyRedirectUri
+                });
+                
+                // Save to main storage
+                const saveResult = saveGameState('spotify_config_saved');
+                
+                if (saveResult) {
+                    showFloatingNotification('✅ Spotify Config Saved', 'You can now connect to Spotify!');
+                } else {
+                    showFloatingNotification('⚠️ Save Warning', 'Config stored but backup save failed', 'warning');
+                }
+                
+            } catch (error) {
+                addDebugEntry('settings', 'error', 'Spotify config save failed', { error: error.message });
+                showFloatingNotification('❌ Save Failed', 'Could not save Spotify configuration', 'error');
             }
-            
-            addDebugEntry('settings', 'success', 'Spotify configuration saved', {
-                clientId: clientId.substring(0, 8) + '...',
-                redirectUri: gameState.settings.spotifyRedirectUri
-            });
-            
-            // Save to storage immediately
-            saveGameState('spotify_config_saved');
-            showFloatingNotification('✅ Spotify Config Saved', 'You can now connect to Spotify!');
         }
 
         function getCurrentRedirectUri() {
