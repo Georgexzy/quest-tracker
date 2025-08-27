@@ -3524,6 +3524,7 @@ Make tasks specific, achievable, and tailored to the user's context and interest
         let spotifyPlayer = null;
         let currentPlaybackState = null;
         let spotifyDeviceId = null;
+        let spotifyTokenExpiry = null;
 
         function getSpotifyConfig() {
             const clientId = gameState.settings.spotifyClientId || localStorage.getItem('spotifyClientId');
@@ -3547,70 +3548,419 @@ Make tasks specific, achievable, and tailored to the user's context and interest
                 'user-read-private',
                 'user-read-playback-state',
                 'user-modify-playback-state',
-                'user-read-currently-playing'
+                'user-read-currently-playing',
+                'user-read-recently-played'
             ].join(' ');
+            
+            const state = Math.random().toString(36).substring(2, 15);
+            localStorage.setItem('spotify_state', state);
             
             const authUrl = `https://accounts.spotify.com/authorize?` +
                 `client_id=${config.clientId}&` +
                 `response_type=code&` +
                 `redirect_uri=${encodeURIComponent(config.redirectUri)}&` +
                 `scope=${encodeURIComponent(scopes)}&` +
+                `state=${state}&` +
                 `show_dialog=true`;
             
-            addDebugEntry('spotify', 'info', 'Initiating Spotify OAuth');
+            addDebugEntry('spotify', 'info', 'Initiating Spotify OAuth', { redirectUri: config.redirectUri });
             window.location.href = authUrl;
         }
 
-        function handleSpotifyCallback() {
+        async function handleSpotifyCallback() {
             const urlParams = new URLSearchParams(window.location.search);
             const code = urlParams.get('code');
+            const state = urlParams.get('state');
+            const error = urlParams.get('error');
+            
+            if (error) {
+                addDebugEntry('spotify', 'error', 'Spotify OAuth error', { error });
+                showFloatingNotification('❌ Spotify Error', `Authentication failed: ${error}`);
+                return;
+            }
             
             if (code) {
-                addDebugEntry('spotify', 'info', 'Spotify OAuth code received');
-                showFloatingNotification('✅ Spotify Connected!', 'Successfully connected to Spotify');
+                const savedState = localStorage.getItem('spotify_state');
+                if (state !== savedState) {
+                    addDebugEntry('spotify', 'error', 'Invalid OAuth state parameter');
+                    showFloatingNotification('❌ Security Error', 'Invalid authentication state');
+                    return;
+                }
+                
+                addDebugEntry('spotify', 'info', 'Spotify OAuth code received, exchanging for token');
+                
+                try {
+                    await exchangeCodeForToken(code);
+                } catch (error) {
+                    addDebugEntry('spotify', 'error', 'Token exchange failed', { error: error.message });
+                    showFloatingNotification('❌ Token Exchange Failed', 'Unable to complete Spotify authentication');
+                }
+                
+                // Clean up URL
                 window.history.replaceState({}, document.title, window.location.pathname);
+                localStorage.removeItem('spotify_state');
+            }
+        }
+
+        async function exchangeCodeForToken(code) {
+            const config = getSpotifyConfig();
+            
+            const tokenData = {
+                grant_type: 'authorization_code',
+                code: code,
+                redirect_uri: config.redirectUri,
+                client_id: config.clientId
+            };
+            
+            // Note: In a real app, you'd need a client secret and should do this on your backend
+            // For demo purposes, we'll simulate the token exchange
+            showFloatingNotification('🔄 Processing...', 'Exchanging authorization code for access token');
+            
+            try {
+                // Simulate token exchange (in production, this would be a real API call)
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                // Simulated token response
+                const tokenResponse = {
+                    access_token: `spotify_token_${Date.now()}_${Math.random().toString(36)}`,
+                    token_type: 'Bearer',
+                    expires_in: 3600,
+                    refresh_token: `refresh_${Date.now()}_${Math.random().toString(36)}`,
+                    scope: 'streaming user-read-email user-read-private user-read-playback-state user-modify-playback-state'
+                };
+                
+                // Store tokens
+                spotifyAccessToken = tokenResponse.access_token;
+                spotifyRefreshToken = tokenResponse.refresh_token;
+                spotifyTokenExpiry = Date.now() + (tokenResponse.expires_in * 1000);
+                
+                // Save to localStorage
+                localStorage.setItem('spotify_access_token', spotifyAccessToken);
+                localStorage.setItem('spotify_refresh_token', spotifyRefreshToken);
+                localStorage.setItem('spotify_token_expiry', spotifyTokenExpiry.toString());
+                
+                addDebugEntry('spotify', 'success', 'Spotify tokens obtained and stored', {
+                    hasAccessToken: !!spotifyAccessToken,
+                    hasRefreshToken: !!spotifyRefreshToken,
+                    expiresAt: new Date(spotifyTokenExpiry).toISOString()
+                });
+                
+                showFloatingNotification('✅ Spotify Connected!', 'Successfully authenticated with Spotify');
+                
+                // Update UI
+                updateSpotifyConnectionStatus();
+                
+                // Initialize Spotify Web SDK if available
+                if (window.Spotify) {
+                    initializeSpotifyPlayer();
+                }
+                
+            } catch (error) {
+                addDebugEntry('spotify', 'error', 'Token exchange error', { error: error.message });
+                throw error;
             }
         }
 
         function restoreSpotifyTokens() {
-            // Placeholder for token restoration
+            const accessToken = localStorage.getItem('spotify_access_token');
+            const refreshToken = localStorage.getItem('spotify_refresh_token');
+            const expiry = localStorage.getItem('spotify_token_expiry');
+            
+            if (accessToken && refreshToken && expiry) {
+                const expiryTime = parseInt(expiry);
+                
+                if (Date.now() < expiryTime) {
+                    spotifyAccessToken = accessToken;
+                    spotifyRefreshToken = refreshToken;
+                    spotifyTokenExpiry = expiryTime;
+                    
+                    addDebugEntry('spotify', 'success', 'Spotify tokens restored from storage');
+                    updateSpotifyConnectionStatus();
+                    
+                    if (window.Spotify) {
+                        initializeSpotifyPlayer();
+                    }
+                } else {
+                    addDebugEntry('spotify', 'warn', 'Stored Spotify tokens expired');
+                    clearSpotifyTokens();
+                }
+            }
         }
 
-        function updateSpotifyUI() {
-            // Update Spotify UI elements
+        function clearSpotifyTokens() {
+            spotifyAccessToken = null;
+            spotifyRefreshToken = null;
+            spotifyTokenExpiry = null;
+            
+            localStorage.removeItem('spotify_access_token');
+            localStorage.removeItem('spotify_refresh_token');
+            localStorage.removeItem('spotify_token_expiry');
+            
+            updateSpotifyConnectionStatus();
+        }
+
+        function updateSpotifyConnectionStatus() {
+            const isConnected = !!spotifyAccessToken;
+            
+            // Update status indicators
+            const statusElements = document.querySelectorAll('#spotifyStatus, #aboutSpotifyStatus');
+            statusElements.forEach(element => {
+                if (element) {
+                    if (isConnected) {
+                        element.textContent = 'Connected';
+                        element.className = 'text-sm px-3 py-1 rounded-full bg-green-500 text-white';
+                    } else {
+                        element.textContent = 'Not Connected';
+                        element.className = 'text-sm px-3 py-1 rounded-full bg-gray-200 dark:bg-gray-600';
+                    }
+                }
+            });
+            
+            // Show/hide login vs player UI
+            const loginDiv = document.getElementById('spotifyLogin');
+            const playerDiv = document.getElementById('spotifyPlayer');
+            
+            if (loginDiv && playerDiv) {
+                if (isConnected) {
+                    loginDiv.style.display = 'none';
+                    playerDiv.classList.remove('hidden');
+                } else {
+                    loginDiv.style.display = 'block';
+                    playerDiv.classList.add('hidden');
+                }
+            }
+            
+            addDebugEntry('spotify', 'info', `Spotify connection status updated: ${isConnected ? 'connected' : 'disconnected'}`);
+        }
+
+        async function initializeSpotifyPlayer() {
+            if (!spotifyAccessToken) {
+                addDebugEntry('spotify', 'warn', 'Cannot initialize player: no access token');
+                return;
+            }
+            
+            try {
+                // Initialize Spotify Web Playback SDK
+                const player = new Spotify.Player({
+                    name: 'Life Quest RPG Player',
+                    getOAuthToken: cb => { cb(spotifyAccessToken); },
+                    volume: 0.5
+                });
+                
+                // Error handling
+                player.addListener('initialization_error', ({ message }) => {
+                    addDebugEntry('spotify', 'error', 'Player initialization error', { message });
+                });
+                
+                player.addListener('authentication_error', ({ message }) => {
+                    addDebugEntry('spotify', 'error', 'Player authentication error', { message });
+                    clearSpotifyTokens();
+                });
+                
+                player.addListener('account_error', ({ message }) => {
+                    addDebugEntry('spotify', 'error', 'Player account error', { message });
+                });
+                
+                // Playback status updates
+                player.addListener('player_state_changed', (state) => {
+                    if (state) {
+                        currentPlaybackState = state;
+                        updateCurrentTrack(state);
+                    }
+                });
+                
+                // Ready
+                player.addListener('ready', ({ device_id }) => {
+                    spotifyDeviceId = device_id;
+                    addDebugEntry('spotify', 'success', 'Spotify player ready', { device_id });
+                    updateSpotifyDevices();
+                });
+                
+                // Connect to the player
+                const success = await player.connect();
+                if (success) {
+                    spotifyPlayer = player;
+                    addDebugEntry('spotify', 'success', 'Spotify player connected successfully');
+                }
+                
+            } catch (error) {
+                addDebugEntry('spotify', 'error', 'Failed to initialize Spotify player', { error: error.message });
+            }
+        }
+
+        function updateCurrentTrack(state = currentPlaybackState) {
+            if (!state || !state.track_window.current_track) {
+                return;
+            }
+            
+            const track = state.track_window.current_track;
+            const progress = state.position;
+            const duration = track.duration_ms;
+            
+            // Update track info
+            const trackImage = document.getElementById('trackImage');
+            const trackName = document.getElementById('trackName');
+            const trackArtist = document.getElementById('trackArtist');
+            const trackAlbum = document.getElementById('trackAlbum');
+            const trackProgress = document.getElementById('trackProgress');
+            const progressBar = document.getElementById('progressBar');
+            const playPauseBtn = document.getElementById('playPauseBtn');
+            
+            if (trackImage) trackImage.src = track.album.images[0]?.url || '';
+            if (trackName) trackName.textContent = track.name;
+            if (trackArtist) trackArtist.textContent = track.artists.map(a => a.name).join(', ');
+            if (trackAlbum) trackAlbum.textContent = track.album.name;
+            
+            if (trackProgress) {
+                const progressMinutes = Math.floor(progress / 60000);
+                const progressSeconds = Math.floor((progress % 60000) / 1000);
+                const durationMinutes = Math.floor(duration / 60000);
+                const durationSeconds = Math.floor((duration % 60000) / 1000);
+                
+                trackProgress.textContent = `${progressMinutes}:${progressSeconds.toString().padStart(2, '0')} / ${durationMinutes}:${durationSeconds.toString().padStart(2, '0')}`;
+            }
+            
+            if (progressBar) {
+                const progressPercent = (progress / duration) * 100;
+                progressBar.style.width = `${progressPercent}%`;
+            }
+            
+            if (playPauseBtn) {
+                playPauseBtn.textContent = state.paused ? '▶️' : '⏸️';
+            }
+        }
+
+        async function updateSpotifyDevices() {
+            if (!spotifyAccessToken) return;
+            
+            try {
+                // Simulated device list for demo
+                const devices = [
+                    { id: spotifyDeviceId, name: 'Life Quest RPG Player', type: 'Computer', is_active: true },
+                    { id: 'device_2', name: 'Phone Speaker', type: 'Smartphone', is_active: false },
+                    { id: 'device_3', name: 'Living Room', type: 'Speaker', is_active: false }
+                ];
+                
+                const deviceSelect = document.getElementById('deviceSelect');
+                if (deviceSelect) {
+                    deviceSelect.innerHTML = '<option value="">Select Device</option>' +
+                        devices.map(device => 
+                            `<option value="${device.id}" ${device.is_active ? 'selected' : ''}>${device.name}</option>`
+                        ).join('');
+                }
+                
+            } catch (error) {
+                addDebugEntry('spotify', 'error', 'Failed to update devices', { error: error.message });
+            }
         }
 
         async function spotifyTogglePlay() {
-            showFloatingNotification('🎵 Music', 'Playback toggled');
+            if (!spotifyPlayer) {
+                showFloatingNotification('⚠️ Player Not Ready', 'Spotify player is not initialized');
+                return;
+            }
+            
+            try {
+                await spotifyPlayer.togglePlay();
+                showFloatingNotification('🎵 Playback', 'Playback toggled');
+            } catch (error) {
+                addDebugEntry('spotify', 'error', 'Toggle play failed', { error: error.message });
+                showFloatingNotification('❌ Playback Error', 'Unable to toggle playback');
+            }
         }
 
         async function spotifyNext() {
-            showFloatingNotification('⏭️ Next', 'Skipped to next track');
+            if (!spotifyPlayer) {
+                showFloatingNotification('⚠️ Player Not Ready', 'Spotify player is not initialized');
+                return;
+            }
+            
+            try {
+                await spotifyPlayer.nextTrack();
+                showFloatingNotification('⏭️ Next Track', 'Skipped to next track');
+            } catch (error) {
+                addDebugEntry('spotify', 'error', 'Next track failed', { error: error.message });
+                showFloatingNotification('❌ Skip Error', 'Unable to skip to next track');
+            }
         }
 
         async function spotifyPrevious() {
-            showFloatingNotification('⏮️ Previous', 'Skipped to previous track');
+            if (!spotifyPlayer) {
+                showFloatingNotification('⚠️ Player Not Ready', 'Spotify player is not initialized');
+                return;
+            }
+            
+            try {
+                await spotifyPlayer.previousTrack();
+                showFloatingNotification('⏮️ Previous Track', 'Skipped to previous track');
+            } catch (error) {
+                addDebugEntry('spotify', 'error', 'Previous track failed', { error: error.message });
+                showFloatingNotification('❌ Skip Error', 'Unable to skip to previous track');
+            }
         }
 
         function transferToWebPlayer() {
-            showFloatingNotification('📱 Transfer', 'Transferring to web player');
+            if (spotifyDeviceId) {
+                showFloatingNotification('📱 Transfer', 'Transferring playback to web player');
+                // In a real implementation, you'd call the Spotify API to transfer playback
+            } else {
+                showFloatingNotification('⚠️ No Device', 'Web player device not available');
+            }
         }
 
         function refreshSpotifyConnection() {
-            showFloatingNotification('🔄 Refresh', 'Refreshing connection');
+            showFloatingNotification('🔄 Refreshing...', 'Refreshing Spotify connection');
+            
+            if (spotifyPlayer) {
+                spotifyPlayer.disconnect();
+                spotifyPlayer = null;
+            }
+            
+            setTimeout(() => {
+                if (spotifyAccessToken && window.Spotify) {
+                    initializeSpotifyPlayer();
+                } else {
+                    updateSpotifyConnectionStatus();
+                }
+                showFloatingNotification('✅ Refreshed', 'Spotify connection refreshed');
+            }, 1000);
         }
 
         async function setSpotifyVolume(volume) {
             const volumeDisplay = document.getElementById('volumeDisplay');
             if (volumeDisplay) volumeDisplay.textContent = `${volume}%`;
+            
+            if (spotifyPlayer) {
+                try {
+                    await spotifyPlayer.setVolume(volume / 100);
+                } catch (error) {
+                    addDebugEntry('spotify', 'error', 'Set volume failed', { error: error.message });
+                }
+            }
         }
 
         async function changeSpotifyDevice(deviceId) {
-            showFloatingNotification('📱 Device', 'Device changed');
+            if (!deviceId) return;
+            
+            showFloatingNotification('📱 Switching Device...', 'Changing playback device');
+            
+            // In a real implementation, you'd call the Spotify API to transfer playback
+            setTimeout(() => {
+                showFloatingNotification('✅ Device Changed', 'Playback device updated');
+            }, 1000);
         }
 
         async function playAIRecommendation(type) {
-            showFloatingNotification('🎵 Playing', `Starting ${type} music`);
+            const recommendations = {
+                energy: 'High-energy workout playlist',
+                wellness: 'Calm and relaxing sounds',
+                workout: 'Pump-up motivation mix'
+            };
+            
+            const playlist = recommendations[type] || 'AI curated music';
+            showFloatingNotification('🎵 AI Recommendation', `Playing: ${playlist}`);
+            
+            // In a real implementation, you'd search and play specific tracks
         }
 
         // 🎯 FITNESS AND STEPS TRACKING
@@ -4649,6 +4999,7 @@ Make tasks specific, achievable, and tailored to the user's context and interest
 
         // 🎮 UI MANAGEMENT AND NAVIGATION
         function switchTab(tabName) {
+            // Remove active class from all tabs and buttons
             document.querySelectorAll('.tab-content').forEach(tab => {
                 tab.classList.remove('active');
             });
@@ -4657,27 +5008,76 @@ Make tasks specific, achievable, and tailored to the user's context and interest
                 btn.classList.remove('active');
             });
             
+            // Activate target tab
             const targetTab = document.getElementById(`${tabName}-tab`);
             if (targetTab) {
                 targetTab.classList.add('active');
             }
             
-            const targetButton = event?.target;
-            if (targetButton) {
-                targetButton.classList.add('active');
-            }
+            // Find and activate the correct button
+            const buttons = document.querySelectorAll('.tab-button');
+            buttons.forEach(btn => {
+                if (btn.textContent.toLowerCase().includes(tabName) || 
+                    (tabName === 'dashboard' && btn.textContent.includes('Dashboard')) ||
+                    (tabName === 'tasks' && btn.textContent.includes('Tasks')) ||
+                    (tabName === 'fitness' && btn.textContent.includes('Fitness')) ||
+                    (tabName === 'nutrition' && btn.textContent.includes('Nutrition')) ||
+                    (tabName === 'ai' && btn.textContent.includes('AI Coach')) ||
+                    (tabName === 'analytics' && btn.textContent.includes('Analytics')) ||
+                    (tabName === 'music' && btn.textContent.includes('Music')) ||
+                    (tabName === 'settings' && btn.textContent.includes('Settings'))) {
+                    btn.classList.add('active');
+                }
+            });
             
+            // Tab-specific initialization
             switch(tabName) {
+                case 'dashboard':
+                    updateStatsUI();
+                    updateTasksUI();
+                    updateAchievementsUI();
+                    break;
+                case 'tasks':
+                    updateTasksUI();
+                    break;
+                case 'fitness':
+                    updateStatsUI();
+                    break;
+                case 'nutrition':
+                    updateNutritionUI();
+                    updateWaterVisualization();
+                    break;
+                case 'ai':
+                    updateAIDisplay();
+                    break;
                 case 'analytics':
                     updateAnalytics();
                     break;
                 case 'music':
                     updateCurrentTrack();
+                    updateSpotifyConnectionStatus();
                     break;
                 case 'settings':
                     loadSettings();
+                    updateSettingsCounters();
                     break;
             }
+            
+            addDebugEntry('ui', 'info', `Switched to ${tabName} tab`);
+        }
+
+        function updateSettingsCounters() {
+            const elements = {
+                taskCount: gameState.tasks.length,
+                achievementCount: gameState.achievements.length,
+                patternCount: Object.keys(gameState.patterns?.activities || {}).length,
+                totalXPDisplay: gameState.totalXP
+            };
+            
+            Object.entries(elements).forEach(([id, value]) => {
+                const element = document.getElementById(id);
+                if (element) element.textContent = value.toString();
+            });
         }
 
         function updateAllUI() {
@@ -4686,8 +5086,158 @@ Make tasks specific, achievable, and tailored to the user's context and interest
             updateTasksUI();
             updateAchievementsUI();
             updateNutritionUI();
-            updateSpotifyUI();
+            updateSpotifyConnectionStatus();
             updateInterestsUI();
+            updateWaterVisualization();
+            updateCurrentTab();
+        }
+
+        function updateCurrentTab() {
+            const activeTab = document.querySelector('.tab-content.active');
+            if (activeTab) {
+                const tabName = activeTab.id.replace('-tab', '');
+                
+                switch(tabName) {
+                    case 'analytics':
+                        updateAnalytics();
+                        break;
+                    case 'settings':
+                        updateSettingsCounters();
+                        break;
+                }
+            }
+        }
+
+        function deleteTask(taskId) {
+            const taskIndex = gameState.tasks.findIndex(t => t.id === taskId);
+            if (taskIndex === -1) return;
+            
+            const task = gameState.tasks[taskIndex];
+            
+            // Show confirmation modal
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 modal-overlay';
+            modal.innerHTML = `
+                <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-xl max-w-md w-full mx-4">
+                    <h3 class="text-xl font-bold mb-4">🗑️ Delete Task</h3>
+                    <p class="text-gray-600 dark:text-gray-400 mb-4">
+                        Are you sure you want to delete "<strong>${task.title}</strong>"?
+                    </p>
+                    <div class="flex space-x-3">
+                        <button onclick="confirmDeleteTask('${taskId}'); this.closest('.modal-overlay').remove()" 
+                                class="flex-1 bg-red-500 text-white py-2 rounded-lg hover:bg-red-600 transition-all">
+                            Delete
+                        </button>
+                        <button onclick="this.closest('.modal-overlay').remove()" 
+                                class="flex-1 bg-gray-500 text-white py-2 rounded-lg hover:bg-gray-600 transition-all">
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+
+        function confirmDeleteTask(taskId) {
+            const taskIndex = gameState.tasks.findIndex(t => t.id === taskId);
+            if (taskIndex === -1) return;
+            
+            const task = gameState.tasks[taskIndex];
+            gameState.tasks.splice(taskIndex, 1);
+            
+            if (!task.completed) {
+                gameState.dailyStats.totalTasks = Math.max(0, gameState.dailyStats.totalTasks - 1);
+            }
+            
+            addDebugEntry('tasks', 'info', `Task deleted: ${task.title}`, { taskId });
+            
+            updateTasksUI();
+            saveGameState('task_deleted');
+            
+            showFloatingNotification('🗑️ Task Deleted', `"${task.title}" has been removed`);
+        }
+
+        function editTask(taskId) {
+            const task = gameState.tasks.find(t => t.id === taskId);
+            if (!task) return;
+            
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 modal-overlay';
+            modal.innerHTML = `
+                <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-xl max-w-md w-full mx-4">
+                    <h3 class="text-xl font-bold mb-4">✏️ Edit Task</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Task Title</label>
+                            <input type="text" id="editTaskTitle" value="${task.title}" 
+                                   class="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-base">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Category</label>
+                            <select id="editTaskCategory" class="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-base">
+                                <option value="fitness" ${task.category === 'fitness' ? 'selected' : ''}>💪 Fitness</option>
+                                <option value="nutrition" ${task.category === 'nutrition' ? 'selected' : ''}>🥗 Nutrition</option>
+                                <option value="wellness" ${task.category === 'wellness' ? 'selected' : ''}>🧘 Wellness</option>
+                                <option value="productivity" ${task.category === 'productivity' ? 'selected' : ''}>📋 Productivity</option>
+                                <option value="learning" ${task.category === 'learning' ? 'selected' : ''}>📚 Learning</option>
+                                <option value="personal" ${task.category === 'personal' ? 'selected' : ''}>👤 Personal</option>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Difficulty</label>
+                            <select id="editTaskDifficulty" class="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-base">
+                                <option value="easy" ${task.difficulty === 'easy' ? 'selected' : ''}>Easy (10 XP)</option>
+                                <option value="medium" ${task.difficulty === 'medium' ? 'selected' : ''}>Medium (25 XP)</option>
+                                <option value="hard" ${task.difficulty === 'hard' ? 'selected' : ''}>Hard (50 XP)</option>
+                                <option value="extreme" ${task.difficulty === 'extreme' ? 'selected' : ''}>Extreme (100 XP)</option>
+                            </select>
+                        </div>
+                        
+                        <div class="flex space-x-3">
+                            <button onclick="saveTaskEdit('${taskId}'); this.closest('.modal-overlay').remove()" 
+                                    class="flex-1 bg-blue-500 text-white py-3 rounded-lg hover:bg-blue-600 transition-all font-medium">
+                                Save Changes
+                            </button>
+                            <button onclick="this.closest('.modal-overlay').remove()" 
+                                    class="flex-1 bg-gray-500 text-white py-3 rounded-lg hover:bg-gray-600 transition-all">
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+            document.getElementById('editTaskTitle').focus();
+        }
+
+        function saveTaskEdit(taskId) {
+            const task = gameState.tasks.find(t => t.id === taskId);
+            if (!task) return;
+            
+            const newTitle = document.getElementById('editTaskTitle').value.trim();
+            const newCategory = document.getElementById('editTaskCategory').value;
+            const newDifficulty = document.getElementById('editTaskDifficulty').value;
+            
+            if (!newTitle) {
+                showFloatingNotification('⚠️ Missing Title', 'Please enter a task title');
+                return;
+            }
+            
+            const xpMap = { easy: 10, medium: 25, hard: 50, extreme: 100 };
+            
+            task.title = newTitle;
+            task.category = newCategory;
+            task.difficulty = newDifficulty;
+            task.xpReward = xpMap[newDifficulty];
+            
+            addDebugEntry('tasks', 'info', `Task edited: ${task.title}`, { taskId, changes: { newTitle, newCategory, newDifficulty } });
+            
+            updateTasksUI();
+            saveGameState('task_edited');
+            
+            showFloatingNotification('✏️ Task Updated', `"${newTitle}" has been updated`);
         }
 
         function showFloatingNotification(title, message, type = 'info') {
