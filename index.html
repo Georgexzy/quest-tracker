@@ -877,6 +877,65 @@
                         </div>
                     </div>
                     
+                    <!-- USDA Nutrition API Configuration -->
+                    <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg">
+                        <h3 class="text-xl font-bold mb-4">🥗 USDA Nutrition API</h3>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium mb-2">🔑 USDA API Key</label>
+                                <div class="relative">
+                                    <input type="text" id="usdaApiKey" placeholder="Enter your USDA FoodData Central API key" 
+                                           class="w-full p-3 pr-12 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-base">
+                                    <div id="usdaApiKeyStatus" class="absolute right-3 top-1/2 transform -translate-y-1/2 hidden">
+                                        <div class="flex items-center space-x-1">
+                                            <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                                            <span class="text-xs text-green-600 dark:text-green-400 font-medium">Saved</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="text-xs text-gray-500 mt-1">
+                                    Get your free API key from <a href="https://fdc.nal.usda.gov/api-guide.html" target="_blank" class="text-blue-500 hover:underline">USDA FoodData Central</a>
+                                </div>
+                                <div id="usdaApiKeySaveStatus" class="hidden mt-2"></div>
+                            </div>
+                            
+                            <div class="p-3 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
+                                <div class="text-xs text-blue-600 dark:text-blue-400">
+                                    <strong>📊 Current Status:</strong><br>
+                                    • API Key: <span id="usdaApiKeyDisplayStatus" class="font-medium">Not configured</span><br>
+                                    • Daily Limit: <span id="usdaApiLimit">1,000 requests (Free tier)</span><br>
+                                    • Search Quality: <span id="usdaSearchQuality">Demo (limited results)</span>
+                                </div>
+                            </div>
+                            
+                            <button onclick="saveUSDAConfig()" class="w-full bg-green-500 text-white py-2 rounded-lg hover:bg-green-600 transition-all">
+                                💾 Save USDA Configuration
+                            </button>
+                            
+                            <div class="p-3 bg-gray-100 dark:bg-gray-700 rounded-lg">
+                                <div class="text-xs text-gray-600 dark:text-gray-400">
+                                    <strong>Setup Instructions:</strong><br>
+                                    1. Visit <a href="https://fdc.nal.usda.gov/api-guide.html" target="_blank" class="text-blue-500 hover:underline">USDA FoodData Central API</a><br>
+                                    2. Click "Get an API Key" and sign up<br>
+                                    3. Verify your email address<br>
+                                    4. Copy your API key here<br>
+                                    5. Save and enjoy enhanced nutrition search
+                                </div>
+                            </div>
+                            
+                            <div class="p-3 bg-green-50 dark:bg-green-900/30 rounded-lg">
+                                <div class="text-xs text-green-600 dark:text-green-400">
+                                    <strong>💡 Benefits of API Key:</strong><br>
+                                    • 1,000+ food items per search vs 5 with demo<br>
+                                    • Detailed nutrition data for 400,000+ foods<br>
+                                    • Brand-specific products and restaurant items<br>
+                                    • Real-time updates from USDA database<br>
+                                    • Faster search responses
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
                     <!-- Spotify Configuration -->
                     <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg">
                         <h3 class="text-xl font-bold mb-4">🎵 Spotify Configuration</h3>
@@ -2490,28 +2549,84 @@ Make tasks specific, achievable, and tailored to the user's context and interest
         }
 
         function generateFallbackTasks(context) {
-            const fallbackTasks = [
-                { title: `Complete a ${context.timeOfDay} workout session`, category: 'fitness', difficulty: 'medium', xpReward: 30 },
-                { title: 'Drink 2 glasses of water', category: 'nutrition', difficulty: 'easy', xpReward: 10 },
-                { title: 'Practice 10 minutes of mindfulness', category: 'wellness', difficulty: 'easy', xpReward: 15 },
-                { title: 'Read for 20 minutes', category: 'learning', difficulty: 'medium', xpReward: 25 },
-                { title: 'Organize your workspace', category: 'productivity', difficulty: 'medium', xpReward: 20 }
-            ];
+            const timeBasedTasks = {
+                morning: [
+                    { title: 'Complete morning stretching routine', category: 'fitness', difficulty: 'easy', xpReward: 15 },
+                    { title: 'Plan your daily priorities', category: 'productivity', difficulty: 'medium', xpReward: 20 },
+                    { title: 'Drink a glass of water upon waking', category: 'nutrition', difficulty: 'easy', xpReward: 5 },
+                    { title: 'Practice 5 minutes of meditation', category: 'wellness', difficulty: 'easy', xpReward: 10 }
+                ],
+                afternoon: [
+                    { title: 'Take a 15-minute walk outside', category: 'fitness', difficulty: 'easy', xpReward: 15 },
+                    { title: 'Complete one important work task', category: 'productivity', difficulty: 'medium', xpReward: 25 },
+                    { title: 'Have a healthy lunch with protein', category: 'nutrition', difficulty: 'medium', xpReward: 20 },
+                    { title: 'Read an article or book chapter', category: 'learning', difficulty: 'medium', xpReward: 20 }
+                ],
+                evening: [
+                    { title: 'Do 10 minutes of yoga or stretching', category: 'wellness', difficulty: 'easy', xpReward: 15 },
+                    { title: 'Prepare for tomorrow (clothes, meals)', category: 'productivity', difficulty: 'medium', xpReward: 20 },
+                    { title: 'Reflect on three positive moments today', category: 'personal', difficulty: 'easy', xpReward: 10 },
+                    { title: 'Limit screen time 1 hour before bed', category: 'wellness', difficulty: 'medium', xpReward: 25 }
+                ]
+            };
             
-            const relevantTasks = fallbackTasks.filter(task => 
-                context.interests.includes(task.category) || Math.random() > 0.5
-            ).slice(0, 3);
+            const interestBasedTasks = {
+                fitness: [
+                    { title: 'Complete 20 bodyweight squats', category: 'fitness', difficulty: 'easy', xpReward: 10 },
+                    { title: 'Do a 30-minute workout session', category: 'fitness', difficulty: 'medium', xpReward: 35 },
+                    { title: 'Try a new exercise or movement', category: 'fitness', difficulty: 'medium', xpReward: 25 }
+                ],
+                nutrition: [
+                    { title: 'Eat 2 servings of vegetables today', category: 'nutrition', difficulty: 'medium', xpReward: 20 },
+                    { title: 'Log all meals in nutrition tracker', category: 'nutrition', difficulty: 'easy', xpReward: 15 },
+                    { title: 'Prepare a healthy snack for later', category: 'nutrition', difficulty: 'easy', xpReward: 10 }
+                ],
+                productivity: [
+                    { title: 'Clear your email inbox to zero', category: 'productivity', difficulty: 'medium', xpReward: 25 },
+                    { title: 'Organize one area of your workspace', category: 'productivity', difficulty: 'easy', xpReward: 15 },
+                    { title: 'Complete your most important task first', category: 'productivity', difficulty: 'hard', xpReward: 40 }
+                ],
+                learning: [
+                    { title: 'Watch an educational video (10+ min)', category: 'learning', difficulty: 'easy', xpReward: 15 },
+                    { title: 'Practice a skill for 20 minutes', category: 'learning', difficulty: 'medium', xpReward: 25 },
+                    { title: 'Learn 5 new words in another language', category: 'learning', difficulty: 'medium', xpReward: 20 }
+                ]
+            };
             
-            relevantTasks.forEach(taskData => {
+            // Get time-based tasks first
+            const timeRelevantTasks = timeBasedTasks[context.timeOfDay] || timeBasedTasks.afternoon;
+            let selectedTasks = [...timeRelevantTasks];
+            
+            // Add interest-based tasks
+            context.interests.forEach(interest => {
+                if (interestBasedTasks[interest]) {
+                    selectedTasks.push(...interestBasedTasks[interest]);
+                }
+            });
+            
+            // Remove duplicates and shuffle
+            selectedTasks = selectedTasks.filter((task, index, self) => 
+                index === self.findIndex(t => t.title === task.title)
+            );
+            
+            // Shuffle and take 3-4 tasks
+            selectedTasks.sort(() => Math.random() - 0.5);
+            const finalTasks = selectedTasks.slice(0, Math.min(4, selectedTasks.length));
+            
+            finalTasks.forEach(taskData => {
                 createTask(taskData.title, taskData.category, taskData.xpReward, taskData.difficulty);
             });
             
-            addDebugEntry('ai', 'info', `Generated ${relevantTasks.length} fallback tasks`, { relevantTasks });
+            addDebugEntry('ai', 'info', `Generated ${finalTasks.length} intelligent fallback tasks`, { 
+                timeOfDay: context.timeOfDay,
+                interests: context.interests,
+                tasks: finalTasks.map(t => t.title)
+            });
             
             updateTasksUI();
-            saveGameState('fallback_tasks_generated');
+            saveGameState('intelligent_tasks_generated');
             
-            showFloatingNotification('🤖 Fallback Tasks Generated', `${relevantTasks.length} tasks added based on your interests`);
+            showFloatingNotification('🤖 Smart Tasks Generated', `${finalTasks.length} personalized tasks based on time and interests`);
         }
 
         function generateInitialTasks() {
@@ -3604,30 +3719,46 @@ Make tasks specific, achievable, and tailored to the user's context and interest
 
         async function exchangeCodeForToken(code) {
             const config = getSpotifyConfig();
+            const codeVerifier = localStorage.getItem('spotify_code_verifier');
             
-            const tokenData = {
-                grant_type: 'authorization_code',
-                code: code,
-                redirect_uri: config.redirectUri,
-                client_id: config.clientId
-            };
+            if (!codeVerifier) {
+                throw new Error('Code verifier not found. Please restart the authentication process.');
+            }
             
-            // Note: In a real app, you'd need a client secret and should do this on your backend
-            // For demo purposes, we'll simulate the token exchange
             showFloatingNotification('🔄 Processing...', 'Exchanging authorization code for access token');
             
             try {
-                // Simulate token exchange (in production, this would be a real API call)
-                await new Promise(resolve => setTimeout(resolve, 1000));
+                // Use PKCE flow - no client secret needed!
+                const tokenUrl = 'https://accounts.spotify.com/api/token';
                 
-                // Simulated token response
-                const tokenResponse = {
-                    access_token: `spotify_token_${Date.now()}_${Math.random().toString(36)}`,
-                    token_type: 'Bearer',
-                    expires_in: 3600,
-                    refresh_token: `refresh_${Date.now()}_${Math.random().toString(36)}`,
-                    scope: 'streaming user-read-email user-read-private user-read-playback-state user-modify-playback-state'
-                };
+                const body = new URLSearchParams({
+                    grant_type: 'authorization_code',
+                    code: code,
+                    redirect_uri: config.redirectUri,
+                    client_id: config.clientId,
+                    code_verifier: codeVerifier
+                });
+                
+                addDebugEntry('spotify', 'info', 'Starting PKCE token exchange', {
+                    codeLength: code.length,
+                    redirectUri: config.redirectUri,
+                    clientId: config.clientId.substring(0, 8) + '...'
+                });
+                
+                const response = await fetch(tokenUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: body.toString()
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(`Spotify API error: ${response.status} - ${errorData.error_description || errorData.error || 'Unknown error'}`);
+                }
+                
+                const tokenResponse = await response.json();
                 
                 // Store tokens
                 spotifyAccessToken = tokenResponse.access_token;
@@ -3636,29 +3767,55 @@ Make tasks specific, achievable, and tailored to the user's context and interest
                 
                 // Save to localStorage
                 localStorage.setItem('spotify_access_token', spotifyAccessToken);
-                localStorage.setItem('spotify_refresh_token', spotifyRefreshToken);
+                if (spotifyRefreshToken) {
+                    localStorage.setItem('spotify_refresh_token', spotifyRefreshToken);
+                }
                 localStorage.setItem('spotify_token_expiry', spotifyTokenExpiry.toString());
                 
-                addDebugEntry('spotify', 'success', 'Spotify tokens obtained and stored', {
+                // Clean up PKCE data
+                localStorage.removeItem('spotify_code_verifier');
+                localStorage.removeItem('spotify_code_challenge');
+                
+                addDebugEntry('spotify', 'success', 'PKCE token exchange successful', {
                     hasAccessToken: !!spotifyAccessToken,
                     hasRefreshToken: !!spotifyRefreshToken,
-                    expiresAt: new Date(spotifyTokenExpiry).toISOString()
+                    expiresAt: new Date(spotifyTokenExpiry).toISOString(),
+                    scope: tokenResponse.scope
                 });
                 
-                showFloatingNotification('✅ Spotify Connected!', 'Successfully authenticated with Spotify');
+                showFloatingNotification('✅ Spotify Connected!', 'Successfully connected to your Spotify account');
                 
-                // Update UI
+                // Update UI immediately
                 updateSpotifyConnectionStatus();
                 
-                // Initialize Spotify Web SDK if available
-                if (window.Spotify) {
-                    initializeSpotifyPlayer();
-                }
+                // Try to initialize Spotify Web SDK
+                setTimeout(() => {
+                    if (window.Spotify) {
+                        initializeSpotifyPlayer();
+                    } else {
+                        updateSpotifyDevices();
+                    }
+                }, 500);
                 
             } catch (error) {
-                addDebugEntry('spotify', 'error', 'Token exchange error', { error: error.message });
+                addDebugEntry('spotify', 'error', 'PKCE token exchange failed', { 
+                    error: error.message,
+                    code: code.substring(0, 10) + '...'
+                });
+                showFloatingNotification('❌ Connection Failed', `Spotify connection failed: ${error.message}`);
+                
+                // Clean up PKCE data on error
+                localStorage.removeItem('spotify_code_verifier');
+                localStorage.removeItem('spotify_code_challenge');
+                
                 throw error;
             }
+        }
+
+        function initializeDemoPlayer() {
+            // Note: This is removed as it provided fake functionality
+            // Real Spotify integration requires backend implementation
+            addDebugEntry('spotify', 'info', 'Demo player not initialized - requires real Spotify integration');
         }
 
         function restoreSpotifyTokens() {
@@ -3834,23 +3991,41 @@ Make tasks specific, achievable, and tailored to the user's context and interest
             if (!spotifyAccessToken) return;
             
             try {
-                // Simulated device list for demo
-                const devices = [
-                    { id: spotifyDeviceId, name: 'Life Quest RPG Player', type: 'Computer', is_active: true },
-                    { id: 'device_2', name: 'Phone Speaker', type: 'Smartphone', is_active: false },
-                    { id: 'device_3', name: 'Living Room', type: 'Speaker', is_active: false }
-                ];
+                // Real Spotify API call for devices
+                const response = await fetch('https://api.spotify.com/v1/me/player/devices', {
+                    headers: {
+                        'Authorization': `Bearer ${spotifyAccessToken}`
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`Spotify API error: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                const devices = data.devices || [];
                 
                 const deviceSelect = document.getElementById('deviceSelect');
                 if (deviceSelect) {
                     deviceSelect.innerHTML = '<option value="">Select Device</option>' +
                         devices.map(device => 
-                            `<option value="${device.id}" ${device.is_active ? 'selected' : ''}>${device.name}</option>`
+                            `<option value="${device.id}" ${device.is_active ? 'selected' : ''}>${device.name} (${device.type})</option>`
                         ).join('');
                 }
                 
+                addDebugEntry('spotify', 'success', `Updated ${devices.length} Spotify devices`);
+                
             } catch (error) {
-                addDebugEntry('spotify', 'error', 'Failed to update devices', { error: error.message });
+                addDebugEntry('spotify', 'error', 'Failed to fetch real Spotify devices', { error: error.message });
+                
+                // Fallback to basic device list if API fails
+                const deviceSelect = document.getElementById('deviceSelect');
+                if (deviceSelect) {
+                    deviceSelect.innerHTML = `
+                        <option value="">No devices available</option>
+                        <option value="web_player">Web Player (requires Premium)</option>
+                    `;
+                }
             }
         }
 
@@ -4397,6 +4572,23 @@ Make tasks specific, achievable, and tailored to the user's context and interest
         }
 
         // 🔧 SETTINGS AND CONFIGURATION
+        function saveUSDAConfig() {
+            const usdaApiKey = document.getElementById('usdaApiKey').value.trim();
+            
+            if (!usdaApiKey) {
+                showFloatingNotification('⚠️ Missing API Key', 'Please enter your USDA API key');
+                return;
+            }
+            
+            gameState.settings.usdaApiKey = usdaApiKey;
+            localStorage.setItem('usdaApiKey', usdaApiKey);
+            
+            updateUSDAApiKeyStatus();
+            saveGameState('usda_config_saved');
+            
+            showFloatingNotification('✅ USDA Configuration Saved', 'USDA API key has been saved successfully');
+        }
+
         function saveSpotifyConfig() {
             const clientId = document.getElementById('spotifyClientId').value.trim();
             const redirectUri = document.getElementById('spotifyRedirectUri').value.trim() || window.location.origin;
@@ -4416,6 +4608,44 @@ Make tasks specific, achievable, and tailored to the user's context and interest
             saveGameState('spotify_config_saved');
             
             showFloatingNotification('✅ Configuration Saved', 'Spotify settings have been saved successfully');
+        }
+
+        function updateUSDAApiKeyStatus() {
+            const apiKey = gameState.settings.usdaApiKey || localStorage.getItem('usdaApiKey') || '';
+            const statusElement = document.getElementById('usdaApiKeyStatus');
+            const displayStatusElement = document.getElementById('usdaApiKeyDisplayStatus');
+            const limitElement = document.getElementById('usdaApiLimit');
+            const qualityElement = document.getElementById('usdaSearchQuality');
+            
+            if (apiKey && apiKey !== 'DEMO_KEY') {
+                if (statusElement) {
+                    statusElement.classList.remove('hidden');
+                    setTimeout(() => statusElement.classList.add('hidden'), 3000);
+                }
+                if (displayStatusElement) {
+                    displayStatusElement.textContent = 'Configured (Personal Key)';
+                    displayStatusElement.className = 'font-medium text-green-600 dark:text-green-400';
+                }
+                if (limitElement) {
+                    limitElement.textContent = '1,000 requests/hour (Personal tier)';
+                }
+                if (qualityElement) {
+                    qualityElement.textContent = 'Full access (400,000+ foods)';
+                    qualityElement.className = 'font-medium text-green-600 dark:text-green-400';
+                }
+            } else {
+                if (displayStatusElement) {
+                    displayStatusElement.textContent = 'Demo Mode';
+                    displayStatusElement.className = 'font-medium text-orange-600 dark:text-orange-400';
+                }
+                if (limitElement) {
+                    limitElement.textContent = '25 requests/hour (Demo tier)';
+                }
+                if (qualityElement) {
+                    qualityElement.textContent = 'Limited (5 results max)';
+                    qualityElement.className = 'font-medium text-orange-600 dark:text-orange-400';
+                }
+            }
         }
 
         function updateSpotifyClientIdStatus() {
