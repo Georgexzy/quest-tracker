@@ -2549,84 +2549,481 @@ Make tasks specific, achievable, and tailored to the user's context and interest
         }
 
         function generateFallbackTasks(context) {
-            const timeBasedTasks = {
-                morning: [
-                    { title: 'Complete morning stretching routine', category: 'fitness', difficulty: 'easy', xpReward: 15 },
-                    { title: 'Plan your daily priorities', category: 'productivity', difficulty: 'medium', xpReward: 20 },
-                    { title: 'Drink a glass of water upon waking', category: 'nutrition', difficulty: 'easy', xpReward: 5 },
-                    { title: 'Practice 5 minutes of meditation', category: 'wellness', difficulty: 'easy', xpReward: 10 }
-                ],
-                afternoon: [
-                    { title: 'Take a 15-minute walk outside', category: 'fitness', difficulty: 'easy', xpReward: 15 },
-                    { title: 'Complete one important work task', category: 'productivity', difficulty: 'medium', xpReward: 25 },
-                    { title: 'Have a healthy lunch with protein', category: 'nutrition', difficulty: 'medium', xpReward: 20 },
-                    { title: 'Read an article or book chapter', category: 'learning', difficulty: 'medium', xpReward: 20 }
-                ],
-                evening: [
-                    { title: 'Do 10 minutes of yoga or stretching', category: 'wellness', difficulty: 'easy', xpReward: 15 },
-                    { title: 'Prepare for tomorrow (clothes, meals)', category: 'productivity', difficulty: 'medium', xpReward: 20 },
-                    { title: 'Reflect on three positive moments today', category: 'personal', difficulty: 'easy', xpReward: 10 },
-                    { title: 'Limit screen time 1 hour before bed', category: 'wellness', difficulty: 'medium', xpReward: 25 }
-                ]
-            };
+            // Analyze user's actual completion patterns
+            const completionAnalysis = analyzeTaskCompletionPatterns();
+            const energyLevel = calculateCurrentEnergyLevel();
+            const missedGoals = identifyMissedDailyGoals();
+            const progressGaps = identifyProgressGaps();
             
-            const interestBasedTasks = {
-                fitness: [
-                    { title: 'Complete 20 bodyweight squats', category: 'fitness', difficulty: 'easy', xpReward: 10 },
-                    { title: 'Do a 30-minute workout session', category: 'fitness', difficulty: 'medium', xpReward: 35 },
-                    { title: 'Try a new exercise or movement', category: 'fitness', difficulty: 'medium', xpReward: 25 }
-                ],
-                nutrition: [
-                    { title: 'Eat 2 servings of vegetables today', category: 'nutrition', difficulty: 'medium', xpReward: 20 },
-                    { title: 'Log all meals in nutrition tracker', category: 'nutrition', difficulty: 'easy', xpReward: 15 },
-                    { title: 'Prepare a healthy snack for later', category: 'nutrition', difficulty: 'easy', xpReward: 10 }
-                ],
-                productivity: [
-                    { title: 'Clear your email inbox to zero', category: 'productivity', difficulty: 'medium', xpReward: 25 },
-                    { title: 'Organize one area of your workspace', category: 'productivity', difficulty: 'easy', xpReward: 15 },
-                    { title: 'Complete your most important task first', category: 'productivity', difficulty: 'hard', xpReward: 40 }
-                ],
-                learning: [
-                    { title: 'Watch an educational video (10+ min)', category: 'learning', difficulty: 'easy', xpReward: 15 },
-                    { title: 'Practice a skill for 20 minutes', category: 'learning', difficulty: 'medium', xpReward: 25 },
-                    { title: 'Learn 5 new words in another language', category: 'learning', difficulty: 'medium', xpReward: 20 }
-                ]
-            };
+            const intelligentTasks = [];
             
-            // Get time-based tasks first
-            const timeRelevantTasks = timeBasedTasks[context.timeOfDay] || timeBasedTasks.afternoon;
-            let selectedTasks = [...timeRelevantTasks];
-            
-            // Add interest-based tasks
-            context.interests.forEach(interest => {
-                if (interestBasedTasks[interest]) {
-                    selectedTasks.push(...interestBasedTasks[interest]);
-                }
+            // 1. Address missed daily goals first (highest priority)
+            missedGoals.forEach(goal => {
+                intelligentTasks.push(generateGoalRecoveryTask(goal));
             });
             
-            // Remove duplicates and shuffle
-            selectedTasks = selectedTasks.filter((task, index, self) => 
-                index === self.findIndex(t => t.title === task.title)
-            );
+            // 2. Fill progress gaps based on user profile
+            progressGaps.forEach(gap => {
+                intelligentTasks.push(generateProgressTask(gap, energyLevel));
+            });
             
-            // Shuffle and take 3-4 tasks
-            selectedTasks.sort(() => Math.random() - 0.5);
-            const finalTasks = selectedTasks.slice(0, Math.min(4, selectedTasks.length));
+            // 3. Build on successful patterns
+            const successfulPatterns = completionAnalysis.successfulPatterns;
+            if (successfulPatterns.length > 0) {
+                intelligentTasks.push(generatePatternBasedTask(successfulPatterns, context));
+            }
+            
+            // 4. Add contextual tasks based on time, weather, and energy
+            intelligentTasks.push(...generateContextualTasks(context, energyLevel));
+            
+            // 5. Progressive difficulty based on recent performance
+            const adjustedTasks = adjustTaskDifficulty(intelligentTasks, completionAnalysis.recentSuccessRate);
+            
+            // Select best 3-4 tasks using smart ranking
+            const finalTasks = rankAndSelectTasks(adjustedTasks, context).slice(0, 4);
             
             finalTasks.forEach(taskData => {
                 createTask(taskData.title, taskData.category, taskData.xpReward, taskData.difficulty);
             });
             
-            addDebugEntry('ai', 'info', `Generated ${finalTasks.length} intelligent fallback tasks`, { 
-                timeOfDay: context.timeOfDay,
-                interests: context.interests,
-                tasks: finalTasks.map(t => t.title)
+            addDebugEntry('ai', 'success', `Generated ${finalTasks.length} AI-analyzed tasks`, { 
+                analysisUsed: {
+                    completionRate: completionAnalysis.recentSuccessRate,
+                    energyLevel,
+                    missedGoalsCount: missedGoals.length,
+                    progressGapsCount: progressGaps.length
+                },
+                tasks: finalTasks.map(t => ({ title: t.title, reasoning: t.reasoning }))
             });
             
             updateTasksUI();
-            saveGameState('intelligent_tasks_generated');
+            saveGameState('ai_analyzed_tasks_generated');
             
-            showFloatingNotification('🤖 Smart Tasks Generated', `${finalTasks.length} personalized tasks based on time and interests`);
+            showFloatingNotification('🧠 AI Analysis Complete', `${finalTasks.length} tasks optimized for your current patterns and goals`);
+        }
+
+        function analyzeTaskCompletionPatterns() {
+            const recentTasks = gameState.tasks.filter(t => 
+                t.createdAt > Date.now() - (7 * 24 * 60 * 60 * 1000) // Last 7 days
+            );
+            
+            const completed = recentTasks.filter(t => t.completed);
+            const recentSuccessRate = recentTasks.length > 0 ? completed.length / recentTasks.length : 0.5;
+            
+            // Analyze what types of tasks are completed most
+            const categorySuccess = {};
+            const difficultySuccess = {};
+            const timeSuccess = {};
+            
+            completed.forEach(task => {
+                // Category analysis
+                categorySuccess[task.category] = (categorySuccess[task.category] || 0) + 1;
+                
+                // Difficulty analysis
+                difficultySuccess[task.difficulty] = (difficultySuccess[task.difficulty] || 0) + 1;
+                
+                // Time analysis (when was task created vs completed)
+                if (task.completedAt && task.createdAt) {
+                    const hourCreated = new Date(task.createdAt).getHours();
+                    const timeSlot = hourCreated < 12 ? 'morning' : hourCreated < 17 ? 'afternoon' : 'evening';
+                    timeSuccess[timeSlot] = (timeSuccess[timeSlot] || 0) + 1;
+                }
+            });
+            
+            // Find most successful patterns
+            const successfulPatterns = [];
+            Object.entries(categorySuccess).forEach(([category, count]) => {
+                if (count >= 2) { // At least 2 completions
+                    successfulPatterns.push({ type: 'category', value: category, strength: count });
+                }
+            });
+            
+            return {
+                recentSuccessRate,
+                successfulPatterns,
+                bestCategories: Object.keys(categorySuccess).sort((a, b) => categorySuccess[b] - categorySuccess[a]),
+                bestDifficulties: Object.keys(difficultySuccess).sort((a, b) => difficultySuccess[b] - difficultySuccess[a]),
+                bestTimes: Object.keys(timeSuccess).sort((a, b) => timeSuccess[b] - timeSuccess[a])
+            };
+        }
+
+        function calculateCurrentEnergyLevel() {
+            const hour = new Date().getHours();
+            const stats = gameState.dailyStats;
+            
+            // Base energy by time of day
+            let baseEnergy = 0.5;
+            if (hour >= 6 && hour <= 10) baseEnergy = 0.8; // Morning peak
+            else if (hour >= 11 && hour <= 15) baseEnergy = 0.7; // Midday
+            else if (hour >= 16 && hour <= 19) baseEnergy = 0.6; // Afternoon
+            else if (hour >= 20 && hour <= 22) baseEnergy = 0.4; // Evening wind-down
+            else baseEnergy = 0.2; // Night/early morning
+            
+            // Adjust based on daily activities
+            const hydrationBonus = Math.min(0.2, (stats.waterGlasses || 0) / 8 * 0.2);
+            const exerciseBonus = (stats.workouts || 0) > 0 ? 0.1 : 0;
+            const nutritionBonus = (stats.calories || 0) > 300 ? 0.1 : 0;
+            const overworkPenalty = (stats.tasksCompleted || 0) > 8 ? -0.15 : 0;
+            
+            const energyLevel = Math.max(0.1, Math.min(1.0, 
+                baseEnergy + hydrationBonus + exerciseBonus + nutritionBonus + overworkPenalty
+            ));
+            
+            return energyLevel;
+        }
+
+        function identifyMissedDailyGoals() {
+            const missed = [];
+            const stats = gameState.dailyStats;
+            const metrics = gameState.healthMetrics;
+            
+            // Water goal
+            if ((stats.waterGlasses || 0) < 4) {
+                missed.push({
+                    type: 'hydration',
+                    current: stats.waterGlasses || 0,
+                    target: 8,
+                    urgency: 'high'
+                });
+            }
+            
+            // Exercise goal
+            if ((stats.workouts || 0) === 0 && new Date().getHours() > 14) {
+                missed.push({
+                    type: 'exercise',
+                    current: stats.workouts || 0,
+                    target: 1,
+                    urgency: 'medium'
+                });
+            }
+            
+            // Nutrition goal
+            if (metrics.dailyCalorieTarget && (stats.calories || 0) < metrics.dailyCalorieTarget * 0.5) {
+                missed.push({
+                    type: 'nutrition',
+                    current: stats.calories || 0,
+                    target: metrics.dailyCalorieTarget,
+                    urgency: 'medium'
+                });
+            }
+            
+            // Steps goal
+            if ((stats.steps || 0) < 3000 && new Date().getHours() > 15) {
+                missed.push({
+                    type: 'movement',
+                    current: stats.steps || 0,
+                    target: metrics.dailyStepsTarget || 8000,
+                    urgency: 'medium'
+                });
+            }
+            
+            return missed;
+        }
+
+        function identifyProgressGaps() {
+            const gaps = [];
+            const recentTasks = gameState.tasks.filter(t => 
+                t.createdAt > Date.now() - (3 * 24 * 60 * 60 * 1000) // Last 3 days
+            );
+            
+            // Analyze category distribution
+            const categoryCount = {};
+            recentTasks.forEach(task => {
+                categoryCount[task.category] = (categoryCount[task.category] || 0) + 1;
+            });
+            
+            // Identify underrepresented interests
+            gameState.interests.forEach(interest => {
+                const relatedCategory = interest === 'fitness' ? 'fitness' : 
+                                       interest === 'productivity' ? 'productivity' : 
+                                       interest === 'learning' ? 'learning' : 'personal';
+                
+                if ((categoryCount[relatedCategory] || 0) < 2) {
+                    gaps.push({
+                        type: 'interest_gap',
+                        category: relatedCategory,
+                        interest: interest,
+                        severity: 'medium'
+                    });
+                }
+            });
+            
+            // Check for skill development gaps
+            const profile = gameState.profile;
+            if (profile.fitnessGoal === 'build_muscle' && (categoryCount.fitness || 0) < 3) {
+                gaps.push({
+                    type: 'goal_alignment',
+                    category: 'fitness',
+                    goal: profile.fitnessGoal,
+                    severity: 'high'
+                });
+            }
+            
+            return gaps;
+        }
+
+        function generateGoalRecoveryTask(missedGoal) {
+            const recoveryTasks = {
+                hydration: {
+                    title: `Drink ${Math.max(1, 4 - (missedGoal.current || 0))} glasses of water now`,
+                    category: 'nutrition',
+                    difficulty: 'easy',
+                    xpReward: 15,
+                    reasoning: `You're ${Math.max(0, 4 - (missedGoal.current || 0))} glasses behind your hydration goal`
+                },
+                exercise: {
+                    title: 'Complete a 15-minute energy-boosting workout',
+                    category: 'fitness', 
+                    difficulty: 'medium',
+                    xpReward: 35,
+                    reasoning: 'You haven\'t exercised today - a short session will boost energy and mood'
+                },
+                nutrition: {
+                    title: 'Log a balanced meal with protein and vegetables',
+                    category: 'nutrition',
+                    difficulty: 'medium', 
+                    xpReward: 25,
+                    reasoning: `You're at ${Math.round((missedGoal.current / missedGoal.target) * 100)}% of your calorie goal`
+                },
+                movement: {
+                    title: 'Take a 10-minute walk and log 1500+ steps',
+                    category: 'fitness',
+                    difficulty: 'easy',
+                    xpReward: 20,
+                    reasoning: `You've only walked ${missedGoal.current || 0} steps today`
+                }
+            };
+            
+            return recoveryTasks[missedGoal.type] || recoveryTasks.hydration;
+        }
+
+        function generateProgressTask(gap, energyLevel) {
+            const difficultyMap = {
+                high: energyLevel > 0.7 ? 'medium' : 'easy',
+                medium: energyLevel > 0.6 ? 'medium' : 'easy',
+                low: 'easy'
+            };
+            
+            const progressTasks = {
+                interest_gap: {
+                    fitness: {
+                        title: 'Try a new bodyweight exercise for 10 minutes',
+                        category: 'fitness',
+                        reasoning: 'Expanding your fitness routine with variety'
+                    },
+                    productivity: {
+                        title: 'Organize one digital or physical space for 15 minutes',
+                        category: 'productivity', 
+                        reasoning: 'Building productive habits through organization'
+                    },
+                    learning: {
+                        title: 'Research and learn about a topic you\'re curious about',
+                        category: 'learning',
+                        reasoning: 'Feeding your intellectual curiosity'
+                    },
+                    personal: {
+                        title: 'Spend 10 minutes on self-reflection or journaling',
+                        category: 'personal',
+                        reasoning: 'Developing self-awareness and personal growth'
+                    }
+                },
+                goal_alignment: {
+                    build_muscle: {
+                        title: 'Complete a strength-focused bodyweight routine',
+                        category: 'fitness',
+                        reasoning: 'Aligned with your muscle-building goal'
+                    },
+                    lose_weight: {
+                        title: 'Do a 20-minute cardio session',
+                        category: 'fitness',
+                        reasoning: 'Supporting your weight loss goal'
+                    },
+                    improve_fitness: {
+                        title: 'Try a new type of physical activity',
+                        category: 'fitness',
+                        reasoning: 'Exploring different fitness modalities'
+                    }
+                }
+            };
+            
+            let task;
+            if (gap.type === 'interest_gap') {
+                task = progressTasks.interest_gap[gap.category];
+            } else if (gap.type === 'goal_alignment') {
+                task = progressTasks.goal_alignment[gap.goal] || progressTasks.goal_alignment.improve_fitness;
+            }
+            
+            if (task) {
+                const difficulty = difficultyMap[gap.severity];
+                const xpMap = { easy: 15, medium: 30, hard: 50 };
+                
+                return {
+                    ...task,
+                    difficulty,
+                    xpReward: xpMap[difficulty]
+                };
+            }
+            
+            return null;
+        }
+
+        function generatePatternBasedTask(patterns, context) {
+            const successfulCategory = patterns.find(p => p.type === 'category')?.value || 'productivity';
+            
+            const patternTasks = {
+                fitness: [
+                    'Build on your fitness momentum with a progressive workout',
+                    'Try a variation of your successful exercise routine',
+                    'Challenge yourself with an advanced version of your go-to exercise'
+                ],
+                productivity: [
+                    'Tackle your most important task using your proven focus method',
+                    'Apply your successful productivity strategy to a new challenge',
+                    'Expand your organizational system to a new area'
+                ],
+                learning: [
+                    'Deep dive into a topic related to your recent learning success',
+                    'Practice and reinforce the skill you\'ve been developing',
+                    'Teach or share knowledge from your recent learning achievements'
+                ],
+                nutrition: [
+                    'Plan and prep your next healthy meal using proven strategies',
+                    'Research and try a new healthy recipe similar to recent successes',
+                    'Track and optimize your nutrition based on what\'s been working'
+                ]
+            };
+            
+            const options = patternTasks[successfulCategory] || patternTasks.productivity;
+            const title = options[Math.floor(Math.random() * options.length)];
+            
+            return {
+                title,
+                category: successfulCategory,
+                difficulty: 'medium',
+                xpReward: 30,
+                reasoning: `Building on your 80%+ success rate in ${successfulCategory} tasks`
+            };
+        }
+
+        function generateContextualTasks(context, energyLevel) {
+            const hour = new Date().getHours();
+            const isWeekend = [0, 6].includes(new Date().getDay());
+            const tasks = [];
+            
+            // Energy-appropriate tasks
+            if (energyLevel > 0.7) {
+                tasks.push({
+                    title: 'Tackle a challenging task while your energy is high',
+                    category: 'productivity',
+                    difficulty: 'hard',
+                    xpReward: 50,
+                    reasoning: `Your energy level is ${Math.round(energyLevel * 100)}% - perfect for demanding tasks`
+                });
+            } else if (energyLevel < 0.4) {
+                tasks.push({
+                    title: 'Do gentle movement or breathing exercises to restore energy',
+                    category: 'wellness',
+                    difficulty: 'easy', 
+                    xpReward: 15,
+                    reasoning: `Your energy is low (${Math.round(energyLevel * 100)}%) - focus on restoration`
+                });
+            }
+            
+            // Time-specific tasks
+            if (hour >= 6 && hour <= 9) {
+                tasks.push({
+                    title: 'Set 3 clear intentions for today',
+                    category: 'personal',
+                    difficulty: 'easy',
+                    xpReward: 20,
+                    reasoning: 'Morning is ideal for intention-setting and daily planning'
+                });
+            } else if (hour >= 14 && hour <= 16) {
+                tasks.push({
+                    title: 'Use the afternoon energy window for learning or skill practice',
+                    category: 'learning',
+                    difficulty: 'medium',
+                    xpReward: 25,
+                    reasoning: 'Afternoon is a natural learning peak time'
+                });
+            }
+            
+            // Weekend-specific tasks
+            if (isWeekend) {
+                tasks.push({
+                    title: 'Do a longer self-care or personal development activity',
+                    category: 'personal',
+                    difficulty: 'medium',
+                    xpReward: 30,
+                    reasoning: 'Weekend provides time for deeper personal development'
+                });
+            }
+            
+            return tasks.filter(Boolean);
+        }
+
+        function adjustTaskDifficulty(tasks, successRate) {
+            return tasks.map(task => {
+                if (!task) return null;
+                
+                let adjustedDifficulty = task.difficulty;
+                
+                // Increase difficulty if user is very successful
+                if (successRate > 0.8 && task.difficulty === 'easy') {
+                    adjustedDifficulty = 'medium';
+                } else if (successRate > 0.9 && task.difficulty === 'medium') {
+                    adjustedDifficulty = 'hard';
+                }
+                
+                // Decrease difficulty if user is struggling
+                if (successRate < 0.4 && task.difficulty === 'hard') {
+                    adjustedDifficulty = 'medium';
+                } else if (successRate < 0.3 && task.difficulty === 'medium') {
+                    adjustedDifficulty = 'easy';
+                }
+                
+                const xpMap = { easy: 15, medium: 30, hard: 50, extreme: 100 };
+                
+                return {
+                    ...task,
+                    difficulty: adjustedDifficulty,
+                    xpReward: xpMap[adjustedDifficulty]
+                };
+            }).filter(Boolean);
+        }
+
+        function rankAndSelectTasks(tasks, context) {
+            return tasks.map(task => {
+                let score = 0;
+                
+                // Urgency scoring
+                if (task.reasoning?.includes('behind') || task.reasoning?.includes('missed')) {
+                    score += 30;
+                }
+                
+                // Energy alignment scoring
+                const energyLevel = calculateCurrentEnergyLevel();
+                if ((energyLevel > 0.7 && task.difficulty === 'hard') ||
+                    (energyLevel < 0.4 && task.difficulty === 'easy') ||
+                    (energyLevel >= 0.4 && energyLevel <= 0.7 && task.difficulty === 'medium')) {
+                    score += 20;
+                }
+                
+                // Interest alignment scoring
+                if (context.interests.includes(task.category)) {
+                    score += 15;
+                }
+                
+                // Time relevance scoring
+                const hour = new Date().getHours();
+                if ((hour < 12 && task.category === 'productivity') ||
+                    (hour >= 12 && hour < 17 && task.category === 'learning') ||
+                    (hour >= 17 && (task.category === 'wellness' || task.category === 'personal'))) {
+                    score += 10;
+                }
+                
+                return { ...task, score };
+            }).sort((a, b) => b.score - a.score);
         }
 
         function generateInitialTasks() {
@@ -3946,64 +4343,110 @@ Make tasks specific, achievable, and tailored to the user's context and interest
             }
             
             try {
-                // Initialize Spotify Web Playback SDK
-                const player = new Spotify.Player({
-                    name: 'Life Quest RPG Player',
-                    getOAuthToken: cb => { cb(spotifyAccessToken); },
-                    volume: 0.5
-                });
+                // First, get current playback state from API
+                await getCurrentPlaybackState();
                 
-                // Error handling
-                player.addListener('initialization_error', ({ message }) => {
-                    addDebugEntry('spotify', 'error', 'Player initialization error', { message });
-                });
-                
-                player.addListener('authentication_error', ({ message }) => {
-                    addDebugEntry('spotify', 'error', 'Player authentication error', { message });
-                    clearSpotifyTokens();
-                });
-                
-                player.addListener('account_error', ({ message }) => {
-                    addDebugEntry('spotify', 'error', 'Player account error', { message });
-                });
-                
-                // Playback status updates
-                player.addListener('player_state_changed', (state) => {
-                    if (state) {
-                        currentPlaybackState = state;
-                        updateCurrentTrack(state);
+                // Check if Spotify Web Playback SDK is available
+                if (window.Spotify && window.Spotify.Player) {
+                    // Initialize Spotify Web Playback SDK
+                    const player = new Spotify.Player({
+                        name: 'Life Quest RPG Player',
+                        getOAuthToken: cb => { cb(spotifyAccessToken); },
+                        volume: 0.5
+                    });
+                    
+                    // Error handling
+                    player.addListener('initialization_error', ({ message }) => {
+                        addDebugEntry('spotify', 'error', 'Player initialization error', { message });
+                    });
+                    
+                    player.addListener('authentication_error', ({ message }) => {
+                        addDebugEntry('spotify', 'error', 'Player authentication error', { message });
+                        clearSpotifyTokens();
+                    });
+                    
+                    player.addListener('account_error', ({ message }) => {
+                        addDebugEntry('spotify', 'error', 'Player account error', { message });
+                    });
+                    
+                    // Playback status updates
+                    player.addListener('player_state_changed', (state) => {
+                        if (state) {
+                            currentPlaybackState = state;
+                            updateCurrentTrackFromState(state);
+                        }
+                    });
+                    
+                    // Ready
+                    player.addListener('ready', ({ device_id }) => {
+                        spotifyDeviceId = device_id;
+                        addDebugEntry('spotify', 'success', 'Spotify Web Player ready', { device_id });
+                        updateSpotifyDevices();
+                    });
+                    
+                    // Connect to the player
+                    const success = await player.connect();
+                    if (success) {
+                        spotifyPlayer = player;
+                        addDebugEntry('spotify', 'success', 'Spotify Web Player connected successfully');
                     }
-                });
-                
-                // Ready
-                player.addListener('ready', ({ device_id }) => {
-                    spotifyDeviceId = device_id;
-                    addDebugEntry('spotify', 'success', 'Spotify player ready', { device_id });
-                    updateSpotifyDevices();
-                });
-                
-                // Connect to the player
-                const success = await player.connect();
-                if (success) {
-                    spotifyPlayer = player;
-                    addDebugEntry('spotify', 'success', 'Spotify player connected successfully');
+                } else {
+                    addDebugEntry('spotify', 'warn', 'Spotify Web Playback SDK not available, using API only');
                 }
+                
+                // Set up polling for playback state updates
+                startPlaybackStatePolling();
                 
             } catch (error) {
                 addDebugEntry('spotify', 'error', 'Failed to initialize Spotify player', { error: error.message });
             }
         }
 
-        function updateCurrentTrack(state = currentPlaybackState) {
-            if (!state || !state.track_window.current_track) {
-                return;
+        async function getCurrentPlaybackState() {
+            if (!spotifyAccessToken) return;
+            
+            try {
+                addDebugEntry('spotify', 'info', 'Fetching current playback state from Spotify API');
+                
+                const response = await fetch('https://api.spotify.com/v1/me/player', {
+                    headers: {
+                        'Authorization': `Bearer ${spotifyAccessToken}`
+                    }
+                });
+                
+                if (response.status === 204) {
+                    // No active playback
+                    updateCurrentTrackDisplay(null);
+                    return;
+                }
+                
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        addDebugEntry('spotify', 'warn', 'Spotify token expired, clearing tokens');
+                        clearSpotifyTokens();
+                        return;
+                    }
+                    throw new Error(`Spotify API error: ${response.status}`);
+                }
+                
+                const playbackState = await response.json();
+                addDebugEntry('spotify', 'success', 'Playback state fetched successfully', {
+                    isPlaying: playbackState.is_playing,
+                    hasTrack: !!playbackState.item,
+                    device: playbackState.device?.name
+                });
+                
+                updateCurrentTrackDisplay(playbackState);
+                
+            } catch (error) {
+                addDebugEntry('spotify', 'error', 'Failed to fetch playback state', { error: error.message });
+                
+                // Show placeholder state
+                updateCurrentTrackDisplay(null);
             }
-            
-            const track = state.track_window.current_track;
-            const progress = state.position;
-            const duration = track.duration_ms;
-            
-            // Update track info
+        }
+
+        function updateCurrentTrackDisplay(playbackState) {
             const trackImage = document.getElementById('trackImage');
             const trackName = document.getElementById('trackName');
             const trackArtist = document.getElementById('trackArtist');
@@ -4012,11 +4455,36 @@ Make tasks specific, achievable, and tailored to the user's context and interest
             const progressBar = document.getElementById('progressBar');
             const playPauseBtn = document.getElementById('playPauseBtn');
             
-            if (trackImage) trackImage.src = track.album.images[0]?.url || '';
-            if (trackName) trackName.textContent = track.name;
-            if (trackArtist) trackArtist.textContent = track.artists.map(a => a.name).join(', ');
-            if (trackAlbum) trackAlbum.textContent = track.album.name;
+            if (!playbackState || !playbackState.item) {
+                // No active playback - show default state
+                if (trackImage) trackImage.src = '';
+                if (trackName) trackName.textContent = 'No track playing';
+                if (trackArtist) trackArtist.textContent = 'Connect your Spotify account and start playing music';
+                if (trackAlbum) trackAlbum.textContent = '';
+                if (trackProgress) trackProgress.textContent = '0:00 / 0:00';
+                if (progressBar) progressBar.style.width = '0%';
+                if (playPauseBtn) playPauseBtn.textContent = '▶️';
+                return;
+            }
             
+            const track = playbackState.item;
+            const progress = playbackState.progress_ms || 0;
+            const duration = track.duration_ms;
+            const isPlaying = playbackState.is_playing;
+            
+            // Update track info with real data
+            if (trackImage && track.album?.images?.[0]?.url) {
+                trackImage.src = track.album.images[0].url;
+                trackImage.alt = `${track.album.name} - Album Art`;
+            } else if (trackImage) {
+                trackImage.src = '';
+            }
+            
+            if (trackName) trackName.textContent = track.name || 'Unknown Track';
+            if (trackArtist) trackArtist.textContent = track.artists?.map(a => a.name).join(', ') || 'Unknown Artist';
+            if (trackAlbum) trackAlbum.textContent = track.album?.name || 'Unknown Album';
+            
+            // Update progress
             if (trackProgress) {
                 const progressMinutes = Math.floor(progress / 60000);
                 const progressSeconds = Math.floor((progress % 60000) / 1000);
@@ -4027,13 +4495,54 @@ Make tasks specific, achievable, and tailored to the user's context and interest
             }
             
             if (progressBar) {
-                const progressPercent = (progress / duration) * 100;
+                const progressPercent = duration > 0 ? (progress / duration) * 100 : 0;
                 progressBar.style.width = `${progressPercent}%`;
             }
             
             if (playPauseBtn) {
-                playPauseBtn.textContent = state.paused ? '▶️' : '⏸️';
+                playPauseBtn.textContent = isPlaying ? '⏸️' : '▶️';
             }
+            
+            addDebugEntry('spotify', 'info', 'Track display updated', {
+                trackName: track.name,
+                artist: track.artists?.[0]?.name,
+                isPlaying,
+                progress: `${Math.floor(progress/1000)}s / ${Math.floor(duration/1000)}s`
+            });
+        }
+
+        function updateCurrentTrack(state = currentPlaybackState) {
+            // Convert Web Playback SDK state to API format for consistency
+            if (!state || !state.track_window?.current_track) {
+                updateCurrentTrackDisplay(null);
+                return;
+            }
+            
+            const track = state.track_window.current_track;
+            const apiFormat = {
+                item: {
+                    name: track.name,
+                    artists: track.artists,
+                    album: track.album,
+                    duration_ms: track.duration_ms
+                },
+                progress_ms: state.position,
+                is_playing: !state.paused
+            };
+            
+            updateCurrentTrackDisplay(apiFormat);
+        }
+
+        function startPlaybackStatePolling() {
+            // Poll for playback state every 5 seconds
+            setInterval(async () => {
+                if (spotifyAccessToken && !spotifyPlayer) {
+                    // Only poll if we don't have Web Playback SDK active
+                    await getCurrentPlaybackState();
+                }
+            }, 5000);
+            
+            addDebugEntry('spotify', 'info', 'Started playback state polling every 5 seconds');
         }
 
         async function updateSpotifyDevices() {
