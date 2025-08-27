@@ -3759,24 +3759,32 @@ Make tasks specific, achievable, and tailored to the user's context and interest
 
         async function exchangeCodeForToken(code) {
             const config = getSpotifyConfig();
+            const codeVerifier = localStorage.getItem('spotify_code_verifier');
+            
+            if (!codeVerifier) {
+                throw new Error('Code verifier not found. Please try connecting again.');
+            }
             
             showFloatingNotification('🔄 Processing...', 'Exchanging authorization code for access token');
             
             try {
-                // Use Authorization Code flow without PKCE for simpler implementation
+                // Use PKCE Authorization Code flow
                 const tokenUrl = 'https://accounts.spotify.com/api/token';
                 
                 const body = new URLSearchParams({
                     grant_type: 'authorization_code',
                     code: code,
                     redirect_uri: config.redirectUri,
-                    client_id: config.clientId
+                    client_id: config.clientId,
+                    code_verifier: codeVerifier
                 });
                 
-                addDebugEntry('spotify', 'info', 'Starting token exchange', {
+                addDebugEntry('spotify', 'info', 'Starting PKCE token exchange', {
                     codeLength: code.length,
                     redirectUri: config.redirectUri,
-                    clientId: config.clientId.substring(0, 8) + '...'
+                    clientId: config.clientId.substring(0, 8) + '...',
+                    hasCodeVerifier: !!codeVerifier,
+                    codeVerifierLength: codeVerifier.length
                 });
                 
                 const response = await fetch(tokenUrl, {
@@ -3789,10 +3797,19 @@ Make tasks specific, achievable, and tailored to the user's context and interest
                 
                 if (!response.ok) {
                     const errorData = await response.json().catch(() => ({}));
+                    addDebugEntry('spotify', 'error', 'Token exchange failed with response', {
+                        status: response.status,
+                        error: errorData.error,
+                        errorDescription: errorData.error_description,
+                        fullResponse: errorData
+                    });
                     throw new Error(`Spotify API error: ${response.status} - ${errorData.error_description || errorData.error || 'Unknown error'}`);
                 }
                 
                 const tokenResponse = await response.json();
+                
+                // Clean up the code verifier
+                localStorage.removeItem('spotify_code_verifier');
                 
                 // Store tokens
                 spotifyAccessToken = tokenResponse.access_token;
@@ -3806,11 +3823,12 @@ Make tasks specific, achievable, and tailored to the user's context and interest
                 }
                 localStorage.setItem('spotify_token_expiry', spotifyTokenExpiry.toString());
                 
-                addDebugEntry('spotify', 'success', 'Token exchange successful', {
+                addDebugEntry('spotify', 'success', 'PKCE token exchange successful', {
                     hasAccessToken: !!spotifyAccessToken,
                     hasRefreshToken: !!spotifyRefreshToken,
                     expiresAt: new Date(spotifyTokenExpiry).toISOString(),
-                    scope: tokenResponse.scope
+                    scope: tokenResponse.scope,
+                    tokenType: tokenResponse.token_type
                 });
                 
                 showFloatingNotification('✅ Spotify Connected!', 'Successfully connected to your Spotify account');
@@ -3828,11 +3846,16 @@ Make tasks specific, achievable, and tailored to the user's context and interest
                 }, 500);
                 
             } catch (error) {
-                addDebugEntry('spotify', 'error', 'Token exchange failed', { 
+                addDebugEntry('spotify', 'error', 'PKCE token exchange failed', { 
                     error: error.message,
-                    code: code.substring(0, 10) + '...'
+                    code: code.substring(0, 10) + '...',
+                    hasCodeVerifier: !!codeVerifier
                 });
                 showFloatingNotification('❌ Connection Failed', `Spotify connection failed: ${error.message}`);
+                
+                // Clean up failed state
+                localStorage.removeItem('spotify_code_verifier');
+                localStorage.removeItem('spotify_state');
                 
                 throw error;
             }
