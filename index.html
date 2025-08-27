@@ -2114,14 +2114,59 @@
                 // Ensure all required properties exist
                 ensureGameStateIntegrity();
                 
+                // Load from localStorage backups if main save is missing critical data
+                loadFromBackupSources();
+                
                 return true;
             } else {
-                addDebugEntry('storage', 'warn', 'Failed to load game state, using defaults', {
+                addDebugEntry('storage', 'warn', 'Failed to load game state, trying backups', {
                     error: loadResult.error
                 });
                 
-                // Initialize with default state
-                initializeDefaultGameState();
+                // Try to load from localStorage backups
+                if (loadFromBackupSources()) {
+                    addDebugEntry('storage', 'success', 'Loaded from backup sources');
+                    ensureGameStateIntegrity();
+                    return true;
+                } else {
+                    // Initialize with default state
+                    initializeDefaultGameState();
+                    return false;
+                }
+            }
+        }
+
+        function loadFromBackupSources() {
+            try {
+                // Load critical settings from direct localStorage backup
+                const usdaKey = localStorage.getItem('quest_tracker_usda_api_key');
+                const spotifyClientId = localStorage.getItem('quest_tracker_spotify_client_id');
+                const spotifyRedirectUri = localStorage.getItem('quest_tracker_spotify_redirect_uri');
+                
+                let loaded = false;
+                
+                if (usdaKey && !gameState.settings.usdaApiKey) {
+                    gameState.settings.usdaApiKey = usdaKey;
+                    addDebugEntry('storage', 'success', 'USDA key restored from backup');
+                    loaded = true;
+                }
+                
+                if (spotifyClientId && !gameState.settings.spotifyClientId) {
+                    gameState.settings.spotifyClientId = spotifyClientId;
+                    addDebugEntry('storage', 'success', 'Spotify client ID restored from backup');
+                    loaded = true;
+                }
+                
+                if (spotifyRedirectUri && !gameState.settings.spotifyRedirectUri) {
+                    gameState.settings.spotifyRedirectUri = spotifyRedirectUri;
+                    addDebugEntry('storage', 'success', 'Spotify redirect URI restored from backup');
+                    loaded = true;
+                }
+                
+                return loaded;
+                
+            } catch (error) {
+                addDebugEntry('storage', 'error', 'Backup loading failed', { error: error.message });
                 return false;
             }
         }
@@ -4635,7 +4680,7 @@
         }
         
         // 🎵 COMPLETE SPOTIFY INTEGRATION FUNCTIONS
-        function connectSpotify() {
+        async function connectSpotify() {
             const clientId = gameState.settings.spotifyClientId;
             
             if (!clientId) {
@@ -4644,54 +4689,77 @@
                 return;
             }
             
-            const scopes = [
-                'user-read-playback-state',
-                'user-modify-playback-state',
-                'user-read-currently-playing',
-                'streaming',
-                'user-library-read',
-                'user-library-modify',
-                'playlist-read-private',
-                'playlist-modify-public',
-                'playlist-modify-private'
-            ].join(' ');
-            
-            const redirectUri = gameState.settings.spotifyRedirectUri || window.location.origin + window.location.pathname;
-            const state = Math.random().toString(36).substring(2, 15);
-            
-            // Generate PKCE challenge
-            const codeVerifier = generateRandomString(128);
-            const codeChallenge = btoa(String.fromCharCode(...new Uint8Array(crypto.subtle.digestSync('SHA-256', new TextEncoder().encode(codeVerifier)))))
-                .replace(/\+/g, '-')
-                .replace(/\//g, '_')
-                .replace(/=/g, '');
-            
-            localStorage.setItem('spotify_auth_state', state);
-            localStorage.setItem('spotify_code_verifier', codeVerifier);
-            
-            const authUrl = `https://accounts.spotify.com/authorize?` +
-                `response_type=code&` +
-                `client_id=${encodeURIComponent(clientId)}&` +
-                `scope=${encodeURIComponent(scopes)}&` +
-                `redirect_uri=${encodeURIComponent(redirectUri)}&` +
-                `state=${encodeURIComponent(state)}&` +
-                `code_challenge_method=S256&` +
-                `code_challenge=${encodeURIComponent(codeChallenge)}`;
-            
-            addDebugEntry('spotify', 'info', 'Initiating Spotify PKCE OAuth flow', {
-                clientId: clientId.substring(0, 8) + '...',
-                redirectUri,
-                scopes,
-                pkce: true
-            });
-            
-            window.location.href = authUrl;
+            try {
+                const scopes = [
+                    'user-read-playback-state',
+                    'user-modify-playback-state',
+                    'user-read-currently-playing',
+                    'streaming',
+                    'user-library-read',
+                    'user-library-modify',
+                    'playlist-read-private',
+                    'playlist-modify-public',
+                    'playlist-modify-private'
+                ].join(' ');
+                
+                const redirectUri = gameState.settings.spotifyRedirectUri || getCurrentRedirectUri();
+                const state = generateRandomString(32);
+                
+                // Generate PKCE challenge properly
+                const codeVerifier = generateRandomString(128);
+                const codeChallenge = await generateCodeChallenge(codeVerifier);
+                
+                localStorage.setItem('spotify_auth_state', state);
+                localStorage.setItem('spotify_code_verifier', codeVerifier);
+                
+                const authUrl = `https://accounts.spotify.com/authorize?` +
+                    `response_type=code&` +
+                    `client_id=${encodeURIComponent(clientId)}&` +
+                    `scope=${encodeURIComponent(scopes)}&` +
+                    `redirect_uri=${encodeURIComponent(redirectUri)}&` +
+                    `state=${encodeURIComponent(state)}&` +
+                    `code_challenge_method=S256&` +
+                    `code_challenge=${encodeURIComponent(codeChallenge)}`;
+                
+                addDebugEntry('spotify', 'info', 'Initiating Spotify PKCE OAuth flow', {
+                    clientId: clientId.substring(0, 8) + '...',
+                    redirectUri,
+                    scopes,
+                    pkce: true
+                });
+                
+                showFloatingNotification('🎵 Redirecting to Spotify...', 'Opening Spotify authorization page');
+                window.location.href = authUrl;
+                
+            } catch (error) {
+                addDebugEntry('spotify', 'error', 'Failed to initiate Spotify connection', { error: error.message });
+                showFloatingNotification('❌ Connection Failed', 'Unable to connect to Spotify. Please try again.', 'error');
+            }
         }
 
         function generateRandomString(length) {
-            const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+            const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~';
             const values = crypto.getRandomValues(new Uint8Array(length));
             return values.reduce((acc, x) => acc + possible[x % possible.length], "");
+        }
+
+        async function generateCodeChallenge(codeVerifier) {
+            try {
+                const encoder = new TextEncoder();
+                const data = encoder.encode(codeVerifier);
+                const digest = await crypto.subtle.digest('SHA-256', data);
+                return btoa(String.fromCharCode(...new Uint8Array(digest)))
+                    .replace(/\+/g, '-')
+                    .replace(/\//g, '_')
+                    .replace(/=/g, '');
+            } catch (error) {
+                addDebugEntry('spotify', 'error', 'PKCE challenge generation failed', { error: error.message });
+                // Fallback to simple base64 encoding if crypto.subtle fails
+                return btoa(codeVerifier)
+                    .replace(/\+/g, '-')
+                    .replace(/\//g, '_')
+                    .replace(/=/g, '');
+            }
         }
 
         function handleSpotifyCallback() {
