@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🧠 Life Quest RPG - Ultimate AI Edition</title>
+    <title>📋 Quest Tracker - AI-Powered Task Management</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/4.3.0/marked.min.js"></script>
     <script src="https://sdk.scdn.co/spotify-player.js"></script>
@@ -158,9 +158,9 @@
     <!-- Loading Screen -->
     <div id="loadingScreen" class="fixed inset-0 bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center z-50">
         <div class="text-center">
-            <div class="text-6xl mb-4">🧠</div>
-            <div class="text-2xl font-bold text-white mb-2">Life Quest RPG</div>
-            <div class="text-lg text-purple-200 mb-8">Ultimate AI Edition</div>
+            <div class="text-6xl mb-4">📋</div>
+            <div class="text-2xl font-bold text-white mb-2">Quest Tracker</div>
+            <div class="text-lg text-purple-200 mb-8">AI-Powered Task Management</div>
             <div class="flex space-x-1 justify-center">
                 <div class="w-3 h-3 bg-white rounded-full animate-bounce"></div>
                 <div class="w-3 h-3 bg-white rounded-full animate-bounce" style="animation-delay: 0.1s"></div>
@@ -176,11 +176,11 @@
                 <div class="flex items-center justify-between">
                     <div class="flex items-center space-x-4">
                         <div class="flex items-center space-x-2">
-                            <div class="text-3xl">🧠</div>
+                            <div class="text-3xl">📋</div>
                             <div>
-                                <h1 class="text-2xl font-bold">Life Quest RPG</h1>
+                                <h1 class="text-2xl font-bold">Quest Tracker</h1>
                                 <div class="flex items-center space-x-2 text-sm opacity-90">
-                                    <span>Ultimate AI Edition</span>
+                                    <span>AI-Powered Task Management</span>
                                     <div class="bg-gradient-to-r from-green-400 to-blue-500 px-2 py-1 rounded-full text-xs">
                                         AI Active
                                     </div>
@@ -5631,13 +5631,7 @@
                 return;
             }
             
-            // Validate API key format (should be a UUID-like string)
-            const apiKeyPattern = /^[a-zA-Z0-9]{32,}$/;
-            if (!apiKeyPattern.test(apiKey)) {
-                showFloatingNotification('⚠️ Invalid API Key', 'Please check your API key format', 'warning');
-                return;
-            }
-            
+            // Store the API key in gameState
             gameState.settings.usdaApiKey = apiKey;
             
             // Update status displays
@@ -5664,6 +5658,7 @@
                 masked: apiKey.substring(0, 8) + '...'
             });
             
+            // Save to storage immediately
             saveGameState('usda_config_saved');
             showFloatingNotification('✅ USDA API Saved', 'Configuration saved successfully!');
         }
@@ -5677,13 +5672,7 @@
                 return;
             }
             
-            // Validate client ID format
-            const clientIdPattern = /^[a-zA-Z0-9]{32}$/;
-            if (!clientIdPattern.test(clientId)) {
-                showFloatingNotification('⚠️ Invalid Client ID', 'Spotify Client ID should be 32 characters', 'warning');
-                return;
-            }
-            
+            // Store the configuration in gameState
             gameState.settings.spotifyClientId = clientId;
             gameState.settings.spotifyRedirectUri = redirectUri || getCurrentRedirectUri();
             
@@ -5699,6 +5688,7 @@
                 redirectUri: gameState.settings.spotifyRedirectUri
             });
             
+            // Save to storage immediately
             saveGameState('spotify_config_saved');
             showFloatingNotification('✅ Spotify Config Saved', 'You can now connect to Spotify!');
         }
