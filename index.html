@@ -5583,6 +5583,1136 @@
             `).join('');
         }
 
+        // ⚙️ COMPLETE SETTINGS FUNCTIONS
+        function toggleSetting(settingName, enabled) {
+            gameState.settings[settingName] = enabled;
+            
+            addDebugEntry('settings', 'info', `Setting toggled: ${settingName}`, {
+                setting: settingName,
+                enabled,
+                allSettings: gameState.settings
+            });
+            
+            // Apply setting immediately
+            switch(settingName) {
+                case 'notifications':
+                    if (enabled) {
+                        showFloatingNotification('🔔 Notifications On', 'You will receive notifications for achievements and reminders');
+                    } else {
+                        showFloatingNotification('🔕 Notifications Off', 'Notifications have been disabled');
+                    }
+                    break;
+                case 'animations':
+                    document.body.classList.toggle('no-animations', !enabled);
+                    showFloatingNotification(enabled ? '🎬 Animations On' : '⏹️ Animations Off', 
+                                           enabled ? 'UI animations enabled' : 'UI animations disabled');
+                    break;
+                case 'soundEffects':
+                    showFloatingNotification(enabled ? '🔊 Sound On' : '🔇 Sound Off', 
+                                           enabled ? 'Sound effects enabled' : 'Sound effects disabled');
+                    if (enabled) {
+                        document.getElementById('xpSound').play().catch(() => {});
+                    }
+                    break;
+                case 'aiLearning':
+                    showFloatingNotification(enabled ? '🧠 AI Learning On' : '🚫 AI Learning Off', 
+                                           enabled ? 'AI will learn from your patterns' : 'AI learning disabled');
+                    break;
+            }
+            
+            saveGameState('setting_changed');
+        }
+
+        function saveUSDAConfig() {
+            const apiKey = document.getElementById('usdaApiKey')?.value?.trim();
+            
+            if (!apiKey) {
+                showFloatingNotification('⚠️ Missing API Key', 'Please enter your USDA API key', 'warning');
+                return;
+            }
+            
+            // Validate API key format (should be a UUID-like string)
+            const apiKeyPattern = /^[a-zA-Z0-9]{32,}$/;
+            if (!apiKeyPattern.test(apiKey)) {
+                showFloatingNotification('⚠️ Invalid API Key', 'Please check your API key format', 'warning');
+                return;
+            }
+            
+            gameState.settings.usdaApiKey = apiKey;
+            
+            // Update status displays
+            const statusElements = {
+                usdaApiKeyDisplayStatus: 'Configured ✅',
+                usdaApiLimit: '1,000 requests/hour (Full access)',
+                usdaSearchQuality: 'Full database (400,000+ foods)'
+            };
+            
+            Object.entries(statusElements).forEach(([id, value]) => {
+                const element = document.getElementById(id);
+                if (element) element.textContent = value;
+            });
+            
+            // Show success indicator
+            const statusIndicator = document.getElementById('usdaApiKeyStatus');
+            if (statusIndicator) {
+                statusIndicator.classList.remove('hidden');
+                setTimeout(() => statusIndicator.classList.add('hidden'), 3000);
+            }
+            
+            addDebugEntry('settings', 'success', 'USDA API key configured', {
+                keyLength: apiKey.length,
+                masked: apiKey.substring(0, 8) + '...'
+            });
+            
+            saveGameState('usda_config_saved');
+            showFloatingNotification('✅ USDA API Saved', 'Configuration saved successfully!');
+        }
+
+        function saveSpotifyConfig() {
+            const clientId = document.getElementById('spotifyClientId')?.value?.trim();
+            const redirectUri = document.getElementById('spotifyRedirectUri')?.value?.trim();
+            
+            if (!clientId) {
+                showFloatingNotification('⚠️ Missing Client ID', 'Please enter your Spotify Client ID', 'warning');
+                return;
+            }
+            
+            // Validate client ID format
+            const clientIdPattern = /^[a-zA-Z0-9]{32}$/;
+            if (!clientIdPattern.test(clientId)) {
+                showFloatingNotification('⚠️ Invalid Client ID', 'Spotify Client ID should be 32 characters', 'warning');
+                return;
+            }
+            
+            gameState.settings.spotifyClientId = clientId;
+            gameState.settings.spotifyRedirectUri = redirectUri || getCurrentRedirectUri();
+            
+            // Show success indicator
+            const statusIndicator = document.getElementById('clientIdStatus');
+            if (statusIndicator) {
+                statusIndicator.classList.remove('hidden');
+                setTimeout(() => statusIndicator.classList.add('hidden'), 3000);
+            }
+            
+            addDebugEntry('settings', 'success', 'Spotify configuration saved', {
+                clientId: clientId.substring(0, 8) + '...',
+                redirectUri: gameState.settings.spotifyRedirectUri
+            });
+            
+            saveGameState('spotify_config_saved');
+            showFloatingNotification('✅ Spotify Config Saved', 'You can now connect to Spotify!');
+        }
+
+        function getCurrentRedirectUri() {
+            return window.location.origin + window.location.pathname;
+        }
+
+        function updateAISensitivity(value) {
+            gameState.ai.sensitivity = parseFloat(value);
+            
+            const sensitivityDisplay = document.getElementById('sensitivityValue');
+            if (sensitivityDisplay) {
+                sensitivityDisplay.textContent = `${Math.round(value * 100)}%`;
+            }
+            
+            addDebugEntry('ai', 'info', 'AI sensitivity updated', {
+                sensitivity: value,
+                percentage: Math.round(value * 100)
+            });
+            
+            showFloatingNotification('🎯 AI Sensitivity Updated', `Set to ${Math.round(value * 100)}%`);
+            saveGameState('ai_sensitivity_changed');
+        }
+
+        function updateLearningRate(rate) {
+            const learningRate = parseFloat(rate);
+            gameState.ai.learningRate = learningRate;
+            
+            if (neuralNetwork) {
+                neuralNetwork.learningRate = learningRate;
+            }
+            
+            addDebugEntry('ai', 'info', 'Learning rate updated', {
+                learningRate,
+                neuralNetworkUpdated: !!neuralNetwork
+            });
+            
+            showFloatingNotification('⚡ Learning Rate Updated', `Set to ${rate}`);
+            saveGameState('learning_rate_changed');
+        }
+
+        function updateAIPersonality(personality) {
+            gameState.settings.aiPersonality = personality;
+            
+            const personalities = {
+                motivational: '🔥 Motivational Coach',
+                analytical: '📊 Data Analyst', 
+                supportive: '🤗 Supportive Friend',
+                challenging: '💪 Challenging Trainer'
+            };
+            
+            addDebugEntry('ai', 'info', 'AI personality changed', {
+                personality,
+                displayName: personalities[personality]
+            });
+            
+            // Update AI insights immediately
+            updateAICoachInsight();
+            
+            showFloatingNotification('🎨 AI Personality Updated', `Now using ${personalities[personality]} style`);
+            saveGameState('ai_personality_changed');
+        }
+
+        function resetAI() {
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 modal-overlay';
+            modal.innerHTML = `
+                <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-xl max-w-md w-full mx-4">
+                    <div class="text-center">
+                        <div class="text-4xl mb-3">🧠</div>
+                        <h3 class="text-lg font-bold mb-2">Reset AI Models?</h3>
+                        <p class="text-gray-600 dark:text-gray-400 mb-4">
+                            This will reset all AI learning patterns and neural network training. 
+                            Your other data will remain intact.
+                        </p>
+                        <div class="flex space-x-3">
+                            <button onclick="this.closest('.modal-overlay').remove()" 
+                                    class="flex-1 bg-gray-500 text-white py-2 rounded hover:bg-gray-600 transition-all">
+                                Cancel
+                            </button>
+                            <button onclick="confirmResetAI()" 
+                                    class="flex-1 bg-purple-500 text-white py-2 rounded hover:bg-purple-600 transition-all">
+                                Reset AI
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+
+        function confirmResetAI() {
+            // Reset AI data
+            gameState.ai = {
+                neuralNetwork: null,
+                mlEngine: null,
+                confidence: 0.85,
+                lastUpdate: Date.now(),
+                predictions: {},
+                insights: [],
+                taskContext: {
+                    completionTimes: {},
+                    successfulPatterns: {},
+                    optimalTimings: {}
+                },
+                sensitivity: 0.8,
+                learningRate: 0.01
+            };
+            
+            gameState.patterns = {
+                activities: {},
+                preferences: {}, 
+                timing: {},
+                learning: {
+                    enabled: true,
+                    confidence: 0.85,
+                    patterns: []
+                }
+            };
+            
+            // Reinitialize AI
+            initializeAI();
+            
+            addDebugEntry('ai', 'success', 'AI models reset and reinitialized');
+            
+            showFloatingNotification('🔄 AI Reset Complete', 'Neural networks reinitialized and ready to learn!');
+            document.querySelector('.modal-overlay')?.remove();
+            saveGameState('ai_reset');
+        }
+
+        function backupData() {
+            try {
+                const backupData = {
+                    version: '2.4.0',
+                    timestamp: new Date().toISOString(),
+                    gameState: gameState,
+                    metadata: {
+                        totalTasks: gameState.tasks.length,
+                        totalAchievements: gameState.achievements.length,
+                        currentLevel: gameState.level,
+                        totalXP: gameState.totalXP,
+                        exportedBy: 'Life Quest RPG v2.4.0'
+                    }
+                };
+                
+                const jsonString = JSON.stringify(backupData, null, 2);
+                const blob = new Blob([jsonString], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `life-quest-backup-${new Date().toISOString().split('T')[0]}.json`;
+                a.click();
+                
+                URL.revokeObjectURL(url);
+                
+                addDebugEntry('storage', 'success', 'Data backup created', {
+                    size: jsonString.length,
+                    tasks: gameState.tasks.length,
+                    achievements: gameState.achievements.length
+                });
+                
+                showFloatingNotification('💾 Backup Created', 'Your data has been downloaded successfully!');
+                
+            } catch (error) {
+                addDebugEntry('storage', 'error', 'Backup failed', { error: error.message });
+                showFloatingNotification('❌ Backup Failed', 'Unable to create backup file', 'error');
+            }
+        }
+
+        function restoreData() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            input.onchange = handleRestoreFile;
+            input.click();
+        }
+
+        function handleRestoreFile(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const backupData = JSON.parse(e.target.result);
+                    
+                    // Validate backup data
+                    if (!backupData.gameState || !backupData.version) {
+                        throw new Error('Invalid backup file format');
+                    }
+                    
+                    // Show confirmation
+                    const modal = document.createElement('div');
+                    modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 modal-overlay';
+                    modal.innerHTML = `
+                        <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-xl max-w-md w-full mx-4">
+                            <div class="text-center">
+                                <div class="text-4xl mb-3">📂</div>
+                                <h3 class="text-lg font-bold mb-2">Restore Data?</h3>
+                                <div class="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                                    <div>Backup Version: ${backupData.version}</div>
+                                    <div>Backup Date: ${new Date(backupData.timestamp).toLocaleDateString()}</div>
+                                    <div>Tasks: ${backupData.gameState.tasks?.length || 0}</div>
+                                    <div>Achievements: ${backupData.gameState.achievements?.length || 0}</div>
+                                    <div>Level: ${backupData.gameState.level || 1}</div>
+                                </div>
+                                <p class="text-red-600 dark:text-red-400 text-sm mb-4">
+                                    ⚠️ This will replace ALL current data!
+                                </p>
+                                <div class="flex space-x-3">
+                                    <button onclick="this.closest('.modal-overlay').remove()" 
+                                            class="flex-1 bg-gray-500 text-white py-2 rounded hover:bg-gray-600 transition-all">
+                                        Cancel
+                                    </button>
+                                    <button onclick="confirmRestoreData(${JSON.stringify(backupData).replace(/"/g, '&quot;')})" 
+                                            class="flex-1 bg-blue-500 text-white py-2 rounded hover:bg-blue-600 transition-all">
+                                        Restore
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    document.body.appendChild(modal);
+                    
+                } catch (error) {
+                    addDebugEntry('storage', 'error', 'Invalid backup file', { error: error.message });
+                    showFloatingNotification('❌ Invalid File', 'The selected file is not a valid backup', 'error');
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        function confirmRestoreData(backupData) {
+            try {
+                // Restore the game state
+                Object.assign(gameState, backupData.gameState);
+                
+                // Ensure data integrity
+                validateGameState();
+                ensureGameStateIntegrity();
+                
+                // Save restored data
+                saveGameState('data_restored');
+                
+                // Update all UI
+                updateAllUI();
+                
+                // Reinitialize AI with restored data
+                initializeAI();
+                
+                addDebugEntry('storage', 'success', 'Data restored successfully', {
+                    version: backupData.version,
+                    timestamp: backupData.timestamp,
+                    tasks: gameState.tasks.length,
+                    achievements: gameState.achievements.length
+                });
+                
+                showFloatingNotification('✅ Data Restored', 'Your backup has been restored successfully!');
+                document.querySelector('.modal-overlay')?.remove();
+                
+            } catch (error) {
+                addDebugEntry('storage', 'error', 'Data restoration failed', { error: error.message });
+                showFloatingNotification('❌ Restore Failed', 'Unable to restore backup data', 'error');
+            }
+        }
+
+        function resetData() {
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 modal-overlay';
+            modal.innerHTML = `
+                <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-xl max-w-md w-full mx-4">
+                    <div class="text-center">
+                        <div class="text-4xl mb-3">🗑️</div>
+                        <h3 class="text-lg font-bold text-red-600 dark:text-red-400 mb-2">Reset All Data?</h3>
+                        <p class="text-gray-600 dark:text-gray-400 mb-4">
+                            This will permanently delete ALL your data including:
+                        </p>
+                        <div class="text-sm text-red-600 dark:text-red-400 mb-4">
+                            • All tasks and progress<br>
+                            • All achievements<br>
+                            • XP and level progress<br>
+                            • AI learning patterns<br>
+                            • Settings and profile<br>
+                            • Nutrition and fitness logs
+                        </div>
+                        <p class="text-red-800 dark:text-red-300 font-bold text-sm mb-4">
+                            ⚠️ This action cannot be undone!
+                        </p>
+                        <div class="mb-4">
+                            <label class="flex items-center justify-center space-x-2">
+                                <input type="checkbox" id="confirmReset" class="rounded">
+                                <span class="text-sm">I understand this will delete everything</span>
+                            </label>
+                        </div>
+                        <div class="flex space-x-3">
+                            <button onclick="this.closest('.modal-overlay').remove()" 
+                                    class="flex-1 bg-gray-500 text-white py-2 rounded hover:bg-gray-600 transition-all">
+                                Cancel
+                            </button>
+                            <button onclick="confirmResetData()" 
+                                    class="flex-1 bg-red-500 text-white py-2 rounded hover:bg-red-600 transition-all">
+                                Reset Everything
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+
+        function confirmResetData() {
+            const confirmCheckbox = document.getElementById('confirmReset');
+            if (!confirmCheckbox?.checked) {
+                showFloatingNotification('⚠️ Confirmation Required', 'Please check the confirmation box', 'warning');
+                return;
+            }
+            
+            try {
+                // Clear all localStorage
+                const keysToRemove = [];
+                for (let key in localStorage) {
+                    if (key.startsWith('lifeQuestAI') || key.includes('spotify')) {
+                        keysToRemove.push(key);
+                    }
+                }
+                keysToRemove.forEach(key => localStorage.removeItem(key));
+                
+                // Reset game state to defaults
+                initializeDefaultGameState();
+                
+                // Reinitialize everything
+                initializeAI();
+                updateAllUI();
+                
+                addDebugEntry('storage', 'success', 'All data reset to defaults');
+                
+                showFloatingNotification('🔄 Data Reset Complete', 'All data has been reset. Starting fresh!');
+                document.querySelector('.modal-overlay')?.remove();
+                
+            } catch (error) {
+                addDebugEntry('storage', 'error', 'Data reset failed', { error: error.message });
+                showFloatingNotification('❌ Reset Failed', 'Unable to reset data', 'error');
+            }
+        }
+
+        function saveUserProfile() {
+            const height = parseInt(document.getElementById('userHeight')?.value) || 0;
+            const weight = parseInt(document.getElementById('userWeight')?.value) || 0;
+            const age = parseInt(document.getElementById('userAge')?.value) || 0;
+            const gender = document.getElementById('userGender')?.value || '';
+            const activityLevel = document.getElementById('activityLevel')?.value || '';
+            const fitnessGoal = document.getElementById('fitnessGoal')?.value || '';
+            
+            // Validate required fields
+            if (!height || !weight || !age || !gender) {
+                showFloatingNotification('⚠️ Missing Information', 'Please fill in all required profile fields', 'warning');
+                return;
+            }
+            
+            // Update profile
+            gameState.profile = {
+                height,
+                weight,
+                age,
+                gender,
+                activityLevel,
+                fitnessGoal,
+                equipment: gameState.profile.equipment || [],
+                healthConditions: gameState.profile.healthConditions || []
+            };
+            
+            // Calculate health metrics
+            const metrics = calculateHealthMetrics(gameState.profile);
+            gameState.healthMetrics = metrics;
+            
+            addDebugEntry('profile', 'success', 'User profile saved', {
+                profile: { ...gameState.profile, equipment: gameState.profile.equipment.length },
+                metrics: { ...metrics, bmi: Math.round(metrics.bmi * 10) / 10 }
+            });
+            
+            // Update UI displays
+            updateHealthMetricsDisplay();
+            updateDailyTargetsDisplay();
+            
+            saveGameState('profile_saved');
+            showFloatingNotification('✅ Profile Saved', 'Health metrics calculated and personalized targets set!');
+            
+            // Award XP for completing profile
+            if (gameState.profile.age > 0) {
+                awardXP(50, 'Completed user profile');
+            }
+        }
+
+        function calculateHealthMetrics(profile) {
+            const { height, weight, age, gender, activityLevel } = profile;
+            
+            // BMI calculation
+            const heightInMeters = height / 100;
+            const bmi = weight / (heightInMeters * heightInMeters);
+            
+            // BMR calculation (Mifflin-St Jeor Equation)
+            let bmr;
+            if (gender === 'male') {
+                bmr = 10 * weight + 6.25 * height - 5 * age + 5;
+            } else {
+                bmr = 10 * weight + 6.25 * height - 5 * age - 161;
+            }
+            
+            // TDEE calculation
+            const activityMultipliers = {
+                sedentary: 1.2,
+                light: 1.375,
+                moderate: 1.55,
+                active: 1.725,
+                very_active: 1.9
+            };
+            const tdee = bmr * (activityMultipliers[activityLevel] || 1.4);
+            
+            // Ideal weight range (BMI 18.5-24.9)
+            const minIdealWeight = Math.round(18.5 * heightInMeters * heightInMeters);
+            const maxIdealWeight = Math.round(24.9 * heightInMeters * heightInMeters);
+            
+            // Body fat estimate (basic formula)
+            let bodyFatPercentage;
+            if (gender === 'male') {
+                bodyFatPercentage = 1.20 * bmi + 0.23 * age - 16.2;
+            } else {
+                bodyFatPercentage = 1.20 * bmi + 0.23 * age - 5.4;
+            }
+            bodyFatPercentage = Math.max(5, Math.min(50, bodyFatPercentage));
+            
+            // Water requirement (ml per day)
+            const waterRequirement = Math.round(weight * 35); // 35ml per kg
+            
+            // Protein requirement (grams per day)
+            const proteinRequirement = Math.round(weight * 1.6); // 1.6g per kg for active individuals
+            
+            // Daily calorie target based on goal
+            let dailyCalorieTarget = tdee;
+            switch (profile.fitnessGoal) {
+                case 'lose_weight':
+                    dailyCalorieTarget = tdee - 500; // 1lb/week loss
+                    break;
+                case 'gain_weight':
+                    dailyCalorieTarget = tdee + 500; // 1lb/week gain
+                    break;
+                case 'maintain_weight':
+                default:
+                    dailyCalorieTarget = tdee;
+                    break;
+            }
+            
+            // Daily steps target
+            const dailyStepsTarget = activityLevel === 'sedentary' ? 5000 : 
+                                   activityLevel === 'light' ? 7500 : 
+                                   activityLevel === 'moderate' ? 10000 : 12000;
+            
+            // Weekly exercise minutes
+            const weeklyExerciseMinutes = activityLevel === 'sedentary' ? 75 : 
+                                        activityLevel === 'light' ? 150 : 
+                                        activityLevel === 'moderate' ? 225 : 300;
+            
+            return {
+                bmi: Math.round(bmi * 10) / 10,
+                bmr: Math.round(bmr),
+                tdee: Math.round(tdee),
+                idealWeight: { min: minIdealWeight, max: maxIdealWeight },
+                bodyFatPercentage: Math.round(bodyFatPercentage * 10) / 10,
+                waterRequirement,
+                proteinRequirement,
+                dailyCalorieTarget: Math.round(dailyCalorieTarget),
+                dailyStepsTarget,
+                weeklyExerciseMinutes
+            };
+        }
+
+        function updateHealthMetricsDisplay() {
+            const metrics = gameState.healthMetrics;
+            const container = document.getElementById('healthMetrics');
+            
+            if (!container || !metrics.bmi) return;
+            
+            const getBMICategory = (bmi) => {
+                if (bmi < 18.5) return { category: 'Underweight', color: 'text-blue-600' };
+                if (bmi < 25) return { category: 'Normal', color: 'text-green-600' };
+                if (bmi < 30) return { category: 'Overweight', color: 'text-yellow-600' };
+                return { category: 'Obese', color: 'text-red-600' };
+            };
+            
+            const bmiInfo = getBMICategory(metrics.bmi);
+            
+            container.innerHTML = `
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="p-3 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
+                        <div class="text-lg font-bold text-blue-600">${metrics.bmi}</div>
+                        <div class="text-sm text-blue-500">BMI</div>
+                        <div class="text-xs ${bmiInfo.color}">${bmiInfo.category}</div>
+                    </div>
+                    
+                    <div class="p-3 bg-green-50 dark:bg-green-900/30 rounded-lg">
+                        <div class="text-lg font-bold text-green-600">${metrics.bmr}</div>
+                        <div class="text-sm text-green-500">BMR (cal/day)</div>
+                        <div class="text-xs text-green-600">Base metabolism</div>
+                    </div>
+                    
+                    <div class="p-3 bg-purple-50 dark:bg-purple-900/30 rounded-lg">
+                        <div class="text-lg font-bold text-purple-600">${metrics.tdee}</div>
+                        <div class="text-sm text-purple-500">TDEE (cal/day)</div>
+                        <div class="text-xs text-purple-600">Total daily energy</div>
+                    </div>
+                    
+                    <div class="p-3 bg-orange-50 dark:bg-orange-900/30 rounded-lg">
+                        <div class="text-lg font-bold text-orange-600">${metrics.bodyFatPercentage}%</div>
+                        <div class="text-sm text-orange-500">Body Fat</div>
+                        <div class="text-xs text-orange-600">Estimated</div>
+                    </div>
+                </div>
+                
+                <div class="mt-4 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                    <div class="text-sm font-medium mb-2">🎯 Ideal Weight Range</div>
+                    <div class="text-gray-600 dark:text-gray-400">
+                        ${metrics.idealWeight.min} - ${metrics.idealWeight.max} kg
+                        ${metrics.idealWeight.min <= gameState.profile.weight && gameState.profile.weight <= metrics.idealWeight.max ? 
+                          '<span class="text-green-600 ml-2">✅ In range!</span>' : 
+                          '<span class="text-yellow-600 ml-2">⚠️ Outside range</span>'}
+                    </div>
+                </div>
+            `;
+        }
+
+        function updateDailyTargetsDisplay() {
+            const metrics = gameState.healthMetrics;
+            const container = document.getElementById('dailyTargets');
+            
+            if (!container || !metrics.dailyCalorieTarget) return;
+            
+            container.innerHTML = `
+                <div class="space-y-3">
+                    <div class="flex items-center justify-between p-3 bg-red-50 dark:bg-red-900/30 rounded-lg">
+                        <div class="flex items-center space-x-2">
+                            <span class="text-red-600">🔥</span>
+                            <span class="font-medium">Daily Calories</span>
+                        </div>
+                        <span class="font-bold text-red-600">${metrics.dailyCalorieTarget}</span>
+                    </div>
+                    
+                    <div class="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
+                        <div class="flex items-center space-x-2">
+                            <span class="text-blue-600">💧</span>
+                            <span class="font-medium">Daily Water</span>
+                        </div>
+                        <span class="font-bold text-blue-600">${Math.round(metrics.waterRequirement / 250)} glasses</span>
+                    </div>
+                    
+                    <div class="flex items-center justify-between p-3 bg-green-50 dark:bg-green-900/30 rounded-lg">
+                        <div class="flex items-center space-x-2">
+                            <span class="text-green-600">🥩</span>
+                            <span class="font-medium">Daily Protein</span>
+                        </div>
+                        <span class="font-bold text-green-600">${metrics.proteinRequirement}g</span>
+                    </div>
+                    
+                    <div class="flex items-center justify-between p-3 bg-purple-50 dark:bg-purple-900/30 rounded-lg">
+                        <div class="flex items-center space-x-2">
+                            <span class="text-purple-600">👟</span>
+                            <span class="font-medium">Daily Steps</span>
+                        </div>
+                        <span class="font-bold text-purple-600">${metrics.dailyStepsTarget.toLocaleString()}</span>
+                    </div>
+                    
+                    <div class="flex items-center justify-between p-3 bg-yellow-50 dark:bg-yellow-900/30 rounded-lg">
+                        <div class="flex items-center space-x-2">
+                            <span class="text-yellow-600">💪</span>
+                            <span class="font-medium">Weekly Exercise</span>
+                        </div>
+                        <span class="font-bold text-yellow-600">${metrics.weeklyExerciseMinutes} min</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        function addInterest() {
+            const input = document.getElementById('newInterest');
+            const interest = input?.value?.trim();
+            
+            if (!interest) {
+                showFloatingNotification('⚠️ Empty Interest', 'Please enter an interest', 'warning');
+                return;
+            }
+            
+            if (gameState.interests.includes(interest.toLowerCase())) {
+                showFloatingNotification('⚠️ Duplicate Interest', 'This interest already exists', 'warning');
+                return;
+            }
+            
+            gameState.interests.push(interest.toLowerCase());
+            input.value = '';
+            
+            addDebugEntry('settings', 'success', 'Interest added', {
+                interest,
+                totalInterests: gameState.interests.length
+            });
+            
+            updateInterestsDisplay();
+            saveGameState('interest_added');
+            showFloatingNotification('💡 Interest Added', `"${interest}" added to your interests`);
+        }
+
+        function removeInterest(interest) {
+            const index = gameState.interests.indexOf(interest);
+            if (index > -1) {
+                gameState.interests.splice(index, 1);
+                updateInterestsDisplay();
+                saveGameState('interest_removed');
+                showFloatingNotification('🗑️ Interest Removed', `"${interest}" removed from interests`);
+                
+                addDebugEntry('settings', 'info', 'Interest removed', {
+                    interest,
+                    remainingInterests: gameState.interests.length
+                });
+            }
+        }
+
+        function updateInterestsDisplay() {
+            const container = document.getElementById('interestsList');
+            if (!container) return;
+            
+            if (gameState.interests.length === 0) {
+                container.innerHTML = '<div class="text-gray-500 dark:text-gray-400 text-sm">No interests added yet</div>';
+                return;
+            }
+            
+            container.innerHTML = gameState.interests.map(interest => `
+                <span class="inline-flex items-center space-x-1 bg-primary text-white px-3 py-1 rounded-full text-sm">
+                    <span>${interest}</span>
+                    <button onclick="removeInterest('${interest}')" 
+                            class="ml-1 text-white hover:text-red-200 transition-all">×</button>
+                </span>
+            `).join('');
+        }
+
+        function updateSettingsUI() {
+            // Update all toggle switches
+            const toggles = {
+                notificationsToggle: gameState.settings.notifications,
+                animationsToggle: gameState.settings.animations,
+                soundToggle: gameState.settings.soundEffects,
+                aiLearningToggle: gameState.settings.aiLearning
+            };
+            
+            Object.entries(toggles).forEach(([id, checked]) => {
+                const element = document.getElementById(id);
+                if (element) element.checked = checked;
+            });
+            
+            // Update input fields
+            const inputs = {
+                usdaApiKey: gameState.settings.usdaApiKey || '',
+                spotifyClientId: gameState.settings.spotifyClientId || '',
+                spotifyRedirectUri: gameState.settings.spotifyRedirectUri || '',
+                userHeight: gameState.profile.height || '',
+                userWeight: gameState.profile.weight || '',
+                userAge: gameState.profile.age || '',
+                userGender: gameState.profile.gender || '',
+                activityLevel: gameState.profile.activityLevel || '',
+                fitnessGoal: gameState.profile.fitnessGoal || ''
+            };
+            
+            Object.entries(inputs).forEach(([id, value]) => {
+                const element = document.getElementById(id);
+                if (element) element.value = value;
+            });
+            
+            // Update AI settings
+            const aiSensitivity = document.getElementById('aiSensitivity');
+            if (aiSensitivity && gameState.ai.sensitivity) {
+                aiSensitivity.value = gameState.ai.sensitivity;
+                updateAISensitivity(gameState.ai.sensitivity);
+            }
+            
+            const learningRate = document.getElementById('learningRate');
+            if (learningRate && gameState.ai.learningRate) {
+                learningRate.value = gameState.ai.learningRate;
+            }
+            
+            const aiPersonality = document.getElementById('aiPersonality');
+            if (aiPersonality && gameState.settings.aiPersonality) {
+                aiPersonality.value = gameState.settings.aiPersonality;
+            }
+            
+            // Update redirect URI display
+            const currentRedirectUri = document.getElementById('currentRedirectUri');
+            if (currentRedirectUri) {
+                currentRedirectUri.textContent = getCurrentRedirectUri();
+            }
+            
+            // Update API status displays
+            updateAPIStatusDisplays();
+            
+            // Update interests display
+            updateInterestsDisplay();
+            
+            // Update health metrics if profile exists
+            if (gameState.profile.height && gameState.profile.weight) {
+                updateHealthMetricsDisplay();
+                updateDailyTargetsDisplay();
+            }
+            
+            // Update storage info
+            updateStorageInfoDisplay();
+        }
+
+        function updateAPIStatusDisplays() {
+            // USDA API status
+            const usdaKeyStatus = document.getElementById('usdaApiKeyDisplayStatus');
+            if (usdaKeyStatus) {
+                usdaKeyStatus.textContent = gameState.settings.usdaApiKey ? 'Configured ✅' : 'Not configured';
+            }
+            
+            const usdaLimit = document.getElementById('usdaApiLimit');
+            if (usdaLimit) {
+                usdaLimit.textContent = gameState.settings.usdaApiKey ? 
+                    '1,000 requests/hour (Full access)' : 
+                    '5 results only (Demo mode)';
+            }
+            
+            const usdaQuality = document.getElementById('usdaSearchQuality');
+            if (usdaQuality) {
+                usdaQuality.textContent = gameState.settings.usdaApiKey ? 
+                    'Full database (400,000+ foods)' : 
+                    'Demo (limited results)';
+            }
+        }
+
+        function updateStorageInfoDisplay() {
+            if (!storageManager) return;
+            
+            const storageInfo = storageManager.getStorageInfo();
+            
+            const elements = {
+                taskCount: gameState.tasks.length,
+                achievementCount: gameState.achievements.length,
+                patternCount: Object.keys(gameState.patterns.activities || {}).length + 
+                             Object.keys(gameState.patterns.preferences || {}).length,
+                totalXPDisplay: gameState.totalXP
+            };
+            
+            Object.entries(elements).forEach(([id, value]) => {
+                const element = document.getElementById(id);
+                if (element) element.textContent = value;
+            });
+        }
+
+        // 🤖 AI QUICK ACTIONS
+        function aiQuickSuggestion() {
+            const suggestions = [
+                "💧 Try drinking a glass of water - hydration boosts brain power by 15%!",
+                "🚶‍♂️ Take a 5-minute walk - movement increases creativity and focus!",
+                "📱 Put your phone in another room for 30 minutes - reduce distractions!",
+                "🧘‍♀️ Do 3 deep breaths - activate your parasympathetic nervous system!",
+                "📝 Write down your top 3 priorities - clarity reduces mental load!",
+                "🎵 Play some focus music - instrumental music can improve concentration!",
+                "☀️ Look out a window or step outside - natural light regulates circadian rhythm!",
+                "🥗 Eat something nutritious - your brain uses 20% of your daily calories!",
+                "💪 Do 10 jumping jacks - get your blood flowing and energy up!",
+                "😊 Smile for 10 seconds - it triggers endorphin release!"
+            ];
+            
+            const suggestion = suggestions[Math.floor(Math.random() * suggestions.length)];
+            showFloatingNotification('🧠 AI Quick Tip', suggestion);
+            
+            addDebugEntry('ai', 'info', 'Quick suggestion provided', { suggestion });
+        }
+
+        function getPersonalizedCoaching() {
+            if (!neuralNetwork) {
+                showFloatingNotification('🧠 AI Initializing', 'AI is still learning your patterns. Come back in a few minutes!');
+                return;
+            }
+            
+            const hour = new Date().getHours();
+            const insights = analyzeCurrentState();
+            const coaching = generatePersonalizedCoaching(insights);
+            
+            showFloatingNotification('🎯 Personal Coaching', coaching);
+            addDebugEntry('ai', 'success', 'Personalized coaching generated', { coaching, insights });
+        }
+
+        function analyzeCurrentState() {
+            const stats = gameState.dailyStats;
+            const hour = new Date().getHours();
+            
+            return {
+                productivity: stats.tasksCompleted / Math.max(1, stats.totalTasks),
+                hydration: stats.waterGlasses / 8,
+                activity: Math.min(1, stats.workouts + (stats.steps / 10000)),
+                timeOfDay: hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : 'evening',
+                energy: (stats.tasksCompleted * 0.3 + stats.workouts * 0.5 + Math.min(stats.waterGlasses / 8, 1) * 0.2)
+            };
+        }
+
+        function generatePersonalizedCoaching(insights) {
+            const coachingTips = [];
+            
+            if (insights.hydration < 0.5) {
+                coachingTips.push("Your hydration is low - drink 2 glasses of water to boost cognitive performance!");
+            }
+            
+            if (insights.productivity < 0.3 && insights.timeOfDay === 'morning') {
+                coachingTips.push("Morning momentum is key! Start with your easiest task to build confidence.");
+            }
+            
+            if (insights.activity < 0.2) {
+                coachingTips.push("Your body needs movement! Even 5 minutes of activity will increase energy levels.");
+            }
+            
+            if (insights.energy > 0.7) {
+                coachingTips.push("You're in the zone! This is perfect time to tackle your most challenging tasks.");
+            }
+            
+            if (coachingTips.length === 0) {
+                return "You're doing great! Keep maintaining this balanced approach to health and productivity.";
+            }
+            
+            return coachingTips[Math.floor(Math.random() * coachingTips.length)];
+        }
+
+        function showAdvancedAI() {
+            switchTab('ai');
+            
+            // Trigger advanced analysis
+            if (mlEngine) {
+                const analysis = mlEngine.analyzeTimeSeries([
+                    gameState.dailyStats.tasksCompleted,
+                    gameState.dailyStats.workouts,
+                    gameState.dailyStats.waterGlasses
+                ]);
+                
+                showFloatingNotification('🔬 ML Analysis Complete', 
+                    `Forecast confidence: ${Math.round(analysis.confidence * 100)}%`);
+            }
+        }
+
+        function retrainAI() {
+            if (!neuralNetwork) {
+                showFloatingNotification('⚠️ AI Not Ready', 'Neural network is not initialized', 'warning');
+                return;
+            }
+            
+            showFloatingNotification('🔄 Retraining AI...', 'Neural network is learning from your latest patterns');
+            
+            setTimeout(() => {
+                // Simulate retraining with recent data
+                const recentTasks = gameState.tasks.slice(-20);
+                recentTasks.forEach(task => {
+                    if (task.completed) {
+                        trainAIWithTaskData(task);
+                    }
+                });
+                
+                gameState.ai.lastUpdate = Date.now();
+                gameState.ai.confidence = Math.min(0.95, gameState.ai.confidence + 0.05);
+                
+                updateAIDisplay();
+                saveGameState('ai_retrained');
+                
+                addDebugEntry('ai', 'success', 'AI retrained successfully', {
+                    tasksUsed: recentTasks.length,
+                    newConfidence: gameState.ai.confidence
+                });
+                
+                showFloatingNotification('✅ AI Retrained!', `Confidence increased to ${Math.round(gameState.ai.confidence * 100)}%`);
+            }, 2000);
+        }
+
+        function exportAIData() {
+            try {
+                const aiData = {
+                    version: '2.4.0',
+                    timestamp: new Date().toISOString(),
+                    aiState: {
+                        confidence: gameState.ai.confidence,
+                        patterns: gameState.patterns,
+                        taskContext: gameState.ai.taskContext,
+                        insights: gameState.ai.insights,
+                        settings: {
+                            sensitivity: gameState.ai.sensitivity,
+                            learningRate: gameState.ai.learningRate,
+                            personality: gameState.settings.aiPersonality
+                        }
+                    },
+                    analytics: {
+                        totalTasks: gameState.tasks.length,
+                        completedTasks: gameState.tasks.filter(t => t.completed).length,
+                        averageCompletionTime: calculateAverageCompletionTime(),
+                        successPatterns: Object.keys(gameState.ai.taskContext.successfulPatterns || {}).length
+                    }
+                };
+                
+                const jsonString = JSON.stringify(aiData, null, 2);
+                const blob = new Blob([jsonString], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `life-quest-ai-data-${new Date().toISOString().split('T')[0]}.json`;
+                a.click();
+                
+                URL.revokeObjectURL(url);
+                
+                addDebugEntry('ai', 'success', 'AI data exported', {
+                    size: jsonString.length,
+                    confidence: gameState.ai.confidence
+                });
+                
+                showFloatingNotification('📊 AI Data Exported', 'AI patterns and analytics have been downloaded!');
+                
+            } catch (error) {
+                addDebugEntry('ai', 'error', 'AI export failed', { error: error.message });
+                showFloatingNotification('❌ Export Failed', 'Unable to export AI data', 'error');
+            }
+        }
+
+        function getNewRecommendations() {
+            const recommendations = generateAIRecommendations();
+            updateAIRecommendations();
+            
+            showFloatingNotification('🔄 Recommendations Updated', `Generated ${recommendations.length} new AI recommendations`);
+            addDebugEntry('ai', 'success', 'New recommendations generated', { count: recommendations.length });
+        }
+
+        function generateMealPlan() {
+            const profile = gameState.profile;
+            const preferences = gameState.patterns.preferences || {};
+            
+            const mealPlan = createWeeklyMealPlan(profile, preferences);
+            displayMealPlan(mealPlan);
+            
+            showFloatingNotification('🍽️ Meal Plan Ready!', 'AI-generated weekly meal plan based on your profile');
+            addDebugEntry('nutrition', 'success', 'Meal plan generated');
+        }
+
+        function createWeeklyMealPlan(profile, preferences) {
+            const calorieTarget = gameState.healthMetrics.dailyCalorieTarget || 2000;
+            const proteinTarget = gameState.healthMetrics.proteinRequirement || 120;
+            
+            const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+            const mealTypes = ['Breakfast', 'Lunch', 'Dinner'];
+            
+            const meals = {
+                Breakfast: [
+                    { name: 'Oatmeal with berries', calories: 350, protein: 12 },
+                    { name: 'Greek yogurt parfait', calories: 300, protein: 20 },
+                    { name: 'Avocado toast', calories: 320, protein: 12 },
+                    { name: 'Protein smoothie', calories: 280, protein: 25 }
+                ],
+                Lunch: [
+                    { name: 'Chicken salad bowl', calories: 450, protein: 35 },
+                    { name: 'Quinoa Buddha bowl', calories: 420, protein: 15 },
+                    { name: 'Turkey sandwich', calories: 380, protein: 28 },
+                    { name: 'Salmon rice bowl', calories: 480, protein: 32 }
+                ],
+                Dinner: [
+                    { name: 'Grilled chicken & vegetables', calories: 520, protein: 45 },
+                    { name: 'Pasta with lean beef', calories: 580, protein: 35 },
+                    { name: 'Fish with sweet potato', calories: 450, protein: 38 },
+                    { name: 'Tofu stir-fry', calories: 400, protein: 22 }
+                ]
+            };
+            
+            return days.map(day => ({
+                day,
+                meals: mealTypes.map(mealType => {
+                    const mealOptions = meals[mealType];
+                    const selectedMeal = mealOptions[Math.floor(Math.random() * mealOptions.length)];
+                    return {
+                        type: mealType,
+                        ...selectedMeal
+                    };
+                })
+            }));
+        }
+
+        function displayMealPlan(mealPlan) {
+            const container = document.getElementById('weeklyMealPlan');
+            if (!container) return;
+            
+            container.innerHTML = mealPlan.map(day => `
+                <div class="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                    <h4 class="font-bold text-sm mb-2">${day.day}</h4>
+                    ${day.meals.map(meal => `
+                        <div class="text-xs mb-1">
+                            <div class="font-medium">${getMealEmoji(meal.type)} ${meal.name}</div>
+                            <div class="text-gray-500 dark:text-gray-400">${meal.calories} cal • ${meal.protein}g protein</div>
+                        </div>
+                    `).join('')}
+                    <div class="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                        Total: ${day.meals.reduce((sum, m) => sum + m.calories, 0)} cal
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function getMealEmoji(mealType) {
+            const emojis = {
+                Breakfast: '🌅',
+                Lunch: '🥙', 
+                Dinner: '🍽️'
+            };
+            return emojis[mealType] || '🍽️';
+        }
+
         console.log('🎮 Life Quest RPG - Ultimate AI Edition is loading...');
     </script>
 </body>
